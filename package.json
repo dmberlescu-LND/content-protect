@@ -10,6 +10,7 @@
     "start": "NODE_ENV=production node server.mjs",
     "build": "vite build",
     "db:migrate": "node scripts/migrate.mjs",
+    "test:webhook": "node scripts/test-resend-webhook.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "react-dom": "latest",
     "sharp": "^0.35.3",
     "stripe": "^22.3.2",
+    "svix": "^1.98.0",
     "typescript": "latest",
     "vite": "latest"
   },

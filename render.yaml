@@ -32,6 +32,8 @@ services:
         value: Content Protect Legal <legal@content-protect.com>
       - key: TAKEDOWN_OPERATOR_TOKEN
         sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
       - key: YOTI_API_KEY
         sync: false
       - key: YOTI_SDK_ID

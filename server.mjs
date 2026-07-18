@@ -12,6 +12,7 @@ import {
 } from "node:crypto";
 import path from "node:path";
 import Stripe from "stripe";
+import { Webhook } from "svix";
 import {
   deleteEncryptedObject,
   getEncryptedObject,
@@ -71,6 +72,7 @@ async function load() {
       legacyState.passwordResets ||= [];
       legacyState.emailVerifications ||= [];
       legacyState.verifications ||= [];
+      legacyState.processedWebhooks ||= [];
       for (const asset of legacyState.assets) {
         asset.objectKey ||= `${asset.id}.vault`;
         if (!asset.checksum) {
@@ -113,6 +115,7 @@ async function load() {
       passwordResets: [],
       emailVerifications: [],
       verifications: [],
+      processedWebhooks: [],
     };
     await save(d);
     return d;
@@ -127,6 +130,7 @@ async function load() {
   d.passwordResets ||= [];
   d.emailVerifications ||= [];
   d.verifications ||= [];
+  d.processedWebhooks ||= [];
   d.sessions = d.sessions.filter((x) => new Date(x.expiresAt) > new Date());
   d.passwordResets = d.passwordResets.filter(
     (x) => new Date(x.expiresAt) > new Date(),
@@ -457,6 +461,7 @@ http
       if (
         ["POST", "PATCH", "DELETE"].includes(req.method) &&
         route !== "/api/billing/webhook" &&
+        route !== "/api/takedowns/webhook" &&
         origin &&
         origin !== appOrigin &&
         !(
@@ -521,6 +526,90 @@ http
             await save(d);
           }
         }
+        return send(res, 200, { received: true });
+      }
+      if (route === "/api/takedowns/webhook" && req.method === "POST") {
+        if (!process.env.RESEND_WEBHOOK_SECRET?.startsWith("whsec_"))
+          return send(res, 503, { error: "Webhook is not configured." });
+        const payload = await raw(req),
+          eventId = String(req.headers["svix-id"] || ""),
+          headers = {
+            "svix-id": eventId,
+            "svix-timestamp": String(req.headers["svix-timestamp"] || ""),
+            "svix-signature": String(req.headers["svix-signature"] || ""),
+          };
+        let event;
+        try {
+          event = new Webhook(process.env.RESEND_WEBHOOK_SECRET).verify(
+            payload.toString("utf8"),
+            headers,
+          );
+        } catch {
+          return send(res, 400, { error: "Invalid webhook signature." });
+        }
+        if (!eventId || typeof event !== "object" || !event)
+          return send(res, 400, { error: "Invalid webhook event." });
+        const d = await load();
+        if (
+          d.processedWebhooks.some(
+            (item) => item.provider === "resend" && item.eventId === eventId,
+          )
+        )
+          return send(res, 200, { received: true, duplicate: true });
+        const supported = new Set([
+            "email.sent",
+            "email.delivered",
+            "email.bounced",
+            "email.complained",
+          ]),
+          providerMessageId = String(event.data?.email_id || ""),
+          caseRecord = d.cases.find(
+            (item) => item.providerMessageId === providerMessageId,
+          ),
+          eventAt = new Date(event.created_at || Date.now()).toISOString();
+        if (caseRecord && supported.has(event.type)) {
+          const isNewer =
+            !caseRecord.lastProviderEventAt ||
+            new Date(eventAt) >= new Date(caseRecord.lastProviderEventAt);
+          if (isNewer) {
+            caseRecord.deliveryStatus = event.type.replace("email.", "");
+            caseRecord.lastProviderEventAt = eventAt;
+            caseRecord.updatedAt = new Date().toISOString();
+            if (event.type === "email.delivered") {
+              caseRecord.status = "Delivered — monitoring";
+              caseRecord.deliveredAt = eventAt;
+              caseRecord.lastDeliveryError = null;
+            } else if (event.type === "email.bounced") {
+              caseRecord.status = "Delivery failed";
+              caseRecord.lastDeliveryError = "recipient-bounced";
+              caseRecord.nextActionAt = null;
+            } else if (event.type === "email.complained") {
+              caseRecord.status = "Delivery complaint — review required";
+              caseRecord.lastDeliveryError = "recipient-complaint";
+              caseRecord.nextActionAt = null;
+            }
+            caseRecord.timeline.push({
+              event: `Provider: ${event.type}`,
+              details: { provider: "resend", eventId },
+              at: eventAt,
+            });
+            const creator = d.users.find(
+              (user) => user.id === caseRecord.userId,
+            );
+            if (creator)
+              audit(d, creator, "case.delivery_status_updated", {
+                caseId: caseRecord.id,
+                status: caseRecord.deliveryStatus,
+              });
+          }
+        }
+        d.processedWebhooks.push({
+          provider: "resend",
+          eventId,
+          processedAt: new Date().toISOString(),
+        });
+        d.processedWebhooks = d.processedWebhooks.slice(-5000);
+        await save(d);
         return send(res, 200, { received: true });
       }
       const d = await load();
