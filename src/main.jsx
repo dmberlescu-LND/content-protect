@@ -614,7 +614,7 @@ function Dashboard({ onLogout, user }) {
   useEffect(() => {
     refresh();
   }, []);
-  const liveMatches = data.matches.length ? data.matches : matches;
+  const liveMatches = data.matches;
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -676,9 +676,7 @@ function Dashboard({ onLogout, user }) {
       return;
     }
     await refresh();
-    alert(
-      `Sandbox scan complete: ${result.scan.sourcesChecked.toLocaleString()} sources simulated and ${result.scan.matchesFound} matches found. No external website was accessed.`,
-    );
+    alert(result.notice || "Live image scan completed.");
   };
   const selectPlan = async (plan) => {
     const r = await fetch("/api/billing/checkout", {
@@ -1113,6 +1111,12 @@ function Dashboard({ onLogout, user }) {
                 <span>STATUS</span>
                 <span></span>
               </div>
+              {!filtered.length && !loading && (
+                <div className="empty-state">
+                  No verified public matches yet. Add a reference image and run
+                  a live scan after provider activation.
+                </div>
+              )}
               {filtered.map((m) => (
                 <div className="match-row" key={m.id}>
                   <div className={`thumb ${m.color}`}>

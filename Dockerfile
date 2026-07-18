@@ -12,6 +12,7 @@ RUN addgroup -S contentprotect && adduser -S contentprotect -G contentprotect
 COPY --from=build --chown=contentprotect:contentprotect /app/dist ./dist
 COPY --from=build --chown=contentprotect:contentprotect /app/server.mjs ./server.mjs
 COPY --from=build --chown=contentprotect:contentprotect /app/database.mjs ./database.mjs
+COPY --from=build --chown=contentprotect:contentprotect /app/scanner.mjs ./scanner.mjs
 COPY --from=build --chown=contentprotect:contentprotect /app/storage.mjs ./storage.mjs
 COPY --from=build --chown=contentprotect:contentprotect /app/scripts ./scripts
 COPY --from=build --chown=contentprotect:contentprotect /app/db ./db

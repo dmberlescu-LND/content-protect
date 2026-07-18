@@ -1,9 +1,10 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const configured = Boolean(
@@ -41,8 +42,19 @@ export async function putEncryptedObject(objectKey, encrypted, localRoot) {
     );
     return;
   }
-  await mkdir(localRoot, { recursive: true });
-  await writeFile(path.join(localRoot, objectKey), encrypted, { mode: 0o600 });
+  const localPath = path.join(localRoot, objectKey);
+  await mkdir(path.dirname(localPath), { recursive: true });
+  await writeFile(localPath, encrypted, { mode: 0o600 });
+}
+
+export async function getEncryptedObject(objectKey, localRoot) {
+  if (client) {
+    const response = await client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: objectKey }),
+    );
+    return Buffer.from(await response.Body.transformToByteArray());
+  }
+  return readFile(path.join(localRoot, objectKey));
 }
 
 export async function deleteEncryptedObject(objectKey, localRoot) {

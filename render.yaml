@@ -32,6 +32,10 @@ services:
         sync: false
       - key: YOTI_SDK_ID
         sync: false
+      - key: TINEYE_API_KEY
+        sync: false
+      - key: TINEYE_API_URL
+        value: https://api.tineye.com/rest/search/
       - key: DATABASE_URL
         sync: false
       - key: OBJECT_STORAGE_ENDPOINT

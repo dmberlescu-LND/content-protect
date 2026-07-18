@@ -7,12 +7,14 @@ import {
   scryptSync,
   timingSafeEqual,
   createCipheriv,
+  createDecipheriv,
   createHash,
 } from "node:crypto";
 import path from "node:path";
 import Stripe from "stripe";
 import {
   deleteEncryptedObject,
+  getEncryptedObject,
   putEncryptedObject,
   storageMode,
 } from "./storage.mjs";
@@ -21,6 +23,7 @@ import {
   loadPostgresState,
   savePostgresState,
 } from "./database.mjs";
+import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   ROOT = path.join(process.cwd(), ".traceguard-data"),
@@ -36,40 +39,6 @@ const YOTI_CONFIGURED = Boolean(
 let key;
 const rateBuckets = new Map(),
   EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const seed = [
-  {
-    id: "m1",
-    site: "mirror-stream.net",
-    type: "Video",
-    confidence: 98,
-    status: "Action needed",
-    age: "12 min ago",
-  },
-  {
-    id: "m2",
-    site: "social-repost.co",
-    type: "Photo set",
-    confidence: 94,
-    status: "Monitoring",
-    age: "2 hrs ago",
-  },
-  {
-    id: "m3",
-    site: "forumvault.io",
-    type: "Image",
-    confidence: 91,
-    status: "Takedown sent",
-    age: "Yesterday",
-  },
-  {
-    id: "m4",
-    site: "cliparchive.tv",
-    type: "Video",
-    confidence: 87,
-    status: "Removed",
-    age: "Jul 14",
-  },
-];
 async function load() {
   await mkdir(VAULT, { recursive: true });
   if (!key) {
@@ -132,7 +101,7 @@ async function load() {
       users: [],
       assets: [],
       cases: [],
-      matches: seed,
+      matches: [],
       scans: [],
       subscriptions: [],
       audit: [],
@@ -325,6 +294,18 @@ function vault(buf) {
     data = Buffer.concat([c.update(buf), c.final()]);
   return Buffer.concat([iv, c.getAuthTag(), data]);
 }
+function unvault(encrypted) {
+  if (!Buffer.isBuffer(encrypted) || encrypted.length < 29)
+    throw new Error("Invalid encrypted object.");
+  const iv = encrypted.subarray(0, 12),
+    tag = encrypted.subarray(12, 28),
+    decipher = createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([
+    decipher.update(encrypted.subarray(28)),
+    decipher.final(),
+  ]);
+}
 function audit(d, u, action, details = {}) {
   d.audit.unshift({
     id: randomUUID(),
@@ -464,6 +445,7 @@ http
           mode: "secure-mvp",
           storage: storageMode(),
           database: databaseMode(),
+          scanner: scannerMode(),
         });
       if (route === "/api/auth/register" && req.method === "POST") {
         if (!allowed(req, `register:${ip}`, 5, 3600000))
@@ -848,12 +830,14 @@ http
         const assets = d.assets.filter((x) => x.userId === u.id),
           cases = d.cases.filter((x) => x.userId === u.id),
           scans = d.scans.filter((x) => x.userId === u.id),
-          matches = d.matches.map((m) => ({
-            ...m,
-            status: cases.some((c) => c.matchId === m.id)
-              ? "Takedown sent"
-              : m.status,
-          }));
+          matches = d.matches
+            .filter((m) => m.userId === u.id)
+            .map((m) => ({
+              ...m,
+              status: cases.some((c) => c.matchId === m.id)
+                ? "Takedown sent"
+                : m.status,
+            }));
         return send(res, 200, {
           matches,
           assets,
@@ -944,30 +928,116 @@ http
           return send(res, 403, {
             error: "Verify your email, age and eligibility before scanning.",
           });
-        const assets = d.assets.filter((x) => x.userId === u.id);
+        const assets = d.assets.filter(
+          (x) => x.userId === u.id && x.mime.startsWith("image/"),
+        );
         if (!assets.length)
           return send(res, 400, {
-            error: "Add at least one reference asset before scanning.",
+            error:
+              "Add at least one reference image. Video matching requires a separate provider.",
           });
-        const scan = {
-          id: randomUUID(),
-          userId: u.id,
-          status: "Completed (sandbox)",
-          mode: "sandbox",
-          assets: assets.length,
-          sourcesChecked: 18402,
-          matchesFound: 4,
-          startedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString(),
-        };
+        if (scannerMode() === "unconfigured")
+          return send(res, 503, {
+            error:
+              "Commercial image scanning is awaiting provider activation. No simulated results were created.",
+          });
+        const startedAt = new Date().toISOString(),
+          scan = {
+            id: randomUUID(),
+            userId: u.id,
+            status: "Running",
+            mode: "live",
+            provider: "tineye",
+            assets: assets.length,
+            sourcesChecked: 0,
+            matchesFound: 0,
+            startedAt,
+            completedAt: null,
+          },
+          ownedHosts = (u.platforms || [])
+            .map((value) => {
+              try {
+                return new URL(value).hostname.toLowerCase();
+              } catch {
+                return null;
+              }
+            })
+            .filter(Boolean);
         d.scans.unshift(scan);
-        audit(d, u, "scan.completed", { scanId: scan.id, mode: "sandbox" });
-        await save(d);
-        return send(res, 201, {
-          scan,
-          matches: d.matches,
-          notice: "Sandbox results only. No external websites were accessed.",
-        });
+        try {
+          const discovered = [];
+          for (const asset of assets) {
+            const encrypted = await getEncryptedObject(
+                asset.objectKey || `${asset.id}.vault`,
+                VAULT,
+              ),
+              result = await searchImage(unvault(encrypted), {
+                assetId: asset.id,
+                allowedHosts: ownedHosts,
+              });
+            discovered.push(...result.matches);
+          }
+          for (const found of discovered) {
+            const existing = d.matches.find(
+              (item) =>
+                item.userId === u.id &&
+                item.assetId === found.assetId &&
+                item.sourceUrl === found.sourceUrl,
+            );
+            if (existing) {
+              existing.confidence = Math.max(
+                existing.confidence || 0,
+                found.confidence,
+              );
+              existing.evidence = found.evidence;
+              continue;
+            }
+            d.matches.push({
+              id: randomUUID(),
+              scanId: scan.id,
+              userId: u.id,
+              assetId: found.assetId,
+              site: found.sourceHost,
+              sourceUrl: found.sourceUrl,
+              type: found.mediaType,
+              confidence: found.confidence,
+              status: "Action needed",
+              age: new Date().toISOString(),
+              evidence: found.evidence,
+            });
+          }
+          scan.status = "Completed";
+          scan.matchesFound = discovered.length;
+          scan.completedAt = new Date().toISOString();
+          audit(d, u, "scan.completed", {
+            scanId: scan.id,
+            mode: "live",
+            provider: "tineye",
+            assets: assets.length,
+            matches: discovered.length,
+          });
+          await save(d);
+          return send(res, 201, {
+            scan,
+            matches: d.matches.filter((item) => item.userId === u.id),
+            notice: `Live image scan complete. ${discovered.length} public occurrences were returned for review.`,
+          });
+        } catch (error) {
+          scan.status = "Failed";
+          scan.completedAt = new Date().toISOString();
+          audit(d, u, "scan.failed", {
+            scanId: scan.id,
+            provider: "tineye",
+            reason:
+              error instanceof ScanProviderError
+                ? "provider_error"
+                : "internal_error",
+          });
+          await save(d);
+          if (error instanceof ScanProviderError)
+            return send(res, error.status, { error: error.message });
+          throw error;
+        }
       }
       if (route === "/api/billing/checkout" && req.method === "POST") {
         const b = await parse(req),
@@ -1159,7 +1229,7 @@ http
       }
       if (route === "/api/cases" && req.method === "POST") {
         const b = await parse(req),
-          m = d.matches.find((x) => x.id === b.matchId);
+          m = d.matches.find((x) => x.id === b.matchId && x.userId === u.id);
         if (!m) return send(res, 404, { error: "Match not found." });
         if (d.cases.some((x) => x.userId === u.id && x.matchId === m.id))
           return send(res, 409, {
