@@ -22,6 +22,7 @@ export async function loadPostgresState() {
       "scans",
       "matches",
       "takedown_cases",
+      "case_events",
       "subscriptions",
       "audit_events",
     ];
@@ -38,6 +39,7 @@ export async function loadPostgresState() {
       scans,
       matches,
       cases,
+      caseEvents,
       subscriptions,
       audit,
     ] = results.map((result) => result.rows);
@@ -140,9 +142,27 @@ export async function loadPostgresState() {
         jurisdiction: row.jurisdiction,
         status: row.status,
         mode: row.mode,
+        targetUrl: row.target_url,
+        targetHost: row.target_host,
+        noticeType: row.notice_type,
+        evidenceSnapshot: row.evidence_snapshot || {},
+        evidenceHash: row.evidence_hash,
+        noticeDraft: row.notice_draft || {},
+        declarations: row.declarations || {},
+        recipientEmail: row.recipient_email,
         approvedAt: iso(row.approved_at),
+        submittedAt: iso(row.submitted_at),
+        nextActionAt: iso(row.next_action_at),
         closedAt: iso(row.closed_at),
         createdAt: iso(row.created_at),
+        updatedAt: iso(row.updated_at),
+        timeline: caseEvents
+          .filter((event) => event.case_id === row.id)
+          .map((event) => ({
+            event: event.event_type,
+            details: event.details || {},
+            at: iso(event.created_at),
+          })),
       })),
       subscriptions: subscriptions.map((row) => ({
         id: row.id,
@@ -335,10 +355,11 @@ async function upsertBusinessData(client, state) {
         JSON.stringify(item.evidence || {}),
       ],
     );
-  for (const item of state.cases)
+  for (const item of state.cases) {
     await client.query(
-      `INSERT INTO takedown_cases (id,user_id,match_id,jurisdiction,status,mode,approved_at,closed_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-     ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,approved_at=EXCLUDED.approved_at,closed_at=EXCLUDED.closed_at`,
+      `INSERT INTO takedown_cases (id,user_id,match_id,jurisdiction,status,mode,target_url,target_host,notice_type,evidence_snapshot,evidence_hash,notice_draft,declarations,recipient_email,approved_at,submitted_at,next_action_at,closed_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20)
+       ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,mode=EXCLUDED.mode,target_url=EXCLUDED.target_url,target_host=EXCLUDED.target_host,notice_type=EXCLUDED.notice_type,evidence_snapshot=EXCLUDED.evidence_snapshot,evidence_hash=EXCLUDED.evidence_hash,notice_draft=EXCLUDED.notice_draft,declarations=EXCLUDED.declarations,recipient_email=EXCLUDED.recipient_email,approved_at=EXCLUDED.approved_at,submitted_at=EXCLUDED.submitted_at,next_action_at=EXCLUDED.next_action_at,closed_at=EXCLUDED.closed_at,updated_at=EXCLUDED.updated_at`,
       [
         item.id,
         item.userId,
@@ -346,11 +367,31 @@ async function upsertBusinessData(client, state) {
         item.jurisdiction || null,
         item.status,
         item.mode || "sandbox",
+        item.targetUrl || null,
+        item.targetHost || item.source || null,
+        item.noticeType || "copyright",
+        JSON.stringify(item.evidenceSnapshot || {}),
+        item.evidenceHash || null,
+        JSON.stringify(item.noticeDraft || {}),
+        JSON.stringify(item.declarations || {}),
+        item.recipientEmail || null,
         item.approvedAt || null,
+        item.submittedAt || null,
+        item.nextActionAt || null,
         item.closedAt || null,
         item.createdAt,
+        item.updatedAt || item.createdAt,
       ],
     );
+    for (const event of item.timeline || [])
+      await client.query(
+        `INSERT INTO case_events (case_id,event_type,details,created_at)
+         SELECT $1,$2,$3::jsonb,$4 WHERE NOT EXISTS (
+           SELECT 1 FROM case_events WHERE case_id=$1 AND event_type=$2 AND created_at=$4
+         )`,
+        [item.id, event.event, JSON.stringify(event.details || {}), event.at],
+      );
+  }
   for (const item of state.subscriptions)
     await client.query(
       `INSERT INTO subscriptions (id,user_id,plan,status,stripe_customer_id,stripe_subscription_id,current_period_end,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now())

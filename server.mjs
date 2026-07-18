@@ -316,6 +316,36 @@ function audit(d, u, action, details = {}) {
   });
   d.audit = d.audit.slice(0, 500);
 }
+function evidenceDigest(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+function buildCopyrightNotice(user, match, caseId, capturedAt) {
+  return {
+    version: "2026-07-18",
+    type: "copyright-removal-request",
+    caseReference: caseId,
+    claimant: {
+      name: user.name,
+      stageName: user.stageName || null,
+      replyEmail: user.email,
+    },
+    work: {
+      referenceAssetId: match.assetId,
+      unauthorisedUrl: match.sourceUrl,
+      host: match.site,
+      discoveredAt: match.age,
+      capturedAt,
+    },
+    request:
+      "Please remove or disable access to the identified material and preserve relevant records in accordance with applicable law and your platform policies.",
+    declarationsRequired: [
+      "rights_holder_or_authorised_agent",
+      "good_faith_unauthorised_use",
+      "information_accurate",
+      "authorise_delivery",
+    ],
+  };
+}
 async function issueEmailVerification(d, u) {
   if (!process.env.RESEND_API_KEY?.startsWith("re_")) return false;
   const token = randomBytes(32).toString("hex"),
@@ -1235,19 +1265,48 @@ http
           return send(res, 409, {
             error: "A case already exists for this match.",
           });
+        const capturedAt = new Date().toISOString(),
+          evidenceSnapshot = {
+            version: 1,
+            matchId: m.id,
+            scanId: m.scanId,
+            referenceAssetId: m.assetId,
+            sourceUrl: m.sourceUrl,
+            sourceHost: m.site,
+            mediaType: m.type,
+            providerConfidence: m.confidence,
+            discoveredAt: m.age,
+            providerEvidence: m.evidence || {},
+            capturedAt,
+          },
+          caseId = randomUUID();
         const c = {
-          id: randomUUID(),
+          id: caseId,
           userId: u.id,
           matchId: m.id,
           source: m.site,
-          status: "Evidence review",
+          targetUrl: m.sourceUrl,
+          targetHost: m.site,
+          jurisdiction: "To be determined from recipient",
+          noticeType: "copyright",
+          status: "Awaiting declarations",
           mode: "sandbox",
-          createdAt: new Date().toISOString(),
+          evidenceSnapshot,
+          evidenceHash: evidenceDigest(evidenceSnapshot),
+          noticeDraft: buildCopyrightNotice(u, m, caseId, capturedAt),
+          declarations: {},
+          createdAt: capturedAt,
+          updatedAt: capturedAt,
           timeline: [
-            { event: "Evidence preserved", at: new Date().toISOString() },
             {
-              event: "Awaiting creator approval",
-              at: new Date().toISOString(),
+              event: "Evidence preserved",
+              details: { evidenceHash: evidenceDigest(evidenceSnapshot) },
+              at: capturedAt,
+            },
+            {
+              event: "Notice draft prepared",
+              details: { noticeVersion: "2026-07-18" },
+              at: capturedAt,
             },
           ],
         };
@@ -1256,7 +1315,8 @@ http
         await save(d);
         return send(res, 201, {
           case: c,
-          notice: "Sandbox only. No legal notice was sent.",
+          notice:
+            "Evidence was preserved and a draft was prepared. Nothing has been sent.",
         });
       }
       if (
@@ -1266,22 +1326,47 @@ http
         const id = route.split("/")[3],
           c = d.cases.find((x) => x.id === id && x.userId === u.id);
         if (!c) return send(res, 404, { error: "Case not found." });
-        if (c.status !== "Evidence review")
+        if (c.status !== "Awaiting declarations")
           return send(res, 409, {
             error: "This case has already been reviewed.",
           });
-        c.status = "Approved (sandbox)";
+        const b = await parse(req);
+        if (
+          b.rightsHolder !== true ||
+          b.goodFaith !== true ||
+          b.accurate !== true ||
+          b.authoriseDelivery !== true
+        )
+          return send(res, 400, {
+            error:
+              "All rights, good-faith, accuracy and delivery declarations are required.",
+          });
+        c.status = "Approved — delivery pending";
         c.approvedAt = new Date().toISOString();
+        c.updatedAt = c.approvedAt;
+        c.declarations = {
+          rightsHolder: true,
+          goodFaith: true,
+          accurate: true,
+          authoriseDelivery: true,
+          acceptedAt: c.approvedAt,
+          policyVersion: "2026-07-18",
+        };
         c.timeline.push({
-          event: "Creator approved sandbox notice",
+          event: "Creator declarations accepted",
+          details: { policyVersion: "2026-07-18" },
           at: c.approvedAt,
         });
-        audit(d, u, "case.approved", { caseId: id, mode: "sandbox" });
+        audit(d, u, "case.approved", {
+          caseId: id,
+          mode: "delivery-pending",
+          evidenceHash: c.evidenceHash,
+        });
         await save(d);
         return send(res, 200, {
           case: c,
           notice:
-            "Approval recorded. No external notice was sent in sandbox mode.",
+            "Approval and declarations recorded. No external notice was sent because the delivery service is not configured yet.",
         });
       }
       send(res, 404, { error: "Not found" });

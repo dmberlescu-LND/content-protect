@@ -709,7 +709,22 @@ function Dashboard({ onLogout, user }) {
     await refresh();
   };
   const approveCase = async (caseId) => {
-    const r = await fetch(`/api/cases/${caseId}/approve`, { method: "POST" });
+    if (
+      !confirm(
+        "By continuing, you confirm that you own or represent the rights, believe the use is unauthorised, confirm the information is accurate, and authorise Content Protect to deliver the notice once delivery is enabled. Continue?",
+      )
+    )
+      return;
+    const r = await fetch(`/api/cases/${caseId}/approve`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        rightsHolder: true,
+        goodFaith: true,
+        accurate: true,
+        authoriseDelivery: true,
+      }),
+    });
     const d = await r.json();
     if (!r.ok) {
       alert(d.error || "Could not approve case");
@@ -1015,12 +1030,12 @@ function Dashboard({ onLogout, user }) {
                     <div>
                       <span className="status monitoring">{c.status}</span>
                     </div>
-                    {c.status === "Evidence review" && (
+                    {c.status === "Awaiting declarations" && (
                       <button
                         className="btn btn-primary"
                         onClick={() => approveCase(c.id)}
                       >
-                        Approve test
+                        Review & approve
                       </button>
                     )}
                   </div>
