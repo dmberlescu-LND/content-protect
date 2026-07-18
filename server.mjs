@@ -16,6 +16,11 @@ import {
   putEncryptedObject,
   storageMode,
 } from "./storage.mjs";
+import {
+  databaseMode,
+  loadPostgresState,
+  savePostgresState,
+} from "./database.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   ROOT = path.join(process.cwd(), ".traceguard-data"),
@@ -77,6 +82,32 @@ async function load() {
       await writeFile(KEY_FILE, key.toString("hex"), { mode: 0o600 });
     }
   }
+  const postgresState = await loadPostgresState();
+  if (postgresState) {
+    if (!postgresState.users.length && existsSync(DB)) {
+      const legacyState = JSON.parse(await readFile(DB, "utf8"));
+      legacyState.scans ||= [];
+      legacyState.subscriptions ||= [];
+      legacyState.audit ||= [];
+      legacyState.assets ||= [];
+      legacyState.cases ||= [];
+      legacyState.sessions ||= [];
+      legacyState.passwordResets ||= [];
+      legacyState.emailVerifications ||= [];
+      legacyState.matches = (legacyState.matches || []).filter(
+        (match) => match.userId && match.scanId,
+      );
+      const migratedMatchIds = new Set(
+        legacyState.matches.map((match) => match.id),
+      );
+      legacyState.cases = legacyState.cases.filter((item) =>
+        migratedMatchIds.has(item.matchId),
+      );
+      await savePostgresState(legacyState);
+      return (await loadPostgresState()) || postgresState;
+    }
+    return postgresState;
+  }
   if (!existsSync(DB)) {
     const d = {
       users: [],
@@ -112,6 +143,7 @@ async function load() {
   return d;
 }
 async function save(d) {
+  if (await savePostgresState(d)) return;
   await writeFile(DB, JSON.stringify(d, null, 2));
 }
 const securityHeaders = {
@@ -409,9 +441,7 @@ http
           ok: true,
           mode: "secure-mvp",
           storage: storageMode(),
-          database: process.env.DATABASE_URL
-            ? "postgresql-configured"
-            : "local-json",
+          database: databaseMode(),
         });
       if (route === "/api/auth/register" && req.method === "POST") {
         if (!allowed(req, `register:${ip}`, 5, 3600000))
