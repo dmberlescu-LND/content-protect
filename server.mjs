@@ -36,6 +36,10 @@ const STRIPE_TEST_KEY = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")
 const YOTI_CONFIGURED = Boolean(
   process.env.YOTI_API_KEY && process.env.YOTI_SDK_ID,
 );
+const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
+  process.env.RESEND_API_KEY?.startsWith("re_") &&
+    process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32,
+);
 let key;
 const rateBuckets = new Map(),
   EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -346,6 +350,57 @@ function buildCopyrightNotice(user, match, caseId, capturedAt) {
     ],
   };
 }
+function operatorAuthorised(req) {
+  const supplied = String(req.headers.authorization || "").replace(
+      /^Bearer\s+/i,
+      "",
+    ),
+    expected = process.env.TAKEDOWN_OPERATOR_TOKEN || "";
+  if (supplied.length < 32 || expected.length < 32) return false;
+  const a = createHash("sha256").update(supplied).digest(),
+    b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+function noticeText(caseRecord, creator) {
+  const displayName = creator.stageName || creator.name;
+  return `Copyright removal request
+
+Case reference: ${caseRecord.id}
+Claimant: ${displayName}
+Unauthorised material: ${caseRecord.targetUrl}
+Evidence integrity SHA-256: ${caseRecord.evidenceHash}
+
+The claimant has confirmed that they own or are authorised to represent the rights, have a good-faith belief that the identified use is unauthorised, and that the supplied information is accurate.
+
+Please remove or disable access to the identified material and preserve relevant records in accordance with applicable law and your platform policies.
+
+Please reply to Content Protect Legal quoting the case reference above.
+
+Content Protect is operated by White Eagles Digital Marketing LTD, company number 14978662, England and Wales.`;
+}
+async function deliverNotice(caseRecord, creator, recipientEmail) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "content-type": "application/json",
+      "user-agent": "Content-Protect/1.0",
+      "idempotency-key": `takedown-${caseRecord.id}`,
+    },
+    body: JSON.stringify({
+      from:
+        process.env.TAKEDOWN_FROM_EMAIL ||
+        "Content Protect Legal <legal@content-protect.com>",
+      to: [recipientEmail],
+      subject: `Copyright removal request — ${caseRecord.id}`,
+      text: noticeText(caseRecord, creator),
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`delivery-provider-${response.status}`);
+  if (!result.id) throw new Error("delivery-provider-invalid-response");
+  return result.id;
+}
 async function issueEmailVerification(d, u) {
   if (!process.env.RESEND_API_KEY?.startsWith("re_")) return false;
   const token = randomBytes(32).toString("hex"),
@@ -476,7 +531,126 @@ http
           storage: storageMode(),
           database: databaseMode(),
           scanner: scannerMode(),
+          takedownDelivery: TAKEDOWN_DELIVERY_CONFIGURED
+            ? "operator-reviewed"
+            : "unconfigured",
         });
+      if (route === "/api/operator/cases" && req.method === "GET") {
+        if (!operatorAuthorised(req))
+          return send(res, 401, { error: "Operator authentication required." });
+        if (!allowed(req, `operator-list:${ip}`, 60, 3600000))
+          return send(res, 429, { error: "Too many operator requests." });
+        return send(res, 200, {
+          cases: d.cases
+            .filter((item) => item.status === "Approved — delivery pending")
+            .map((item) => {
+              const creator = d.users.find((user) => user.id === item.userId);
+              return {
+                id: item.id,
+                targetUrl: item.targetUrl,
+                targetHost: item.targetHost,
+                noticeType: item.noticeType,
+                evidenceHash: item.evidenceHash,
+                approvedAt: item.approvedAt,
+                claimant: creator
+                  ? { name: creator.name, stageName: creator.stageName || null }
+                  : null,
+              };
+            }),
+        });
+      }
+      if (
+        route.match(/^\/api\/operator\/cases\/[^/]+\/dispatch$/) &&
+        req.method === "POST"
+      ) {
+        if (!operatorAuthorised(req))
+          return send(res, 401, { error: "Operator authentication required." });
+        if (!TAKEDOWN_DELIVERY_CONFIGURED)
+          return send(res, 503, { error: "Delivery is not configured." });
+        if (!allowed(req, `operator-send:${ip}`, 30, 86400000))
+          return send(res, 429, { error: "Daily delivery limit reached." });
+        const caseId = route.split("/")[4],
+          b = await parse(req),
+          recipientEmail = String(b.recipientEmail || "")
+            .trim()
+            .toLowerCase(),
+          recipientSource = String(b.recipientSource || "").trim(),
+          caseRecord = d.cases.find((item) => item.id === caseId);
+        if (!caseRecord) return send(res, 404, { error: "Case not found." });
+        if (caseRecord.status !== "Approved — delivery pending")
+          return send(res, 409, { error: "Case is not ready for delivery." });
+        if (
+          !EMAIL.test(recipientEmail) ||
+          !/^https:\/\//i.test(recipientSource) ||
+          b.confirmRecipientReviewed !== true
+        )
+          return send(res, 400, {
+            error:
+              "A reviewed recipient email, HTTPS source and confirmation are required.",
+          });
+        const creator = d.users.find(
+          (user) => user.id === caseRecord.userId,
+        );
+        if (!creator)
+          return send(res, 409, { error: "Case claimant no longer exists." });
+        caseRecord.deliveryAttempts = (caseRecord.deliveryAttempts || 0) + 1;
+        caseRecord.recipientEmail = recipientEmail;
+        caseRecord.recipientSource = recipientSource;
+        caseRecord.reviewedAt = new Date().toISOString();
+        caseRecord.updatedAt = caseRecord.reviewedAt;
+        try {
+          caseRecord.providerMessageId = await deliverNotice(
+            caseRecord,
+            creator,
+            recipientEmail,
+          );
+        } catch (error) {
+          caseRecord.lastDeliveryError = String(error.message).slice(0, 100);
+          caseRecord.timeline.push({
+            event: "Delivery attempt failed",
+            details: { attempt: caseRecord.deliveryAttempts },
+            at: caseRecord.updatedAt,
+          });
+          audit(d, creator, "case.delivery_failed", {
+            caseId,
+            attempt: caseRecord.deliveryAttempts,
+          });
+          await save(d);
+          return send(res, 502, {
+            error: "The delivery provider rejected the request.",
+          });
+        }
+        caseRecord.status = "Notice sent";
+        caseRecord.mode = "live";
+        caseRecord.submittedAt = new Date().toISOString();
+        caseRecord.nextActionAt = new Date(
+          Date.now() + 7 * 86400000,
+        ).toISOString();
+        caseRecord.lastDeliveryError = null;
+        caseRecord.updatedAt = caseRecord.submittedAt;
+        caseRecord.timeline.push({
+          event: "Notice delivered",
+          details: {
+            provider: "resend",
+            recipientSource,
+            nextReviewAt: caseRecord.nextActionAt,
+          },
+          at: caseRecord.submittedAt,
+        });
+        audit(d, creator, "case.notice_sent", {
+          caseId,
+          provider: "resend",
+          recipientHost: recipientEmail.split("@")[1],
+        });
+        await save(d);
+        return send(res, 200, {
+          ok: true,
+          caseId,
+          status: caseRecord.status,
+          submittedAt: caseRecord.submittedAt,
+          nextActionAt: caseRecord.nextActionAt,
+        });
+      }
       if (route === "/api/auth/register" && req.method === "POST") {
         if (!allowed(req, `register:${ip}`, 5, 3600000))
           return send(

@@ -28,6 +28,10 @@ services:
         sync: false
       - key: RESET_FROM_EMAIL
         value: Content Protect <security@content-protect.com>
+      - key: TAKEDOWN_FROM_EMAIL
+        value: Content Protect Legal <legal@content-protect.com>
+      - key: TAKEDOWN_OPERATOR_TOKEN
+        sync: false
       - key: YOTI_API_KEY
         sync: false
       - key: YOTI_SDK_ID
