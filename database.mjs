@@ -25,6 +25,7 @@ export async function loadPostgresState() {
       "takedown_cases",
       "case_events",
       "subscriptions",
+      "billing_consents",
       "processed_webhooks",
       "audit_events",
     ];
@@ -44,6 +45,7 @@ export async function loadPostgresState() {
       cases,
       caseEvents,
       subscriptions,
+      billingConsents,
       processedWebhooks,
       audit,
     ] = results.map((result) => result.rows);
@@ -119,6 +121,8 @@ export async function loadPostgresState() {
           size: Number(row.byte_size),
           checksum: row.checksum_sha256,
           status: row.status,
+          sensitiveMediaConsentAt: iso(row.sensitive_media_consent_at),
+          sensitiveMediaConsentVersion: row.sensitive_media_consent_version,
           createdAt: iso(row.created_at),
         })),
       scans: scans.map((row) => ({
@@ -199,6 +203,16 @@ export async function loadPostgresState() {
         stripeSubscriptionId: row.stripe_subscription_id,
         renewalAt: iso(row.current_period_end),
         updatedAt: iso(row.updated_at),
+      })),
+      billingConsents: billingConsents.map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        plan: row.plan,
+        termsVersion: row.terms_version,
+        immediateServiceRequested: row.immediate_service_requested,
+        coolingOffAcknowledged: row.cooling_off_acknowledged,
+        stripeCheckoutSessionId: row.stripe_checkout_session_id,
+        createdAt: iso(row.created_at),
       })),
       processedWebhooks: processedWebhooks.map((row) => ({
         provider: row.provider,
@@ -335,8 +349,8 @@ async function upsertBusinessData(client, state) {
     );
   for (const item of state.assets)
     await client.query(
-      `INSERT INTO assets (id,user_id,object_key,original_name,mime_type,byte_size,checksum_sha256,status,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-     ON CONFLICT (id) DO UPDATE SET original_name=EXCLUDED.original_name,status=EXCLUDED.status,deleted_at=NULL`,
+      `INSERT INTO assets (id,user_id,object_key,original_name,mime_type,byte_size,checksum_sha256,status,sensitive_media_consent_at,sensitive_media_consent_version,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     ON CONFLICT (id) DO UPDATE SET original_name=EXCLUDED.original_name,status=EXCLUDED.status,sensitive_media_consent_at=EXCLUDED.sensitive_media_consent_at,sensitive_media_consent_version=EXCLUDED.sensitive_media_consent_version,deleted_at=NULL`,
       [
         item.id,
         item.userId,
@@ -346,6 +360,8 @@ async function upsertBusinessData(client, state) {
         item.size,
         item.checksum,
         item.status || "Protected",
+        item.sensitiveMediaConsentAt || null,
+        item.sensitiveMediaConsentVersion || null,
         item.createdAt,
       ],
     );
@@ -450,6 +466,23 @@ async function upsertBusinessData(client, state) {
         item.renewalAt || null,
         Boolean(item.stripeLivemode),
         item.stripePriceId || null,
+      ],
+    );
+  for (const item of state.billingConsents || [])
+    await client.query(
+      `INSERT INTO billing_consents
+       (id,user_id,plan,terms_version,immediate_service_requested,cooling_off_acknowledged,stripe_checkout_session_id,created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (stripe_checkout_session_id) DO NOTHING`,
+      [
+        item.id,
+        item.userId,
+        item.plan,
+        item.termsVersion,
+        Boolean(item.immediateServiceRequested),
+        Boolean(item.coolingOffAcknowledged),
+        item.stripeCheckoutSessionId,
+        item.createdAt || new Date(),
       ],
     );
   for (const item of state.processedWebhooks || [])

@@ -84,6 +84,7 @@ async function load() {
       const legacyState = JSON.parse(await readFile(DB, "utf8"));
       legacyState.scans ||= [];
       legacyState.subscriptions ||= [];
+      legacyState.billingConsents ||= [];
       legacyState.audit ||= [];
       legacyState.assets ||= [];
       legacyState.cases ||= [];
@@ -130,6 +131,7 @@ async function load() {
       matches: [],
       scans: [],
       subscriptions: [],
+      billingConsents: [],
       audit: [],
       sessions: [],
       passwordResets: [],
@@ -144,6 +146,7 @@ async function load() {
   const d = JSON.parse(await readFile(DB, "utf8"));
   d.scans ||= [];
   d.subscriptions ||= [];
+  d.billingConsents ||= [];
   d.audit ||= [];
   d.assets ||= [];
   d.cases ||= [];
@@ -1307,6 +1310,11 @@ http
           raw = Buffer.from(b.data || "", "base64");
         if (!b.name || !b.mime || !raw.length)
           return send(res, 400, { error: "Missing file data." });
+        if (b.sensitiveMediaConsent !== true)
+          return send(res, 400, {
+            error:
+              "Explicit consent to process this reference file is required.",
+          });
         if (raw.length > 8e6)
           return send(res, 413, {
             error: "Current upload limit: 8 MB per file.",
@@ -1327,6 +1335,8 @@ http
           size: raw.length,
           checksum: createHash("sha256").update(raw).digest("hex"),
           status: "Protected",
+          sensitiveMediaConsentAt: new Date().toISOString(),
+          sensitiveMediaConsentVersion: "2026-07-18-v1",
           createdAt: new Date().toISOString(),
         };
         d.assets.push(a);
@@ -1335,6 +1345,7 @@ http
           mime: a.mime,
           size: a.size,
           storage: storageMode(),
+          consentVersion: a.sensitiveMediaConsentVersion,
         });
         await save(d);
         return send(res, 201, { asset: a });
@@ -1469,6 +1480,15 @@ http
         const b = await parse(req);
         if (!STRIPE_PRICES[b.plan])
           return send(res, 400, { error: "Invalid plan." });
+        if (
+          b.termsAccepted !== true ||
+          b.immediateServiceRequested !== true ||
+          b.coolingOffAcknowledged !== true
+        )
+          return send(res, 400, {
+            error:
+              "Accept the Service Terms and explicitly request immediate service before checkout.",
+          });
         if (!u.emailVerifiedAt || !u.ageVerifiedAt)
           return send(res, 403, {
             error: "Verify your email and age before purchasing a plan.",
@@ -1514,10 +1534,23 @@ http
             metadata,
             subscription_data: { metadata },
           });
+        const consent = {
+          id: randomUUID(),
+          userId: u.id,
+          plan: b.plan,
+          termsVersion: "2026-07-18-v1",
+          immediateServiceRequested: true,
+          coolingOffAcknowledged: true,
+          stripeCheckoutSessionId: session.id,
+          createdAt: new Date().toISOString(),
+        };
+        d.billingConsents.push(consent);
         audit(d, u, "billing.checkout_created", {
           plan: b.plan,
           mode: PAYMENTS_MODE,
           sessionId: session.id,
+          consentId: consent.id,
+          termsVersion: consent.termsVersion,
         });
         await save(d);
         return send(res, 200, {

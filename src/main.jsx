@@ -119,13 +119,14 @@ function Landing({ onStart, onLogin }) {
               <em>Your control.</em>
             </h1>
             <p className="hero-sub">
-              Find unauthorized copies of your photos and videos across the web.
-              Preserve evidence, send takedowns, and take back control—all from
-              one private workspace.
+              Search supported images for likely public copies, preserve
+              evidence and manage reviewed takedown notices from one private
+              workspace. Video matching will be enabled only with a named
+              compatible provider.
             </p>
             <div className="hero-actions">
               <button className="btn btn-primary btn-large" onClick={onStart}>
-                Scan my content <ArrowRight size={18} />
+                Create secure account <ArrowRight size={18} />
               </button>
               <button
                 className="play-btn"
@@ -158,8 +159,8 @@ function Landing({ onStart, onLogin }) {
             <div className="scan-card main-scan">
               <div className="scan-top">
                 <span className="pulse-dot"></span>
-                <span>Scanning the open web</span>
-                <b>76%</b>
+                <span>PRODUCT WORKFLOW PREVIEW</span>
+                <b>Review</b>
               </div>
               <div className="scan-progress">
                 <i></i>
@@ -181,13 +182,13 @@ function Landing({ onStart, onLogin }) {
                 <span>
                   <Globe2 size={17} /> Sources checked
                 </span>
-                <b>14,208</b>
+                <b>Provider-dependent</b>
               </div>
               <div className="found-row danger">
                 <span>
                   <Zap size={17} /> Potential matches
                 </span>
-                <b>3 found</b>
+                <b>Human-reviewed</b>
               </div>
             </div>
             <div className="floating-card verified">
@@ -247,8 +248,8 @@ function Landing({ onStart, onLogin }) {
               </div>
               <h3>Add your content</h3>
               <p>
-                Upload reference photos or videos securely. You choose what we
-                search for and can delete it anytime.
+                Upload supported reference media securely. You choose what is
+                processed, explicitly consent per file and can delete it.
               </p>
             </div>
             <div className="step">
@@ -315,8 +316,8 @@ function Landing({ onStart, onLogin }) {
         </section>
 
         <section id="pricing" className="pricing wrap section">
-          <div className="section-label">Clear pricing</div>
-          <h2>Protection that grows with you.</h2>
+          <div className="section-label">Planned launch pricing</div>
+          <h2>Choose the level of operational support.</h2>
           <div className="price-cards">
             <div className="price-card">
               <h3>Monitor</h3>
@@ -327,10 +328,10 @@ function Landing({ onStart, onLogin }) {
               </div>
               <ul>
                 <li>
-                  <Check /> 50 reference assets
+                  <Check /> Private reference vault
                 </li>
                 <li>
-                  <Check /> Monthly web scans
+                  <Check /> On-demand supported image scans
                 </li>
                 <li>
                   <Check /> Match alerts & evidence
@@ -350,10 +351,10 @@ function Landing({ onStart, onLogin }) {
               </div>
               <ul>
                 <li>
-                  <Check /> 250 reference assets
+                  <Check /> Everything in Monitor
                 </li>
                 <li>
-                  <Check /> Daily web scans
+                  <Check /> Evidence preservation
                 </li>
                 <li>
                   <Check /> Guided takedown notices
@@ -375,10 +376,10 @@ function Landing({ onStart, onLogin }) {
               </div>
               <ul>
                 <li>
-                  <Check /> 1,000 reference assets
+                  <Check /> Higher operational allowance
                 </li>
                 <li>
-                  <Check /> Continuous monitoring
+                  <Check /> Priority case queue
                 </li>
                 <li>
                   <Check /> Priority specialist review
@@ -390,9 +391,10 @@ function Landing({ onStart, onLogin }) {
             </div>
           </div>
           <p className="disclaimer">
-            *Removal rates and response times shown are product targets for this
-            MVP, not guaranteed outcomes. Court orders and legal representation
-            are not included.
+            Checkout remains unavailable until provider, verification and
+            billing controls are active. Features and recurring price are
+            confirmed again before purchase. Outcomes are not guaranteed;
+            court orders and legal representation are not included.
           </p>
         </section>
       </main>
@@ -404,6 +406,8 @@ function Landing({ onStart, onLogin }) {
             <a href="/privacy.html">Privacy</a>
             <a href="/terms.html">Terms</a>
             <a href="/safety.html">Safety</a>
+            <a href="/cookies.html">Cookies</a>
+            <a href="/disputes.html">Disputes</a>
           </div>
         </div>
       </footer>
@@ -599,6 +603,7 @@ function Dashboard({ onLogout, user }) {
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
+  const [mediaConsent, setMediaConsent] = useState(false);
   const [filter, setFilter] = useState("All matches");
   const [data, setData] = useState({
     matches: [],
@@ -647,7 +652,12 @@ function Dashboard({ onLogout, user }) {
     const response = await fetch("/api/assets", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: file.name, mime: file.type, data: encoded }),
+      body: JSON.stringify({
+        name: file.name,
+        mime: file.type,
+        data: encoded,
+        sensitiveMediaConsent: mediaConsent,
+      }),
     });
     if (!response.ok) {
       const result = await response.json();
@@ -655,6 +665,7 @@ function Dashboard({ onLogout, user }) {
       return;
     }
     setModal(false);
+    setMediaConsent(false);
     await refresh();
     alert("Content encrypted and added to your private vault.");
   };
@@ -686,10 +697,19 @@ function Dashboard({ onLogout, user }) {
     alert(result.notice || "Live image scan completed.");
   };
   const selectPlan = async (plan) => {
+    const accepted = confirm(
+      `Continue with the ${plan} monthly subscription?\n\nBy selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
+    );
+    if (!accepted) return;
     const r = await fetch("/api/billing/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({
+        plan,
+        termsAccepted: true,
+        immediateServiceRequested: true,
+        coolingOffAcknowledged: true,
+      }),
     });
     const d = await r.json();
     if (!r.ok) {
@@ -1213,13 +1233,28 @@ function Dashboard({ onLogout, user }) {
               Upload content you own so Content Protect can look for likely
               copies. Nothing is published.
             </p>
-            <label className="dropzone">
+            <div className="consent consent-checkbox">
+              <input
+                type="checkbox"
+                checked={mediaConsent}
+                onChange={(event) => setMediaConsent(event.target.checked)}
+              />
+              <span>
+                <b>Explicit media-processing consent</b>I consent to Content
+                Protect processing this file for private matching and case
+                evidence. I understand it may reveal special-category
+                information, including information about sex life or sexual
+                orientation, and I can withdraw consent by deleting the file.
+              </span>
+            </div>
+            <label className={`dropzone ${mediaConsent ? "" : "disabled"}`}>
               <Upload />
               <b>Choose a photo or short test video</b>
               <span>Encrypted locally · test limit 8 MB</span>
               <input
                 type="file"
                 accept="image/*,video/*"
+                disabled={!mediaConsent}
                 onChange={uploadFile}
               />
             </label>
