@@ -24,9 +24,9 @@ export async function loadPostgresState() {
       "subscriptions",
       "audit_events",
     ];
-    const results = await Promise.all(
-      names.map((name) => client.query(`SELECT * FROM ${name}`)),
-    );
+    const results = [];
+    for (const name of names)
+      results.push(await client.query(`SELECT * FROM ${name}`));
     const [
       users,
       profiles,

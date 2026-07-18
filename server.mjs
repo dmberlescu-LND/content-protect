@@ -983,6 +983,10 @@ http
         d.subscriptions = d.subscriptions.filter((x) => x.userId !== u.id);
         d.audit = d.audit.filter((x) => x.userId !== u.id);
         d.sessions = d.sessions.filter((x) => x.userId !== u.id);
+        d.passwordResets = d.passwordResets.filter((x) => x.userId !== u.id);
+        d.emailVerifications = d.emailVerifications.filter(
+          (x) => x.userId !== u.id,
+        );
         d.users = d.users.filter((x) => x.id !== u.id);
         await save(d);
         return send(
