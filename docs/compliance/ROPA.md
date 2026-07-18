@@ -1,0 +1,23 @@
+# Record of Processing Activities — approval draft
+
+Controller: White Eagles Digital Marketing LTD, company 14978662  
+Contact: white.eagles.dm@gmail.com  
+Status: requires privacy-owner and counsel approval
+
+| Activity | People/data | Purpose | Proposed lawful basis | Recipients | Retention |
+|---|---|---|---|---|---|
+| Account and security | Adult creators; identity, email, credentials, logs | Provide and secure account | Contract; legitimate interests for security | Render, Resend | Account life; logs 12 months |
+| Eligibility verification | Adult creators; age/identity result, authority evidence | Prevent misuse and protect minors/third parties | Contract/legal obligation/legitimate interests — counsel to confirm | Verification provider | Result for account life; failed checks 90 days |
+| Reference vault | Adult creators and incidental depicted persons; encrypted media | Find suspected unauthorised copies | Contract; special-category condition must be approved where applicable | Render, Cloudflare, scan provider | Until user deletion/account closure |
+| Web matching | Creator fingerprint, public URLs/pages, match evidence | Surface candidate copies | Contract/legitimate interests — balancing test required | Scan provider, hosting providers | Matches/cases per retention policy |
+| Takedown cases | Rights holder, reported party, evidence and communications | Exercise/defend rights and process disputes | Contract; legitimate interests; legal claims where applicable | Platforms, hosts, counsel | 6 years after closure for communications |
+| Billing | Customer and transaction metadata | Subscription, accounting and fraud prevention | Contract; legal obligation; legitimate interests | Stripe, accountants, HMRC as required | 6 years after financial year |
+| Support and safety | Creators/reporters; communications and incident facts | Support, safeguarding and complaints | Contract; legitimate interests; vital interests in emergencies where applicable | Support vendors, counsel, authorities where required | 24 months unless incident/legal hold |
+
+## Open decisions
+
+- Confirm Article 6 bases and any Article 9 condition with UK counsel.
+- Complete legitimate-interest assessments where relied upon.
+- Record processor locations, transfer safeguards and signed DPAs.
+- Confirm ICO registration/reference and responsible privacy owner.
+- Map data fields and flows against the deployed architecture before live activation.
