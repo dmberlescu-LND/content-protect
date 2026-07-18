@@ -73,6 +73,7 @@ async function load() {
       legacyState.emailVerifications ||= [];
       legacyState.verifications ||= [];
       legacyState.processedWebhooks ||= [];
+      legacyState.operatorSessions ||= [];
       for (const asset of legacyState.assets) {
         asset.objectKey ||= `${asset.id}.vault`;
         if (!asset.checksum) {
@@ -116,6 +117,7 @@ async function load() {
       emailVerifications: [],
       verifications: [],
       processedWebhooks: [],
+      operatorSessions: [],
     };
     await save(d);
     return d;
@@ -131,6 +133,7 @@ async function load() {
   d.emailVerifications ||= [];
   d.verifications ||= [];
   d.processedWebhooks ||= [];
+  d.operatorSessions ||= [];
   d.sessions = d.sessions.filter((x) => new Date(x.expiresAt) > new Date());
   d.passwordResets = d.passwordResets.filter(
     (x) => new Date(x.expiresAt) > new Date(),
@@ -354,16 +357,25 @@ function buildCopyrightNotice(user, match, caseId, capturedAt) {
     ],
   };
 }
-function operatorAuthorised(req) {
-  const supplied = String(req.headers.authorization || "").replace(
-      /^Bearer\s+/i,
-      "",
-    ),
+function operatorTokenValid(value) {
+  const supplied = String(value || ""),
     expected = process.env.TAKEDOWN_OPERATOR_TOKEN || "";
   if (supplied.length < 32 || expected.length < 32) return false;
   const a = createHash("sha256").update(supplied).digest(),
     b = createHash("sha256").update(expected).digest();
   return timingSafeEqual(a, b);
+}
+function operatorAuthorised(req, d) {
+  const supplied = String(req.headers.authorization || "").replace(
+      /^Bearer\s+/i,
+      "",
+    );
+  if (operatorTokenValid(supplied)) return true;
+  const sessionHash = tokenHash(cookie(req).cp_operator || "");
+  return (d.operatorSessions || []).some(
+    (item) =>
+      item.tokenHash === sessionHash && new Date(item.expiresAt) > new Date(),
+  );
 }
 function noticeText(caseRecord, creator) {
   const displayName = creator.stageName || creator.name;
@@ -624,8 +636,57 @@ http
             ? "operator-reviewed"
             : "unconfigured",
         });
+      if (route === "/api/operator/session" && req.method === "POST") {
+        if (!allowed(req, `operator-login:${ip}`, 5, 3600000))
+          return send(res, 429, {
+            error: "Too many operator login attempts. Try again later.",
+          });
+        const b = await parse(req);
+        if (!operatorTokenValid(b.token))
+          return send(res, 401, { error: "Invalid operator access token." });
+        const rawToken = randomBytes(32).toString("hex"),
+          now = new Date().toISOString(),
+          expiresAt = new Date(Date.now() + 4 * 3600000).toISOString();
+        d.operatorSessions = (d.operatorSessions || []).filter(
+          (item) => new Date(item.expiresAt) > new Date(),
+        );
+        d.operatorSessions.push({
+          tokenHash: tokenHash(rawToken),
+          expiresAt,
+          createdAt: now,
+        });
+        await save(d);
+        return send(
+          res,
+          200,
+          { ok: true, expiresAt },
+          {
+            "set-cookie": `cp_operator=${rawToken}; HttpOnly; SameSite=Strict; Secure; Path=/api/operator; Max-Age=14400`,
+          },
+        );
+      }
+      if (route === "/api/operator/session" && req.method === "DELETE") {
+        const currentHash = tokenHash(cookie(req).cp_operator || "");
+        d.operatorSessions = (d.operatorSessions || []).filter(
+          (item) => item.tokenHash !== currentHash,
+        );
+        await save(d);
+        return send(
+          res,
+          200,
+          { ok: true },
+          {
+            "set-cookie":
+              "cp_operator=; HttpOnly; SameSite=Strict; Secure; Path=/api/operator; Max-Age=0",
+          },
+        );
+      }
+      if (route === "/api/operator/me" && req.method === "GET")
+        return operatorAuthorised(req, d)
+          ? send(res, 200, { operator: true })
+          : send(res, 401, { error: "Operator authentication required." });
       if (route === "/api/operator/cases" && req.method === "GET") {
-        if (!operatorAuthorised(req))
+        if (!operatorAuthorised(req, d))
           return send(res, 401, { error: "Operator authentication required." });
         if (!allowed(req, `operator-list:${ip}`, 60, 3600000))
           return send(res, 429, { error: "Too many operator requests." });
@@ -652,7 +713,7 @@ http
         route.match(/^\/api\/operator\/cases\/[^/]+\/dispatch$/) &&
         req.method === "POST"
       ) {
-        if (!operatorAuthorised(req))
+        if (!operatorAuthorised(req, d))
           return send(res, 401, { error: "Operator authentication required." });
         if (!TAKEDOWN_DELIVERY_CONFIGURED)
           return send(res, 503, { error: "Delivery is not configured." });

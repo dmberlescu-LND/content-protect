@@ -31,6 +31,7 @@ import {
 import "./styles.css";
 import "./auth.css";
 import "./onboarding.css";
+import "./operator.css";
 
 const matches = [
   {
@@ -1689,7 +1690,142 @@ function Onboarding({ user, onDone }) {
   );
 }
 
+function OperatorConsole() {
+  const [ready, setReady] = useState(false);
+  const [token, setToken] = useState("");
+  const [error, setError] = useState("");
+  const [cases, setCases] = useState([]);
+  const [forms, setForms] = useState({});
+  const loadCases = async () => {
+    const response = await fetch("/api/operator/cases");
+    if (!response.ok) {
+      setReady(false);
+      return;
+    }
+    setCases((await response.json()).cases || []);
+    setReady(true);
+  };
+  useEffect(() => {
+    fetch("/api/operator/me").then((response) => {
+      if (response.ok) loadCases();
+      else setReady(false);
+    });
+  }, []);
+  const login = async (event) => {
+    event.preventDefault();
+    setError("");
+    const response = await fetch("/api/operator/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "Access denied.");
+      return;
+    }
+    setToken("");
+    await loadCases();
+  };
+  const dispatch = async (caseId) => {
+    const form = forms[caseId] || {};
+    if (!form.recipientEmail || !form.recipientSource) {
+      setError("Recipient email and its verified HTTPS source are required.");
+      return;
+    }
+    if (
+      !confirm(
+        `Send this legal notice to ${form.recipientEmail}? This external action cannot be undone.`,
+      )
+    )
+      return;
+    const response = await fetch(`/api/operator/cases/${caseId}/dispatch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        confirmRecipientReviewed: true,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "Delivery failed.");
+      return;
+    }
+    setError("");
+    await loadCases();
+  };
+  const logout = async () => {
+    await fetch("/api/operator/session", { method: "DELETE" });
+    setReady(false);
+    setCases([]);
+  };
+  if (!ready)
+    return (
+      <main className="operator-login">
+        <form className="operator-login-card" onSubmit={login}>
+          <Logo />
+          <p>PRIVATE OPERATIONS</p>
+          <h1>Operator access</h1>
+          <span>Enter the dedicated takedown token. It is exchanged for a four-hour secure session and is not stored in the browser.</span>
+          <label>
+            Access token
+            <input
+              type="password"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              autoComplete="off"
+              required
+              minLength={32}
+            />
+          </label>
+          {error && <div className="operator-error">{error}</div>}
+          <button className="btn btn-primary" type="submit">
+            Open review queue
+          </button>
+        </form>
+      </main>
+    );
+  return (
+    <main className="operator-console">
+      <header>
+        <div>
+          <Logo />
+          <span>Private takedown operations</span>
+        </div>
+        <button className="btn btn-outline" onClick={logout}>Sign out</button>
+      </header>
+      <section>
+        <div className="operator-heading">
+          <div><p>HUMAN REVIEW REQUIRED</p><h1>Approved notice queue</h1></div>
+          <strong>{cases.length} pending</strong>
+        </div>
+        {error && <div className="operator-error">{error}</div>}
+        {cases.length ? cases.map((item) => (
+          <article className="operator-case" key={item.id}>
+            <div className="operator-case-title">
+              <div><small>CASE {item.id}</small><h2>{item.targetHost}</h2></div>
+              <span>Approved {new Date(item.approvedAt).toLocaleString("en-GB")}</span>
+            </div>
+            <dl>
+              <div><dt>Claimant</dt><dd>{item.claimant?.stageName || item.claimant?.name}</dd></div>
+              <div><dt>Target</dt><dd><a href={item.targetUrl} target="_blank" rel="noreferrer">Review URL</a></dd></div>
+              <div><dt>Evidence hash</dt><dd className="operator-hash">{item.evidenceHash}</dd></div>
+            </dl>
+            <div className="operator-fields">
+              <label>Verified recipient email<input type="email" value={forms[item.id]?.recipientEmail || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientEmail:event.target.value}})} /></label>
+              <label>HTTPS source proving recipient<input type="url" placeholder="https://…" value={forms[item.id]?.recipientSource || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientSource:event.target.value}})} /></label>
+            </div>
+            <button className="btn btn-primary" onClick={() => dispatch(item.id)}>Review confirmation & send</button>
+          </article>
+        )) : <div className="operator-empty"><CircleCheck/><h2>Queue clear</h2><p>No creator-approved notices are waiting for review.</p></div>}
+      </section>
+    </main>
+  );
+}
+
 function App() {
+  const operatorPath = location.pathname === "/operator";
   const query = new URLSearchParams(location.search);
   const resetToken = query.get("reset");
   const verifyToken = query.get("verify");
@@ -1698,6 +1834,7 @@ function App() {
   const [user, setUser] = useState(null);
   useEffect(() => {
     const boot = async () => {
+      if (operatorPath) return;
       try {
         if (verifyToken) {
           const verification = await fetch("/api/auth/verify-email", {
@@ -1766,6 +1903,7 @@ function App() {
     history.replaceState({}, "", location.pathname);
     setAuth(null);
   };
+  if (operatorPath) return <OperatorConsole />;
   if (view === "loading")
     return (
       <div className="boot-screen">

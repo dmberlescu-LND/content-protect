@@ -17,6 +17,7 @@ export async function loadPostgresState() {
       "creator_profiles",
       "verification_records",
       "sessions",
+      "operator_sessions",
       "one_time_tokens",
       "assets",
       "scans",
@@ -35,6 +36,7 @@ export async function loadPostgresState() {
       profiles,
       verifications,
       sessions,
+      operatorSessions,
       tokens,
       assets,
       scans,
@@ -82,6 +84,13 @@ export async function loadPostgresState() {
           tokenHash: row.token_hash,
           userId: row.user_id,
           expiresAt: iso(row.expires_at),
+        })),
+      operatorSessions: operatorSessions
+        .filter((row) => new Date(row.expires_at) > new Date())
+        .map((row) => ({
+          tokenHash: row.token_hash,
+          expiresAt: iso(row.expires_at),
+          createdAt: iso(row.created_at),
         })),
       passwordResets: tokens
         .filter(
@@ -278,6 +287,12 @@ async function replaceEphemeral(client, state) {
     await client.query(
       "INSERT INTO sessions (token_hash,user_id,expires_at) VALUES ($1,$2,$3)",
       [item.tokenHash, item.userId, item.expiresAt],
+    );
+  await client.query("DELETE FROM operator_sessions");
+  for (const item of state.operatorSessions || [])
+    await client.query(
+      "INSERT INTO operator_sessions (token_hash,expires_at,created_at) VALUES ($1,$2,$3)",
+      [item.tokenHash, item.expiresAt, item.createdAt || new Date()],
     );
   await client.query("DELETE FROM one_time_tokens WHERE used_at IS NULL");
   for (const [purpose, records] of [
