@@ -18,6 +18,8 @@ services:
         value: "false"
       - key: CONTENT_PROTECT_MASTER_KEY
         generateValue: true
+      - key: APP_URL
+        value: https://content-protect.com
     disk:
       name: content-protect-staging-data
       mountPath: /app/.traceguard-data
