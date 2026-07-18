@@ -20,6 +20,7 @@ import {
   putEncryptedObject,
   storageProbe,
   storageMode,
+  externalMasterKeyRequired,
 } from "./storage.mjs";
 import {
   closeDatabase,
@@ -81,7 +82,11 @@ async function load() {
       key = /^[a-f0-9]{64}$/i.test(secret)
         ? Buffer.from(secret, "hex")
         : createHash("sha256").update(secret).digest();
-    } else if (existsSync(KEY_FILE))
+    } else if (externalMasterKeyRequired())
+      throw new Error(
+        "CONTENT_PROTECT_MASTER_KEY is required when private object storage is enabled.",
+      );
+    else if (existsSync(KEY_FILE))
       key = Buffer.from((await readFile(KEY_FILE, "utf8")).trim(), "hex");
     else {
       key = randomBytes(32);
@@ -838,10 +843,14 @@ const appServer = http.createServer(async (req, res) => {
           uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
           storage: storage.mode,
           database: database.mode,
+          keyManagement: process.env.CONTENT_PROTECT_MASTER_KEY
+            ? "external-secret"
+            : "local-key-file",
           checks: { database, storage },
           productionReady:
             database.mode === "postgresql" &&
             storage.mode === "private-object-storage" &&
+            Boolean(process.env.CONTENT_PROTECT_MASTER_KEY) &&
             scannerMode() !== "unconfigured" &&
             TAKEDOWN_DELIVERY_CONFIGURED &&
             STRIPE_CONFIGURED &&

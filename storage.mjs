@@ -8,26 +8,60 @@ import {
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const configured = Boolean(
-  process.env.OBJECT_STORAGE_ENDPOINT &&
-  process.env.OBJECT_STORAGE_BUCKET &&
-  process.env.OBJECT_STORAGE_ACCESS_KEY_ID &&
-  process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY,
-);
-const client = configured
+const REQUIRED_STORAGE_ENV = [
+  "OBJECT_STORAGE_ENDPOINT",
+  "OBJECT_STORAGE_BUCKET",
+  "OBJECT_STORAGE_ACCESS_KEY_ID",
+  "OBJECT_STORAGE_SECRET_ACCESS_KEY",
+];
+
+export function objectStorageConfiguration(env = process.env) {
+  const supplied = REQUIRED_STORAGE_ENV.filter((name) => Boolean(env[name])),
+    missing = REQUIRED_STORAGE_ENV.filter((name) => !env[name]);
+  if (supplied.length && missing.length)
+    throw new Error(
+      `Private object storage configuration is incomplete. Missing: ${missing.join(", ")}.`,
+    );
+  if (!supplied.length) return { configured: false, missing: REQUIRED_STORAGE_ENV };
+  let endpoint;
+  try {
+    endpoint = new URL(env.OBJECT_STORAGE_ENDPOINT);
+  } catch {
+    throw new Error("OBJECT_STORAGE_ENDPOINT must be a valid HTTPS URL.");
+  }
+  if (endpoint.protocol !== "https:")
+    throw new Error("OBJECT_STORAGE_ENDPOINT must use HTTPS.");
+  return {
+    configured: true,
+    endpoint: endpoint.toString(),
+    bucket: env.OBJECT_STORAGE_BUCKET,
+    region: env.OBJECT_STORAGE_REGION || "auto",
+    accessKeyId: env.OBJECT_STORAGE_ACCESS_KEY_ID,
+    secretAccessKey: env.OBJECT_STORAGE_SECRET_ACCESS_KEY,
+  };
+}
+
+const configuration = objectStorageConfiguration();
+const client = configuration.configured
   ? new S3Client({
-      region: process.env.OBJECT_STORAGE_REGION || "auto",
-      endpoint: process.env.OBJECT_STORAGE_ENDPOINT,
+      region: configuration.region,
+      endpoint: configuration.endpoint,
       credentials: {
-        accessKeyId: process.env.OBJECT_STORAGE_ACCESS_KEY_ID,
-        secretAccessKey: process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY,
+        accessKeyId: configuration.accessKeyId,
+        secretAccessKey: configuration.secretAccessKey,
       },
     })
   : null;
-const bucket = process.env.OBJECT_STORAGE_BUCKET;
+const bucket = configuration.bucket;
+
+export function externalMasterKeyRequired() {
+  return configuration.configured;
+}
 
 export function storageMode() {
-  return configured ? "private-object-storage" : "encrypted-local-disk";
+  return configuration.configured
+    ? "private-object-storage"
+    : "encrypted-local-disk";
 }
 
 export async function storageProbe(localRoot) {
