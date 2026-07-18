@@ -24,6 +24,10 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESET_FROM_EMAIL
+        value: Content Protect <security@content-protect.com>
     disk:
       name: content-protect-staging-data
       mountPath: /app/.traceguard-data
