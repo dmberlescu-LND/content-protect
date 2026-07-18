@@ -1,0 +1,39 @@
+.match-row.asset-row {
+  grid-template-columns: minmax(220px, 1.6fr) minmax(180px, 1.2fr) 130px 150px 70px;
+}
+
+.asset-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.asset-actions button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: #f2effa;
+  color: #7256e8;
+  display: grid;
+  place-items: center;
+}
+
+.asset-actions button:last-child {
+  background: #fff0ee;
+  color: #bd4037;
+}
+
+.asset-actions svg {
+  width: 14px;
+}
+
+@media (max-width: 900px) {
+  .match-row.asset-row {
+    grid-template-columns: 78px 1fr auto;
+  }
+
+  .asset-row .asset-actions {
+    grid-column: 3;
+  }
+}

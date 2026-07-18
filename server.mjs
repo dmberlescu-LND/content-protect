@@ -30,7 +30,9 @@ import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
-  ROOT = path.join(process.cwd(), ".traceguard-data"),
+  ROOT = process.env.CONTENT_PROTECT_DATA_DIR
+    ? path.resolve(process.env.CONTENT_PROTECT_DATA_DIR)
+    : path.join(process.cwd(), ".traceguard-data"),
   DB = path.join(ROOT, "db.json"),
   VAULT = path.join(ROOT, "vault"),
   KEY_FILE = path.join(ROOT, ".vault-key");
@@ -193,6 +195,18 @@ function send(res, status, data, headers = {}) {
   });
   res.end(JSON.stringify(data));
 }
+function sendDownload(res, data, contentType, filename) {
+  res.writeHead(200, {
+    ...securityHeaders,
+    "content-type": contentType,
+    "content-length": data.length,
+    "content-disposition": `attachment; filename="${filename}"`,
+    "cache-control": "no-store, private",
+    "x-content-type-options": "nosniff",
+    "x-request-id": res.requestId || "unavailable",
+  });
+  res.end(data);
+}
 async function staticFile(req, res) {
   const urlPath = decodeURIComponent(req.url.split("?")[0]),
     rel = urlPath === "/" ? "index.html" : urlPath.replace(/^\//, "");
@@ -300,6 +314,19 @@ function validPassword(value, min = 10) {
   return (
     typeof value === "string" && value.length >= min && value.length <= 128
   );
+}
+function passwordMatches(user, value) {
+  if (typeof value !== "string" || value.length > 128) return false;
+  const candidate = scryptSync(value, user.salt, 64);
+  return timingSafeEqual(candidate, Buffer.from(user.passwordHash, "hex"));
+}
+function attachmentName(value, fallback) {
+  const cleaned = String(value || "")
+    .normalize("NFKD")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+  return cleaned || fallback;
 }
 function newSession(d, u) {
   const token = randomBytes(32).toString("hex");
@@ -1400,6 +1427,33 @@ const appServer = http.createServer(async (req, res) => {
         await save(d);
         return send(res, 201, { asset: a });
       }
+      if (
+        route.match(/^\/api\/assets\/[^/]+\/download$/) &&
+        req.method === "POST"
+      ) {
+        if (!allowed(req, `asset-download:${u.id}`, 20, 3600000))
+          return send(res, 429, {
+            error: "Too many download attempts. Try again later.",
+          });
+        const id = route.split("/")[3],
+          asset = d.assets.find((item) => item.id === id && item.userId === u.id),
+          b = await parse(req);
+        if (!asset) return send(res, 404, { error: "Asset not found." });
+        if (!passwordMatches(u, b.password))
+          return send(res, 403, { error: "Password is incorrect." });
+        const encrypted = await getEncryptedObject(asset.objectKey, VAULT),
+          original = unvault(encrypted);
+        if (createHash("sha256").update(original).digest("hex") !== asset.checksum)
+          throw new Error("Asset integrity verification failed.");
+        audit(d, u, "vault.asset_downloaded", { assetId: asset.id });
+        await save(d);
+        return sendDownload(
+          res,
+          original,
+          asset.mime || "application/octet-stream",
+          attachmentName(asset.name, `${asset.id}.bin`),
+        );
+      }
       if (route.startsWith("/api/assets/") && req.method === "DELETE") {
         const id = route.split("/").pop(),
           i = d.assets.findIndex((x) => x.id === id && x.userId === u.id);
@@ -1678,13 +1732,12 @@ const appServer = http.createServer(async (req, res) => {
         });
       }
       if (route === "/api/account/password" && req.method === "PATCH") {
-        const b = await parse(req),
-          current = scryptSync(b.currentPassword || "", u.salt, 64);
-        if (!timingSafeEqual(current, Buffer.from(u.passwordHash, "hex")))
+        const b = await parse(req);
+        if (!passwordMatches(u, b.currentPassword))
           return send(res, 403, { error: "Current password is incorrect." });
-        if (!b.newPassword || b.newPassword.length < 10)
+        if (!validPassword(b.newPassword))
           return send(res, 400, {
-            error: "New password must contain at least 10 characters.",
+            error: "New password must contain between 10 and 128 characters.",
           });
         const p = pass(b.newPassword);
         u.salt = p.s;
@@ -1702,10 +1755,64 @@ const appServer = http.createServer(async (req, res) => {
           },
         );
       }
+      if (route === "/api/account/export" && req.method === "POST") {
+        if (!allowed(req, `account-export:${u.id}`, 5, 3600000))
+          return send(res, 429, {
+            error: "Too many export attempts. Try again later.",
+          });
+        const b = await parse(req);
+        if (!passwordMatches(u, b.password))
+          return send(res, 403, { error: "Password is incorrect." });
+        const generatedAt = new Date().toISOString();
+        audit(d, u, "account.data_exported", { formatVersion: "1.0" });
+        await save(d);
+        const exportData = {
+          format: "Content Protect personal data export",
+          formatVersion: "1.0",
+          generatedAt,
+          controller: {
+            name: "White Eagles Digital Marketing LTD",
+            companyNumber: "14978662",
+            contact: "white.eagles.dm@gmail.com",
+          },
+          account: { ...safe(u), aliases: u.aliases || [], platforms: u.platforms || [] },
+          verification: d.verifications
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          assets: d.assets
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, objectKey, ...item }) => item),
+          scans: d.scans
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          matches: d.matches
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          cases: d.cases
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          subscriptions: d.subscriptions
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          billingConsents: (d.billingConsents || [])
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          auditEvents: d.audit
+            .filter((item) => item.userId === u.id)
+            .map(({ userId, ...item }) => item),
+          referenceFiles:
+            "Original reference files are downloaded separately from My content so they are not embedded in this JSON export.",
+        };
+        return sendDownload(
+          res,
+          Buffer.from(JSON.stringify(exportData, null, 2)),
+          "application/json; charset=utf-8",
+          `content-protect-data-${generatedAt.slice(0, 10)}.json`,
+        );
+      }
       if (route === "/api/account" && req.method === "DELETE") {
-        const b = await parse(req),
-          current = scryptSync(b.password || "", u.salt, 64);
-        if (!timingSafeEqual(current, Buffer.from(u.passwordHash, "hex")))
+        const b = await parse(req);
+        if (!passwordMatches(u, b.password))
           return send(res, 403, { error: "Password is incorrect." });
         const assets = d.assets.filter((x) => x.userId === u.id);
         for (const asset of assets)
@@ -1714,9 +1821,13 @@ const appServer = http.createServer(async (req, res) => {
             VAULT,
           );
         d.assets = d.assets.filter((x) => x.userId !== u.id);
+        d.matches = d.matches.filter((x) => x.userId !== u.id);
         d.cases = d.cases.filter((x) => x.userId !== u.id);
         d.scans = d.scans.filter((x) => x.userId !== u.id);
         d.subscriptions = d.subscriptions.filter((x) => x.userId !== u.id);
+        d.billingConsents = (d.billingConsents || []).filter(
+          (x) => x.userId !== u.id,
+        );
         d.audit = d.audit.filter((x) => x.userId !== u.id);
         d.sessions = d.sessions.filter((x) => x.userId !== u.id);
         d.passwordResets = d.passwordResets.filter((x) => x.userId !== u.id);

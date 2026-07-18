@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleCheck,
   Clock3,
+  Download,
   Eye,
   FileCheck2,
   Fingerprint,
@@ -32,6 +33,7 @@ import "./styles.css";
 import "./auth.css";
 import "./onboarding.css";
 import "./operator.css";
+import "./data-rights.css";
 
 const matches = [
   {
@@ -71,6 +73,20 @@ const matches = [
     color: "mint",
   },
 ];
+
+async function saveDownload(response, fallbackName) {
+  const blob = await response.blob(),
+    disposition = response.headers.get("content-disposition") || "",
+    filename = disposition.match(/filename="([^"]+)"/)?.[1] || fallbackName,
+    url = URL.createObjectURL(blob),
+    anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 function Logo({ dark = false }) {
   return (
@@ -500,6 +516,23 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
     }
     location.assign(d.url);
   };
+  const exportData = async () => {
+    const password = prompt(
+      "Enter your password to create a private copy of your Content Protect account data.",
+    );
+    if (!password) return;
+    const response = await fetch("/api/account/export", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      alert(result.error || "Your data export could not be created.");
+      return;
+    }
+    await saveDownload(response, "content-protect-data.json");
+  };
   const deleteAccount = async () => {
     const password = prompt(
       "Enter your password to permanently delete your account and encrypted files.",
@@ -557,6 +590,21 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
             {busy ? "Updating…" : "Change password"}
           </button>
         </form>
+      </section>
+      <section className="account-card">
+        <h2>Your personal data</h2>
+        <p>
+          Download a machine-readable copy of your profile, verification
+          outcomes, asset metadata, scans, matches, cases, billing records and
+          audit history.
+        </p>
+        <button className="btn btn-outline" onClick={exportData}>
+          <Download size={16} /> Download data export
+        </button>
+        <small>
+          Your password is required. Original reference files are downloaded
+          separately from My content.
+        </small>
       </section>
       <section className="account-card">
         <h2>Subscription</h2>
@@ -787,6 +835,23 @@ function Dashboard({ onLogout, user }) {
       return;
     }
     await refresh();
+  };
+  const downloadAsset = async (asset) => {
+    const password = prompt(
+      `Enter your password to decrypt and download “${asset.name}”.`,
+    );
+    if (!password) return;
+    const response = await fetch(`/api/assets/${asset.id}/download`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      alert(result.error || "The reference file could not be downloaded.");
+      return;
+    }
+    await saveDownload(response, asset.name || "reference-file");
   };
   const approveCase = async (caseId) => {
     if (
@@ -1053,7 +1118,7 @@ function Dashboard({ onLogout, user }) {
               </div>
               {data.assets.length ? (
                 data.assets.map((a) => (
-                  <div className="match-row" key={a.id}>
+                  <div className="match-row asset-row" key={a.id}>
                     <div className="thumb mint">
                       <ShieldCheck />
                     </div>
@@ -1069,13 +1134,20 @@ function Dashboard({ onLogout, user }) {
                     <div>
                       <span className="status removed">{a.status}</span>
                     </div>
-                    <button
-                      className="more"
-                      title="Delete permanently"
-                      onClick={() => deleteAsset(a)}
-                    >
-                      <X />
-                    </button>
+                    <div className="asset-actions">
+                      <button
+                        title="Download original"
+                        onClick={() => downloadAsset(a)}
+                      >
+                        <Download />
+                      </button>
+                      <button
+                        title="Delete permanently"
+                        onClick={() => deleteAsset(a)}
+                      >
+                        <X />
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
