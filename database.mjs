@@ -139,6 +139,9 @@ export async function loadPostgresState() {
           size: Number(row.byte_size),
           checksum: row.checksum_sha256,
           status: row.status,
+          mediaFormat: row.detected_format,
+          width: row.pixel_width,
+          height: row.pixel_height,
           sensitiveMediaConsentAt: iso(row.sensitive_media_consent_at),
           sensitiveMediaConsentVersion: row.sensitive_media_consent_version,
           createdAt: iso(row.created_at),
@@ -371,8 +374,8 @@ async function upsertBusinessData(client, state) {
     );
   for (const item of state.assets)
     await client.query(
-      `INSERT INTO assets (id,user_id,object_key,original_name,mime_type,byte_size,checksum_sha256,status,sensitive_media_consent_at,sensitive_media_consent_version,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-     ON CONFLICT (id) DO UPDATE SET original_name=EXCLUDED.original_name,status=EXCLUDED.status,sensitive_media_consent_at=EXCLUDED.sensitive_media_consent_at,sensitive_media_consent_version=EXCLUDED.sensitive_media_consent_version,deleted_at=NULL`,
+      `INSERT INTO assets (id,user_id,object_key,original_name,mime_type,byte_size,checksum_sha256,status,detected_format,pixel_width,pixel_height,sensitive_media_consent_at,sensitive_media_consent_version,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     ON CONFLICT (id) DO UPDATE SET original_name=EXCLUDED.original_name,status=EXCLUDED.status,detected_format=EXCLUDED.detected_format,pixel_width=EXCLUDED.pixel_width,pixel_height=EXCLUDED.pixel_height,sensitive_media_consent_at=EXCLUDED.sensitive_media_consent_at,sensitive_media_consent_version=EXCLUDED.sensitive_media_consent_version,deleted_at=NULL`,
       [
         item.id,
         item.userId,
@@ -382,6 +385,9 @@ async function upsertBusinessData(client, state) {
         item.size,
         item.checksum,
         item.status || "Protected",
+        item.mediaFormat || null,
+        item.width || null,
+        item.height || null,
         item.sensitiveMediaConsentAt || null,
         item.sensitiveMediaConsentVersion || null,
         item.createdAt,

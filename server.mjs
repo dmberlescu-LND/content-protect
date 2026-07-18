@@ -28,6 +28,10 @@ import {
   savePostgresState,
 } from "./database.mjs";
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
+import {
+  inspectMedia,
+  MediaValidationError,
+} from "./media-validation.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -1480,10 +1484,14 @@ const appServer = http.createServer(async (req, res) => {
           return send(res, 413, {
             error: "Current upload limit: 8 MB per file.",
           });
-        if (!/^(image|video)\/[a-z0-9.+-]+$/i.test(String(b.mime)))
-          return send(res, 415, {
-            error: "Only supported image and video files are accepted.",
-          });
+        let media;
+        try {
+          media = await inspectMedia(raw, b.mime);
+        } catch (error) {
+          if (error instanceof MediaValidationError)
+            return send(res, 415, { error: error.message });
+          throw error;
+        }
         const id = randomUUID(),
           objectKey = `${u.id}/${id}.vault`;
         await putEncryptedObject(objectKey, vault(raw), VAULT);
@@ -1492,7 +1500,10 @@ const appServer = http.createServer(async (req, res) => {
           userId: u.id,
           objectKey,
           name: String(b.name).slice(0, 160),
-          mime: String(b.mime).slice(0, 80),
+          mime: media.mime,
+          mediaFormat: media.format,
+          width: media.width || null,
+          height: media.height || null,
           size: raw.length,
           checksum: createHash("sha256").update(raw).digest("hex"),
           status: "Protected",
@@ -1504,6 +1515,10 @@ const appServer = http.createServer(async (req, res) => {
         audit(d, u, "vault.asset_added", {
           assetId: id,
           mime: a.mime,
+          declaredMime: media.declaredMime,
+          format: media.format,
+          width: media.width || null,
+          height: media.height || null,
           size: a.size,
           storage: storageMode(),
           consentVersion: a.sensitiveMediaConsentVersion,

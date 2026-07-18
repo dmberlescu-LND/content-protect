@@ -1456,11 +1456,11 @@ function Dashboard({ onLogout, user }) {
             </div>
             <label className={`dropzone ${mediaConsent ? "" : "disabled"}`}>
               <Upload />
-              <b>Choose a photo or short test video</b>
-              <span>Encrypted locally · test limit 8 MB</span>
+              <b>Choose a supported photo or short video</b>
+              <span>JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB</span>
               <input
                 type="file"
-                accept="image/*,video/*"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,image/avif,image/heic,video/mp4,video/quicktime,video/webm"
                 disabled={!mediaConsent}
                 onChange={uploadFile}
               />
@@ -1468,8 +1468,9 @@ function Dashboard({ onLogout, user }) {
             <div className="consent">
               <ShieldCheck />
               <span>
-                <b>Your privacy comes first</b>Files are encrypted before
-                storage and never appear in a public folder.
+                <b>Your privacy comes first</b>Files are validated and encrypted
+                before storage. Provider scan copies are resized and stripped
+                of EXIF/GPS metadata.
               </span>
             </div>
           </div>

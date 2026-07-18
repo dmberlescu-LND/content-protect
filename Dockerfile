@@ -14,6 +14,7 @@ COPY --from=build --chown=contentprotect:contentprotect /app/server.mjs ./server
 COPY --from=build --chown=contentprotect:contentprotect /app/database.mjs ./database.mjs
 COPY --from=build --chown=contentprotect:contentprotect /app/scanner.mjs ./scanner.mjs
 COPY --from=build --chown=contentprotect:contentprotect /app/storage.mjs ./storage.mjs
+COPY --from=build --chown=contentprotect:contentprotect /app/media-validation.mjs ./media-validation.mjs
 COPY --from=build --chown=contentprotect:contentprotect /app/scripts ./scripts
 COPY --from=build --chown=contentprotect:contentprotect /app/db ./db
 COPY --from=build --chown=contentprotect:contentprotect /app/package.json ./package.json

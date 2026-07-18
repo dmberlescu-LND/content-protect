@@ -15,7 +15,7 @@ export class ScanProviderError extends Error {
   }
 }
 
-async function prepareImage(image) {
+export async function prepareImageForProvider(image) {
   let output = await sharp(image)
     .rotate()
     .resize({
@@ -60,7 +60,7 @@ export async function searchImage(image, { assetId, allowedHosts = [] }) {
       "Commercial image scanning is awaiting provider activation.",
       503,
     );
-  const prepared = await prepareImage(image),
+  const prepared = await prepareImageForProvider(image),
     form = new FormData();
   form.append(
     "image_upload",
