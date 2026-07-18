@@ -24,4 +24,9 @@
 .recovery-success div{display:flex;flex-direction:column;gap:4px}
 .recovery-success b{font-size:12px}
 .recovery-success span{font-size:10px;line-height:1.5;color:#547363}
+.help-grid .account-card{display:flex;flex-direction:column;align-items:flex-start}
+.help-grid .account-card .btn{margin-top:auto;text-decoration:none}
+.support-icon{width:44px;height:44px;border-radius:12px;background:#efebff;color:#7256e8;display:grid;place-items:center;margin-bottom:15px}
+.support-icon.urgent{background:#fff0ee;color:#c55045}
+.support-icon svg{width:21px}
 @media(max-width:600px){.auth-modal{padding:27px 20px}.field-row{grid-template-columns:1fr}}
