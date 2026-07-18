@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://content-protect.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://content-protect.com/privacy.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://content-protect.com/terms.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://content-protect.com/safety.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://content-protect.com/cookies.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://content-protect.com/disputes.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://content-protect.com/cancellation-form.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://content-protect.com/</loc><lastmod>2026-07-18</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://content-protect.com/privacy.html</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://content-protect.com/terms.html</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://content-protect.com/safety.html</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://content-protect.com/cookies.html</loc><lastmod>2026-07-18</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://content-protect.com/disputes.html</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://content-protect.com/cancellation-form.html</loc><lastmod>2026-07-18</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

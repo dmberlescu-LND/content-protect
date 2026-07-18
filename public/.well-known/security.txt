@@ -1,0 +1,5 @@
+Contact: mailto:white.eagles.dm@gmail.com
+Expires: 2027-07-18T23:59:59Z
+Preferred-Languages: en
+Canonical: https://content-protect.com/.well-known/security.txt
+Policy: https://content-protect.com/safety.html

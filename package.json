@@ -13,6 +13,7 @@
     "test:webhook": "node scripts/test-resend-webhook.mjs",
     "test:stripe-webhook": "node scripts/test-stripe-webhook.mjs",
     "verify:production": "node scripts/verify-production.mjs",
+    "verify:seo": "node scripts/verify-seo.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

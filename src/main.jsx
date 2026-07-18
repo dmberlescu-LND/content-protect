@@ -93,6 +93,7 @@ function Landing({ onStart, onLogin }) {
           <a href="#how">How it works</a>
           <a href="#safety">Safety</a>
           <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
         </div>
         <div className="nav-actions">
           <button className="text-btn" onClick={onLogin}>
@@ -396,6 +397,58 @@ function Landing({ onStart, onLogin }) {
             confirmed again before purchase. Outcomes are not guaranteed;
             court orders and legal representation are not included.
           </p>
+        </section>
+
+        <section id="faq" className="faq wrap section">
+          <div className="section-label">Clear answers</div>
+          <h2>Questions creators ask before trusting a protection service.</h2>
+          <div className="faq-grid">
+            <article>
+              <h3>Does Content Protect automatically remove content?</h3>
+              <p>
+                No. A similarity result is reviewed, evidence is preserved and
+                you must approve the required declarations before a trained
+                operator can send a notice.
+              </p>
+            </article>
+            <article>
+              <h3>Is uploaded content public?</h3>
+              <p>
+                No. Reference media is private and encrypted, is not used for
+                advertising or public profiles, and can be deleted by you.
+              </p>
+            </article>
+            <article>
+              <h3>Who can use Content Protect?</h3>
+              <p>
+                Verified adults aged 18 or over who own the relevant rights or
+                are authorised to act for the rights holder.
+              </p>
+            </article>
+            <article>
+              <h3>Does a match prove copyright infringement?</h3>
+              <p>
+                No. Matching is an evidence lead, not a legal conclusion.
+                Ownership, licence, context and jurisdiction must be reviewed.
+              </p>
+            </article>
+            <article>
+              <h3>Can you guarantee removal?</h3>
+              <p>
+                No service can guarantee an outcome. Platforms, hosts and
+                search engines make their own decisions, and contested cases
+                may require specialist legal advice.
+              </p>
+            </article>
+            <article>
+              <h3>Do you store card details?</h3>
+              <p>
+                No. Stripe processes card information. Content Protect stores
+                only the subscription and billing references needed to manage
+                your account.
+              </p>
+            </article>
+          </div>
         </section>
       </main>
       <footer>

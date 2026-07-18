@@ -202,6 +202,7 @@ async function staticFile(req, res) {
   try {
     const data = await readFile(requested);
     const ext = path.extname(requested),
+      canonicalPath = rel === "index.html" ? "" : rel,
       types = {
         ".html": "text/html; charset=utf-8",
         ".js": "text/javascript; charset=utf-8",
@@ -213,19 +214,25 @@ async function staticFile(req, res) {
     res.writeHead(200, {
       ...securityHeaders,
       "content-type": types[ext] || "application/octet-stream",
+      ...(ext === ".html"
+        ? {
+            link: `<https://content-protect.com/${canonicalPath}>; rel="canonical"`,
+          }
+        : {}),
       "cache-control":
         ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
     });
     res.end(data);
     return true;
   } catch {
-    if (!path.extname(rel)) {
+    if (urlPath === "/operator") {
       try {
         const data = await readFile(path.join(distRoot, "index.html"));
         res.writeHead(200, {
           ...securityHeaders,
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-cache",
+          "x-robots-tag": "noindex, nofollow, noarchive",
         });
         res.end(data);
         return true;
