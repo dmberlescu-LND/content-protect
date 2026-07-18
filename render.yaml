@@ -20,6 +20,8 @@ services:
         generateValue: true
       - key: APP_URL
         value: https://content-protect.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
     disk:
       name: content-protect-staging-data
       mountPath: /app/.traceguard-data
