@@ -22,6 +22,8 @@ services:
         value: https://content-protect.com
       - key: STRIPE_SECRET_KEY
         sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
     disk:
       name: content-protect-staging-data
       mountPath: /app/.traceguard-data
