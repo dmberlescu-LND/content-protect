@@ -67,13 +67,28 @@ const PAYMENTS_MODE = ["test", "live"].includes(process.env.PAYMENTS_MODE)
 const YOTI_CONFIGURED = Boolean(
   process.env.YOTI_API_KEY && process.env.YOTI_SDK_ID,
 );
-const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
+const RESEND_EMAIL_CONFIGURED = Boolean(
   process.env.RESEND_API_KEY?.startsWith("re_") &&
+    emailFromAddress(process.env.RESET_FROM_EMAIL) &&
+    emailFromAddress(process.env.TAKEDOWN_FROM_EMAIL),
+);
+const RESEND_WEBHOOK_CONFIGURED = Boolean(
+  process.env.RESEND_WEBHOOK_SECRET?.startsWith("whsec_"),
+);
+const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
+  RESEND_EMAIL_CONFIGURED &&
+    RESEND_WEBHOOK_CONFIGURED &&
     process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32,
 );
 let key;
 const rateBuckets = new Map(),
   EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function emailFromAddress(value) {
+  const match = String(value || "").match(/<([^>]+)>\s*$/);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    match?.[1] || String(value || "").trim(),
+  );
+}
 async function load() {
   await mkdir(VAULT, { recursive: true });
   if (!key) {
@@ -857,6 +872,14 @@ const appServer = http.createServer(async (req, res) => {
             YOTI_CONFIGURED,
           scanner: scannerMode(),
           ageVerification: YOTI_CONFIGURED ? "yoti" : "unconfigured",
+          emailDelivery: RESEND_EMAIL_CONFIGURED ? "resend" : "unconfigured",
+          emailWebhook: RESEND_WEBHOOK_CONFIGURED
+            ? "resend-signed"
+            : "unconfigured",
+          operatorAccess:
+            process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32
+              ? "configured"
+              : "unconfigured",
           takedownDelivery: TAKEDOWN_DELIVERY_CONFIGURED
             ? "operator-reviewed"
             : "unconfigured",

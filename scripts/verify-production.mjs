@@ -33,8 +33,16 @@ expect(readyResponse.ok, `readiness returned HTTP ${readyResponse.status}`);
 const ready = readyResponse.ok ? await readyResponse.json() : {};
 expect(ready.ok === true && ready.status === "ready", "readiness body is invalid");
 expect(ready.database === "postgresql", "PostgreSQL is not active");
-if (requireProductionReady)
+if (requireProductionReady) {
   expect(ready.productionReady === true, "production release gate is not green");
+  expect(ready.emailDelivery === "resend", "Resend email delivery is not active");
+  expect(
+    ready.emailWebhook === "resend-signed",
+    "signed Resend webhook is not active",
+  );
+  expect(ready.operatorAccess === "configured", "operator access is not configured");
+  expect(ready.ageVerification === "yoti", "Yoti age verification is not active");
+}
 
 for (const page of [
   "/",
