@@ -201,6 +201,13 @@ export async function savePostgresState(state) {
         ],
       );
     }
+    const userIds = state.users.map((user) => user.id);
+    await client.query(
+      userIds.length
+        ? "DELETE FROM users WHERE NOT (id = ANY($1::uuid[]))"
+        : "DELETE FROM users",
+      userIds.length ? [userIds] : [],
+    );
     await replaceEphemeral(client, state);
     await upsertBusinessData(client, state);
     await client.query("COMMIT");

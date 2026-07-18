@@ -94,6 +94,21 @@ async function load() {
       legacyState.sessions ||= [];
       legacyState.passwordResets ||= [];
       legacyState.emailVerifications ||= [];
+      for (const asset of legacyState.assets) {
+        asset.objectKey ||= `${asset.id}.vault`;
+        if (!asset.checksum) {
+          try {
+            const encrypted = await readFile(path.join(VAULT, asset.objectKey));
+            asset.checksum = createHash("sha256")
+              .update(encrypted)
+              .digest("hex");
+          } catch {
+            asset.checksum = createHash("sha256")
+              .update(`${asset.id}:${asset.userId}:legacy`)
+              .digest("hex");
+          }
+        }
+      }
       legacyState.matches = (legacyState.matches || []).filter(
         (match) => match.userId && match.scanId,
       );
