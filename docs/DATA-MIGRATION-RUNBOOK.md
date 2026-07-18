@@ -18,9 +18,11 @@ The application must remain in sandbox mode until this runbook is completed and 
 5. Add `DATABASE_URL` and the five `OBJECT_STORAGE_*` variables in Render without exposing values in Git.
 6. Deploy with `PAYMENTS_MODE=sandbox`, `TAKEDOWNS_MODE=sandbox`, and `BIOMETRICS_ENABLED=false`.
 7. Export the existing JSON database and encrypted vault disk before migration.
-8. Run the migration once, compare user/asset/case/subscription counts and verify checksums.
-9. Upload and delete a disposable test image; confirm no public bucket access is possible.
-10. Create a PostgreSQL logical export and test a restore into a separate empty database.
+8. Run `pnpm run storage:migrate` from a private Render Shell. It copies every encrypted vault object, reads it back and compares its encrypted SHA-256 checksum. The command fails if any local source is missing or any remote checksum differs. It deliberately preserves every local original.
+9. Save the JSON migration report as deployment evidence and confirm that `assetsDiscovered`, `assetsCopied` and `encryptedChecksumsVerified` are equal with an empty `failures` array.
+10. Run `pnpm run test:storage` to upload, read, verify and delete a disposable object; confirm no public bucket access is possible.
+11. Create a PostgreSQL logical export and test a restore into a separate empty database.
+12. Keep the local encrypted vault as a restricted rollback copy until the R2 migration and restore evidence has been approved. Remove it later through a separately authorised retention procedure, never through the migration command.
 
 ## Release gate
 
