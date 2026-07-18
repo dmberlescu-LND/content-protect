@@ -15,6 +15,7 @@ export async function loadPostgresState() {
     const names = [
       "users",
       "creator_profiles",
+      "verification_records",
       "sessions",
       "one_time_tokens",
       "assets",
@@ -30,6 +31,7 @@ export async function loadPostgresState() {
     const [
       users,
       profiles,
+      verifications,
       sessions,
       tokens,
       assets,
@@ -51,11 +53,24 @@ export async function loadPostgresState() {
         plan: row.plan,
         onboardingComplete: row.onboarding_complete,
         emailVerifiedAt: iso(row.email_verified_at),
-        eligibilityAcceptedAt: iso(row.age_verified_at),
+        ageVerifiedAt: iso(row.age_verified_at),
+        eligibilityAcceptedAt: iso(row.eligibility_accepted_at),
         eligibilityVersion: "2026-07-18",
         aliases: profile.get(row.id)?.aliases || [],
         platforms: profile.get(row.id)?.public_platforms || [],
         createdAt: iso(row.created_at),
+      })),
+      verifications: verifications.map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        kind: row.kind,
+        provider: row.provider,
+        providerReference: row.provider_reference,
+        status: row.status,
+        evidence: row.evidence || {},
+        expiresAt: iso(row.expires_at),
+        createdAt: iso(row.created_at),
+        updatedAt: iso(row.updated_at),
       })),
       sessions: sessions
         .filter((row) => new Date(row.expires_at) > new Date())
@@ -172,11 +187,12 @@ export async function savePostgresState(state) {
     await client.query("SELECT pg_advisory_xact_lock(824671)");
     for (const user of state.users) {
       await client.query(
-        `INSERT INTO users (id,email,name,stage_name,password_salt,password_hash,plan,onboarding_complete,email_verified_at,age_verified_at,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now()) ON CONFLICT (id) DO UPDATE SET
+        `INSERT INTO users (id,email,name,stage_name,password_salt,password_hash,plan,onboarding_complete,email_verified_at,age_verified_at,eligibility_accepted_at,created_at,updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now()) ON CONFLICT (id) DO UPDATE SET
          email=EXCLUDED.email,name=EXCLUDED.name,stage_name=EXCLUDED.stage_name,password_salt=EXCLUDED.password_salt,
          password_hash=EXCLUDED.password_hash,plan=EXCLUDED.plan,onboarding_complete=EXCLUDED.onboarding_complete,
-         email_verified_at=EXCLUDED.email_verified_at,age_verified_at=EXCLUDED.age_verified_at,updated_at=now()`,
+         email_verified_at=EXCLUDED.email_verified_at,age_verified_at=EXCLUDED.age_verified_at,
+         eligibility_accepted_at=EXCLUDED.eligibility_accepted_at,updated_at=now()`,
         [
           user.id,
           user.email,
@@ -187,6 +203,7 @@ export async function savePostgresState(state) {
           user.plan || "Protect",
           Boolean(user.onboardingComplete),
           user.emailVerifiedAt || null,
+          user.ageVerifiedAt || null,
           user.eligibilityAcceptedAt || null,
           user.createdAt || new Date().toISOString(),
         ],
@@ -240,6 +257,26 @@ async function replaceEphemeral(client, state) {
 }
 
 async function upsertBusinessData(client, state) {
+  for (const item of state.verifications || [])
+    await client.query(
+      `INSERT INTO verification_records
+        (id,user_id,kind,provider,provider_reference,status,evidence,expires_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
+       ON CONFLICT (id) DO UPDATE SET provider_reference=EXCLUDED.provider_reference,
+       status=EXCLUDED.status,evidence=EXCLUDED.evidence,expires_at=EXCLUDED.expires_at,updated_at=EXCLUDED.updated_at`,
+      [
+        item.id,
+        item.userId,
+        item.kind,
+        item.provider,
+        item.providerReference || null,
+        item.status,
+        JSON.stringify(item.evidence || {}),
+        item.expiresAt || null,
+        item.createdAt || new Date().toISOString(),
+        item.updatedAt || new Date().toISOString(),
+      ],
+    );
   for (const item of state.assets)
     await client.query(
       `INSERT INTO assets (id,user_id,object_key,original_name,mime_type,byte_size,checksum_sha256,status,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)

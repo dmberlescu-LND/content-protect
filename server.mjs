@@ -30,6 +30,9 @@ const PORT = Number(process.env.PORT || 8787),
 const STRIPE_TEST_KEY = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")
   ? process.env.STRIPE_SECRET_KEY
   : null;
+const YOTI_CONFIGURED = Boolean(
+  process.env.YOTI_API_KEY && process.env.YOTI_SDK_ID,
+);
 let key;
 const rateBuckets = new Map(),
   EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -94,6 +97,7 @@ async function load() {
       legacyState.sessions ||= [];
       legacyState.passwordResets ||= [];
       legacyState.emailVerifications ||= [];
+      legacyState.verifications ||= [];
       for (const asset of legacyState.assets) {
         asset.objectKey ||= `${asset.id}.vault`;
         if (!asset.checksum) {
@@ -135,6 +139,7 @@ async function load() {
       sessions: [],
       passwordResets: [],
       emailVerifications: [],
+      verifications: [],
     };
     await save(d);
     return d;
@@ -148,6 +153,7 @@ async function load() {
   d.sessions ||= [];
   d.passwordResets ||= [];
   d.emailVerifications ||= [];
+  d.verifications ||= [];
   d.sessions = d.sessions.filter((x) => new Date(x.expiresAt) > new Date());
   d.passwordResets = d.passwordResets.filter(
     (x) => new Date(x.expiresAt) > new Date(),
@@ -308,6 +314,7 @@ function safe(u) {
     plan: u.plan,
     onboardingComplete: u.onboardingComplete,
     emailVerifiedAt: u.emailVerifiedAt || null,
+    ageVerifiedAt: u.ageVerifiedAt || null,
     eligibilityAcceptedAt: u.eligibilityAcceptedAt || null,
     createdAt: u.createdAt,
   };
@@ -498,6 +505,7 @@ http
             plan: "Protect",
             onboardingComplete: false,
             emailVerifiedAt: null,
+            ageVerifiedAt: null,
             eligibilityAcceptedAt: now,
             eligibilityVersion: "2026-07-18",
             createdAt: now,
@@ -687,6 +695,155 @@ http
         });
       }
       if (route === "/api/me") return send(res, 200, { user: safe(u) });
+      if (route === "/api/verification/age/start" && req.method === "POST") {
+        if (!u.emailVerifiedAt)
+          return send(res, 403, {
+            error: "Verify your email before starting age verification.",
+          });
+        if (u.ageVerifiedAt)
+          return send(res, 200, { verified: true, user: safe(u) });
+        if (!YOTI_CONFIGURED)
+          return send(res, 503, {
+            error:
+              "Age verification is awaiting provider activation. No identity data has been collected.",
+          });
+        const base = (
+            process.env.APP_URL || "https://content-protect.com"
+          ).replace(/\/$/, ""),
+          response = await fetch("https://age.yoti.com/api/v1/sessions", {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${process.env.YOTI_API_KEY}`,
+              "content-type": "application/json",
+              "yoti-sdk-id": process.env.YOTI_SDK_ID,
+              "user-agent": "Content-Protect/1.0",
+            },
+            body: JSON.stringify({
+              type: "OVER",
+              ttl: 900,
+              reference_id: u.id,
+              digital_id: {
+                allowed: true,
+                threshold: 18,
+                age_estimation_allowed: true,
+                age_estimation_threshold: 21,
+                retry_limit: 2,
+              },
+              doc_scan: {
+                allowed: true,
+                threshold: 18,
+                authenticity: "AUTO",
+                level: "PASSIVE",
+                retry_limit: 2,
+              },
+              age_estimation: {
+                allowed: true,
+                threshold: 21,
+                level: "PASSIVE",
+                retry_limit: 2,
+              },
+              callback: { auto: true, url: `${base}/?age_check=return` },
+              cancel_url: `${base}/?age_check=cancelled`,
+              retry_enabled: true,
+              resume_enabled: true,
+              synchronous_checks: true,
+            }),
+          });
+        if (!response.ok) {
+          console.error("Yoti session creation failed", response.status);
+          return send(res, 502, {
+            error: "The age verification provider is temporarily unavailable.",
+          });
+        }
+        const session = await response.json(),
+          now = new Date().toISOString(),
+          record = {
+            id: randomUUID(),
+            userId: u.id,
+            kind: "age",
+            provider: "yoti",
+            providerReference: session.id,
+            status: "pending",
+            evidence: {},
+            expiresAt: session.expires_at,
+            createdAt: now,
+            updatedAt: now,
+          };
+        d.verifications = d.verifications.filter(
+          (item) => !(item.userId === u.id && item.kind === "age"),
+        );
+        d.verifications.push(record);
+        audit(d, u, "verification.age_started", { provider: "yoti" });
+        await save(d);
+        return send(res, 201, {
+          verificationUrl: `https://age.yoti.com?sessionId=${encodeURIComponent(session.id)}&sdkId=${encodeURIComponent(process.env.YOTI_SDK_ID)}`,
+          expiresAt: session.expires_at,
+        });
+      }
+      if (route === "/api/verification/age/complete" && req.method === "POST") {
+        if (!YOTI_CONFIGURED)
+          return send(res, 503, {
+            error: "Age verification is not configured.",
+          });
+        const b = await parse(req),
+          sessionId = String(b.sessionId || "");
+        if (!/^[0-9a-f-]{36}$/i.test(sessionId))
+          return send(res, 400, { error: "Invalid verification session." });
+        const record = d.verifications.find(
+          (item) =>
+            item.userId === u.id &&
+            item.kind === "age" &&
+            item.provider === "yoti" &&
+            item.providerReference === sessionId,
+        );
+        if (!record)
+          return send(res, 404, { error: "Verification session not found." });
+        const response = await fetch(
+          `https://age.yoti.com/api/v1/sessions/${encodeURIComponent(sessionId)}/result`,
+          {
+            headers: {
+              authorization: `Bearer ${process.env.YOTI_API_KEY}`,
+              "yoti-sdk-id": process.env.YOTI_SDK_ID,
+              "user-agent": "Content-Protect/1.0",
+            },
+          },
+        );
+        if (!response.ok)
+          return send(res, 502, {
+            error: "The verification result is not available yet.",
+          });
+        const result = await response.json();
+        if (result.id !== sessionId || result.reference_id !== u.id)
+          return send(res, 403, { error: "Verification result mismatch." });
+        const complete = result.status === "COMPLETE" && result.age >= 18;
+        record.status = complete
+          ? "verified"
+          : result.status === "EXPIRED"
+            ? "expired"
+            : result.status === "PENDING" || result.status === "IN_PROGRESS"
+              ? "pending"
+              : "failed";
+        record.updatedAt = new Date().toISOString();
+        record.evidence = {
+          method: result.method || "unknown",
+          status: result.status,
+          evidenceId: result.evidence_id || null,
+        };
+        if (complete) {
+          u.ageVerifiedAt = record.updatedAt;
+          audit(d, u, "verification.age_verified", {
+            provider: "yoti",
+            method: record.evidence.method,
+          });
+        }
+        await save(d);
+        return send(res, complete ? 200 : 409, {
+          verified: complete,
+          status: record.status,
+          user: safe(u),
+          error: complete ? undefined : "Age verification was not completed.",
+        });
+      }
       if (route === "/api/dashboard") {
         const assets = d.assets.filter((x) => x.userId === u.id),
           cases = d.cases.filter((x) => x.userId === u.id),
@@ -731,10 +888,10 @@ http
         });
       }
       if (route === "/api/assets" && req.method === "POST") {
-        if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt)
+        if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
           return send(res, 403, {
             error:
-              "Verify your email and eligibility before uploading content.",
+              "Verify your email, age and eligibility before uploading content.",
           });
         const b = await parse(req),
           raw = Buffer.from(b.data || "", "base64");
@@ -783,9 +940,9 @@ http
         return send(res, 200, { ok: true });
       }
       if (route === "/api/scans" && req.method === "POST") {
-        if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt)
+        if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
           return send(res, 403, {
-            error: "Verify your email and eligibility before scanning.",
+            error: "Verify your email, age and eligibility before scanning.",
           });
         const assets = d.assets.filter((x) => x.userId === u.id);
         if (!assets.length)
@@ -987,6 +1144,7 @@ http
         d.emailVerifications = d.emailVerifications.filter(
           (x) => x.userId !== u.id,
         );
+        d.verifications = d.verifications.filter((x) => x.userId !== u.id);
         d.users = d.users.filter((x) => x.id !== u.id);
         await save(d);
         return send(

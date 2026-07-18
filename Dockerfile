@@ -20,4 +20,4 @@ COPY --from=build --chown=contentprotect:contentprotect /app/node_modules ./node
 RUN mkdir -p /app/.traceguard-data && chown -R contentprotect:contentprotect /app/.traceguard-data
 USER contentprotect
 EXPOSE 8787
-CMD ["node", "server.mjs"]
+CMD ["sh", "-c", "node scripts/migrate.mjs && node server.mjs"]

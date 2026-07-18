@@ -28,6 +28,10 @@ services:
         sync: false
       - key: RESET_FROM_EMAIL
         value: Content Protect <security@content-protect.com>
+      - key: YOTI_API_KEY
+        sync: false
+      - key: YOTI_SDK_ID
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: OBJECT_STORAGE_ENDPOINT

@@ -733,6 +733,17 @@ function Dashboard({ onLogout, user }) {
         : d.error || "Could not send verification email.",
     );
   };
+  const startAgeVerification = async () => {
+    const response = await fetch("/api/verification/age/start", {
+      method: "POST",
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Could not start age verification.");
+      return;
+    }
+    if (result.verificationUrl) location.assign(result.verificationUrl);
+  };
   return (
     <div className="app-shell">
       <aside className={navOpen ? "mobile-open" : ""}>
@@ -838,6 +849,24 @@ function Dashboard({ onLogout, user }) {
               </div>
               <button className="btn btn-outline" onClick={resendVerification}>
                 Resend email
+              </button>
+            </div>
+          )}
+          {user.emailVerifiedAt && !user.ageVerifiedAt && (
+            <div className="verification-banner">
+              <ShieldCheck />
+              <div>
+                <b>Complete a private 18+ age check</b>
+                <span>
+                  Yoti returns only the verification outcome and method. We do
+                  not store your document or face image.
+                </span>
+              </div>
+              <button
+                className="btn btn-outline"
+                onClick={startAgeVerification}
+              >
+                Verify 18+
               </button>
             </div>
           )}
@@ -1670,7 +1699,23 @@ function App() {
         if (u && !resetToken) {
           const q = new URLSearchParams(location.search),
             sessionId = q.get("session_id");
-          if (q.get("checkout") === "success" && sessionId) {
+          const ageSessionId = q.get("sessionId");
+          if (q.get("age_check") === "return" && ageSessionId) {
+            const r = await fetch("/api/verification/age/complete", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ sessionId: ageSessionId }),
+              }),
+              d = await r.json();
+            history.replaceState({}, "", location.pathname);
+            if (r.ok) {
+              u = d.user;
+              alert("Your 18+ age check was verified successfully.");
+            } else alert(d.error || "Age verification was not completed.");
+          } else if (q.get("age_check") === "cancelled") {
+            history.replaceState({}, "", location.pathname);
+            alert("Age verification was cancelled. No result was stored.");
+          } else if (q.get("checkout") === "success" && sessionId) {
             const r = await fetch(
                 `/api/billing/session?session_id=${encodeURIComponent(sessionId)}`,
               ),
