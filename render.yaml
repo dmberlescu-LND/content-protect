@@ -28,6 +28,18 @@ services:
         sync: false
       - key: RESET_FROM_EMAIL
         value: Content Protect <security@content-protect.com>
+      - key: DATABASE_URL
+        sync: false
+      - key: OBJECT_STORAGE_ENDPOINT
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        value: auto
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
     disk:
       name: content-protect-staging-data
       mountPath: /app/.traceguard-data
