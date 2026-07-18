@@ -17,16 +17,19 @@ import {
   deleteEncryptedObject,
   getEncryptedObject,
   putEncryptedObject,
+  storageProbe,
   storageMode,
 } from "./storage.mjs";
 import {
-  databaseMode,
+  closeDatabase,
+  databaseProbe,
   loadPostgresState,
   savePostgresState,
 } from "./database.mjs";
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
+  STARTED_AT = Date.now(),
   ROOT = path.join(process.cwd(), ".traceguard-data"),
   DB = path.join(ROOT, "db.json"),
   VAULT = path.join(ROOT, "vault"),
@@ -185,6 +188,7 @@ function send(res, status, data, headers = {}) {
     ...securityHeaders,
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
+    "x-request-id": res.requestId || "unavailable",
     ...headers,
   });
   res.end(JSON.stringify(data));
@@ -475,8 +479,25 @@ async function issueEmailVerification(d, u) {
   return true;
 }
 
-http
-  .createServer(async (req, res) => {
+const appServer = http.createServer(async (req, res) => {
+    const requestStartedAt = Date.now();
+    const suppliedRequestId = req.headers["x-request-id"]?.toString();
+    res.requestId = /^[A-Za-z0-9._:-]{1,80}$/.test(suppliedRequestId || "")
+      ? suppliedRequestId
+      : randomUUID();
+    res.once("finish", () => {
+      console.log(
+        JSON.stringify({
+          level: "info",
+          event: "http_request",
+          requestId: res.requestId,
+          method: req.method,
+          path: req.url.split("?")[0],
+          status: res.statusCode,
+          durationMs: Date.now() - requestStartedAt,
+        }),
+      );
+    });
     try {
       if (!req.url.startsWith("/api/")) {
         if (
@@ -692,14 +713,34 @@ http
         await save(d);
         return send(res, 200, { received: true });
       }
-      const d = await load();
-      if (route === "/api/health")
+      if (route === "/api/health/live")
         return send(res, 200, {
           ok: true,
-          mode: "secure-mvp",
-          storage: storageMode(),
-          database: databaseMode(),
+          status: "alive",
+          uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
+        });
+      if (route === "/api/health/ready" || route === "/api/health") {
+        const [database, storage] = await Promise.all([
+          databaseProbe(),
+          storageProbe(VAULT),
+        ]);
+        return send(res, 200, {
+          ok: true,
+          status: "ready",
+          release: process.env.RENDER_GIT_COMMIT?.slice(0, 12) || "local",
+          uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
+          storage: storage.mode,
+          database: database.mode,
+          checks: { database, storage },
+          productionReady:
+            database.mode === "postgresql" &&
+            storage.mode === "private-object-storage" &&
+            scannerMode() !== "unconfigured" &&
+            TAKEDOWN_DELIVERY_CONFIGURED &&
+            STRIPE_CONFIGURED &&
+            YOTI_CONFIGURED,
           scanner: scannerMode(),
+          ageVerification: YOTI_CONFIGURED ? "yoti" : "unconfigured",
           takedownDelivery: TAKEDOWN_DELIVERY_CONFIGURED
             ? "operator-reviewed"
             : "unconfigured",
@@ -707,6 +748,8 @@ http
             ? `stripe-${PAYMENTS_MODE}`
             : "unconfigured",
         });
+      }
+      const d = await load();
       if (route === "/api/operator/session" && req.method === "POST") {
         if (!allowed(req, `operator-login:${ip}`, 5, 3600000))
           return send(res, 429, {
@@ -1800,7 +1843,16 @@ http
       }
       send(res, 404, { error: "Not found" });
     } catch (e) {
-      console.error(e);
+      console.error(
+        JSON.stringify({
+          level: "error",
+          event: "request_failed",
+          requestId: res.requestId,
+          method: req.method,
+          path: req.url.split("?")[0],
+          error: e?.message || "unknown",
+        }),
+      );
       send(res, 500, {
         error:
           e.message === "large"
@@ -1808,7 +1860,43 @@ http
             : "Something went wrong.",
       });
     }
-  })
-  .listen(PORT, "0.0.0.0", () =>
-    console.log(`Content Protect API ready on port ${PORT}`),
+  });
+
+appServer.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    JSON.stringify({
+      level: "info",
+      event: "service_started",
+      port: PORT,
+      release: process.env.RENDER_GIT_COMMIT?.slice(0, 12) || "local",
+    }),
   );
+});
+
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(JSON.stringify({ level: "info", event: "shutdown", signal }));
+  appServer.close(async () => {
+    try {
+      await closeDatabase();
+      process.exitCode = 0;
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          event: "shutdown_failed",
+          error: error?.message || "unknown",
+        }),
+      );
+      process.exitCode = 1;
+    }
+  });
+  setTimeout(() => {
+    console.error(JSON.stringify({ level: "error", event: "shutdown_timeout" }));
+    process.exit(1);
+  }, 10000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

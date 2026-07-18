@@ -12,6 +12,7 @@
     "db:migrate": "node scripts/migrate.mjs",
     "test:webhook": "node scripts/test-resend-webhook.mjs",
     "test:stripe-webhook": "node scripts/test-stripe-webhook.mjs",
+    "verify:production": "node scripts/verify-production.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

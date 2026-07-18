@@ -5,7 +5,7 @@ services:
     plan: starter
     region: frankfurt
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/ready
     autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV

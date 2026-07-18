@@ -1,10 +1,11 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const configured = Boolean(
@@ -27,6 +28,20 @@ const bucket = process.env.OBJECT_STORAGE_BUCKET;
 
 export function storageMode() {
   return configured ? "private-object-storage" : "encrypted-local-disk";
+}
+
+export async function storageProbe(localRoot) {
+  const startedAt = Date.now();
+  if (client) await client.send(new HeadBucketCommand({ Bucket: bucket }));
+  else {
+    await mkdir(localRoot, { recursive: true });
+    await access(localRoot);
+  }
+  return {
+    ok: true,
+    mode: storageMode(),
+    latencyMs: Date.now() - startedAt,
+  };
 }
 
 export async function putEncryptedObject(objectKey, encrypted, localRoot) {

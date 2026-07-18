@@ -8,6 +8,21 @@ const iso = (value) => (value ? new Date(value).toISOString() : null);
 
 export const databaseMode = () => (pool ? "postgresql" : "local-json");
 
+export async function databaseProbe() {
+  if (!pool) return { ok: true, mode: "local-json" };
+  const startedAt = Date.now();
+  await pool.query("SELECT 1");
+  return {
+    ok: true,
+    mode: "postgresql",
+    latencyMs: Date.now() - startedAt,
+  };
+}
+
+export async function closeDatabase() {
+  if (pool) await pool.end();
+}
+
 export async function loadPostgresState() {
   if (!pool) return null;
   const client = await pool.connect();
