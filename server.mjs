@@ -9,6 +9,7 @@ import {
   createCipheriv,
   createDecipheriv,
   createHash,
+  createHmac,
 } from "node:crypto";
 import path from "node:path";
 import Stripe from "stripe";
@@ -328,6 +329,72 @@ function attachmentName(value, fallback) {
     .slice(0, 120);
   return cleaned || fallback;
 }
+const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+function base32Encode(buffer) {
+  let bits = "";
+  for (const byte of buffer) bits += byte.toString(2).padStart(8, "0");
+  let output = "";
+  for (let index = 0; index < bits.length; index += 5)
+    output += BASE32_ALPHABET[parseInt(bits.slice(index, index + 5).padEnd(5, "0"), 2)];
+  return output;
+}
+function base32Decode(value) {
+  const normalised = String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z2-7]/g, "");
+  let bits = "";
+  for (const character of normalised) {
+    const index = BASE32_ALPHABET.indexOf(character);
+    if (index < 0) throw new Error("Invalid authenticator secret.");
+    bits += index.toString(2).padStart(5, "0");
+  }
+  const bytes = [];
+  for (let index = 0; index + 8 <= bits.length; index += 8)
+    bytes.push(parseInt(bits.slice(index, index + 8), 2));
+  return Buffer.from(bytes);
+}
+function totpAt(secret, timestamp = Date.now()) {
+  const counter = Math.floor(timestamp / 30000),
+    message = Buffer.alloc(8);
+  message.writeBigUInt64BE(BigInt(counter));
+  const digest = createHmac("sha1", base32Decode(secret)).update(message).digest(),
+    offset = digest[digest.length - 1] & 15,
+    number =
+      (((digest[offset] & 127) << 24) |
+        ((digest[offset + 1] & 255) << 16) |
+        ((digest[offset + 2] & 255) << 8) |
+        (digest[offset + 3] & 255)) %
+      1000000;
+  return String(number).padStart(6, "0");
+}
+function validTotp(secret, value) {
+  const code = String(value || "").replace(/\s/g, "");
+  if (!/^\d{6}$/.test(code)) return false;
+  return [-30000, 0, 30000].some((offset) => {
+    const expected = Buffer.from(totpAt(secret, Date.now() + offset));
+    return timingSafeEqual(expected, Buffer.from(code));
+  });
+}
+function mfaSecret(user) {
+  return user.mfaSecretCiphertext
+    ? unvault(Buffer.from(user.mfaSecretCiphertext, "base64")).toString("utf8")
+    : null;
+}
+function recoveryHash(value) {
+  return tokenHash(
+    `mfa-recovery:${String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "")}`,
+  );
+}
+function consumeMfaCode(user, value) {
+  const hash = recoveryHash(value),
+    index = (user.mfaRecoveryHashes || []).indexOf(hash);
+  if (index >= 0) {
+    user.mfaRecoveryHashes.splice(index, 1);
+    return "recovery";
+  }
+  const secret = mfaSecret(user);
+  return secret && validTotp(secret, value) ? "totp" : null;
+}
 function newSession(d, u) {
   const token = randomBytes(32).toString("hex");
   d.sessions.push({
@@ -356,6 +423,8 @@ function safe(u) {
     emailVerifiedAt: u.emailVerifiedAt || null,
     ageVerifiedAt: u.ageVerifiedAt || null,
     eligibilityAcceptedAt: u.eligibilityAcceptedAt || null,
+    mfaEnabled: Boolean(u.mfaEnabledAt),
+    mfaRecoveryCodesRemaining: (u.mfaRecoveryHashes || []).length,
     createdAt: u.createdAt,
   };
 }
@@ -992,6 +1061,9 @@ const appServer = http.createServer(async (req, res) => {
             ageVerifiedAt: null,
             eligibilityAcceptedAt: now,
             eligibilityVersion: "2026-07-18",
+            mfaSecretCiphertext: null,
+            mfaEnabledAt: null,
+            mfaRecoveryHashes: [],
             createdAt: now,
           };
         d.users.push(u);
@@ -1030,7 +1102,19 @@ const appServer = http.createServer(async (req, res) => {
         const h = scryptSync(b.password, u.salt, 64);
         if (!timingSafeEqual(h, Buffer.from(u.passwordHash, "hex")))
           return send(res, 401, { error: "Email or password is incorrect." });
+        let mfaMethod = null;
+        if (u.mfaEnabledAt) {
+          mfaMethod = consumeMfaCode(u, b.mfaCode);
+          if (!mfaMethod)
+            return send(res, 401, {
+              error: "Enter a valid authenticator or recovery code.",
+              mfaRequired: true,
+            });
+        }
         const t = newSession(d, u);
+        audit(d, u, "account.login", {
+          mfa: mfaMethod || "not-enabled",
+        });
         await save(d);
         return send(
           res,
@@ -1730,6 +1814,91 @@ const appServer = http.createServer(async (req, res) => {
           url: session.url,
           mode: `stripe_${PAYMENTS_MODE}`,
         });
+      }
+      if (route === "/api/account/mfa/setup" && req.method === "POST") {
+        if (u.mfaEnabledAt)
+          return send(res, 409, { error: "Two-step verification is already enabled." });
+        if (!allowed(req, `mfa-setup:${u.id}`, 5, 3600000))
+          return send(res, 429, { error: "Too many setup attempts. Try again later." });
+        const b = await parse(req);
+        if (!passwordMatches(u, b.password))
+          return send(res, 403, { error: "Password is incorrect." });
+        const secret = base32Encode(randomBytes(20)),
+          label = encodeURIComponent(`Content Protect:${u.email}`),
+          uri = `otpauth://totp/${label}?secret=${secret}&issuer=Content%20Protect&algorithm=SHA1&digits=6&period=30`;
+        audit(d, u, "account.mfa_setup_started");
+        await save(d);
+        return send(res, 200, {
+          secret,
+          groupedSecret: secret.match(/.{1,4}/g).join(" "),
+          otpauthUri: uri,
+        });
+      }
+      if (route === "/api/account/mfa/enable" && req.method === "POST") {
+        if (u.mfaEnabledAt)
+          return send(res, 409, { error: "Two-step verification is already enabled." });
+        if (!allowed(req, `mfa-enable:${u.id}`, 10, 3600000))
+          return send(res, 429, { error: "Too many verification attempts." });
+        const b = await parse(req),
+          secret = String(b.secret || "")
+            .toUpperCase()
+            .replace(/[^A-Z2-7]/g, "");
+        if (!passwordMatches(u, b.password))
+          return send(res, 403, { error: "Password is incorrect." });
+        if (secret.length !== 32 || !validTotp(secret, b.code))
+          return send(res, 400, {
+            error: "The authenticator code or setup secret is invalid.",
+          });
+        const recoveryCodes = Array.from({ length: 8 }, () => {
+          const raw = randomBytes(4).toString("hex").toUpperCase();
+          return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+        });
+        u.mfaSecretCiphertext = vault(Buffer.from(secret)).toString("base64");
+        u.mfaEnabledAt = new Date().toISOString();
+        u.mfaRecoveryHashes = recoveryCodes.map(recoveryHash);
+        d.sessions = d.sessions.filter((item) => item.userId !== u.id);
+        const sessionToken = newSession(d, u);
+        audit(d, u, "account.mfa_enabled", {
+          recoveryCodesIssued: recoveryCodes.length,
+        });
+        await save(d);
+        return send(
+          res,
+          200,
+          { user: safe(u), recoveryCodes },
+          {
+            "set-cookie": `cp_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+          },
+        );
+      }
+      if (route === "/api/account/mfa" && req.method === "DELETE") {
+        if (!u.mfaEnabledAt)
+          return send(res, 409, { error: "Two-step verification is not enabled." });
+        if (!allowed(req, `mfa-disable:${u.id}`, 10, 3600000))
+          return send(res, 429, { error: "Too many verification attempts." });
+        const b = await parse(req);
+        if (!passwordMatches(u, b.password))
+          return send(res, 403, { error: "Password is incorrect." });
+        const method = consumeMfaCode(u, b.code);
+        if (!method)
+          return send(res, 400, {
+            error: "Enter a valid authenticator or recovery code.",
+          });
+        u.mfaSecretCiphertext = null;
+        u.mfaEnabledAt = null;
+        u.mfaRecoveryHashes = [];
+        d.sessions = d.sessions.filter((item) => item.userId !== u.id);
+        const sessionToken = newSession(d, u);
+        audit(d, u, "account.mfa_disabled", { confirmationMethod: method });
+        await save(d);
+        return send(
+          res,
+          200,
+          { user: safe(u) },
+          {
+            "set-cookie": `cp_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+          },
+        );
       }
       if (route === "/api/account/password" && req.method === "PATCH") {
         const b = await parse(req);

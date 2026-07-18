@@ -533,6 +533,70 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
     }
     await saveDownload(response, "content-protect-data.json");
   };
+  const enableMfa = async () => {
+    const password = prompt(
+      "Enter your password to start two-step verification setup.",
+    );
+    if (!password) return;
+    const setupResponse = await fetch("/api/account/mfa/setup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const setup = await setupResponse.json();
+    if (!setupResponse.ok) {
+      alert(setup.error || "Two-step verification setup could not start.");
+      return;
+    }
+    const code = prompt(
+      `In your authenticator app choose “Enter a setup key”.\n\nAccount: ${user.email}\nKey: ${setup.groupedSecret}\nType: Time based\n\nThen enter the 6-digit code here:`,
+    );
+    if (!code) return;
+    const enableResponse = await fetch("/api/account/mfa/enable", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password, secret: setup.secret, code }),
+    });
+    const enabled = await enableResponse.json();
+    if (!enableResponse.ok) {
+      alert(enabled.error || "The authenticator code could not be verified.");
+      return;
+    }
+    await saveDownload(
+      new Response(enabled.recoveryCodes.join("\n") + "\n", {
+        headers: {
+          "content-type": "text/plain",
+          "content-disposition":
+            'attachment; filename="content-protect-recovery-codes.txt"',
+        },
+      }),
+      "content-protect-recovery-codes.txt",
+    );
+    alert(
+      "Two-step verification is enabled. Your recovery codes were downloaded. Store them somewhere private; each code works once.",
+    );
+    location.reload();
+  };
+  const disableMfa = async () => {
+    const password = prompt(
+      "Enter your password to disable two-step verification.",
+    );
+    if (!password) return;
+    const code = prompt("Enter a current authenticator or recovery code.");
+    if (!code) return;
+    const response = await fetch("/api/account/mfa", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password, code }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Two-step verification could not be disabled.");
+      return;
+    }
+    alert("Two-step verification is disabled. Other sessions were signed out.");
+    location.reload();
+  };
   const deleteAccount = async () => {
     const password = prompt(
       "Enter your password to permanently delete your account and encrypted files.",
@@ -604,6 +668,24 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
         <small>
           Your password is required. Original reference files are downloaded
           separately from My content.
+        </small>
+      </section>
+      <section className="account-card">
+        <h2>Two-step verification</h2>
+        <p>
+          {user.mfaEnabled
+            ? `Enabled · ${user.mfaRecoveryCodesRemaining} recovery codes remaining`
+            : "Protect sign-in with a time-based code from your authenticator app."}
+        </p>
+        <button
+          className={user.mfaEnabled ? "btn danger-btn" : "btn btn-primary"}
+          onClick={user.mfaEnabled ? disableMfa : enableMfa}
+        >
+          <ShieldCheck size={16} />
+          {user.mfaEnabled ? "Disable two-step verification" : "Enable two-step verification"}
+        </button>
+        <small>
+          Enabling or disabling this control signs out every other session.
         </small>
       </section>
       <section className="account-card">
@@ -1403,12 +1485,14 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
     stageName: "",
     email: "",
     password: "",
+    mfaCode: "",
     ageConfirmed: false,
     rightsConfirmed: false,
     termsAccepted: false,
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -1420,6 +1504,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
         body: JSON.stringify(form),
       });
       const d = await r.json();
+      if (!r.ok && d.mfaRequired) setMfaRequired(true);
       if (!r.ok) throw Error(d.error);
       onSuccess(d.user);
     } catch (e) {
@@ -1486,6 +1571,21 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
         </label>
+        {mode === "login" && mfaRequired && (
+          <label>
+            Authenticator or recovery code
+            <input
+              autoComplete="one-time-code"
+              required
+              maxLength="12"
+              value={form.mfaCode}
+              onChange={(e) => setForm({ ...form, mfaCode: e.target.value })}
+              placeholder="123456 or XXXX-XXXX"
+              autoFocus
+            />
+            <small>Open your authenticator app or use one recovery code.</small>
+          </label>
+        )}
         <label>
           Password
           <input
@@ -1569,7 +1669,9 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
             ? "Securing workspace…"
             : mode === "register"
               ? "Create protected account"
-              : "Log in securely"}{" "}
+              : mfaRequired
+                ? "Verify and log in"
+                : "Log in securely"}{" "}
           <ArrowRight size={17} />
         </button>
         <div className="auth-switch">

@@ -79,6 +79,9 @@ export async function loadPostgresState() {
         ageVerifiedAt: iso(row.age_verified_at),
         eligibilityAcceptedAt: iso(row.eligibility_accepted_at),
         eligibilityVersion: "2026-07-18",
+        mfaSecretCiphertext: row.mfa_secret_ciphertext,
+        mfaEnabledAt: iso(row.mfa_enabled_at),
+        mfaRecoveryHashes: row.mfa_recovery_hashes || [],
         aliases: profile.get(row.id)?.aliases || [],
         platforms: profile.get(row.id)?.public_platforms || [],
         createdAt: iso(row.created_at),
@@ -266,12 +269,13 @@ export async function savePostgresState(state) {
     await client.query("SELECT pg_advisory_xact_lock(824671)");
     for (const user of state.users) {
       await client.query(
-        `INSERT INTO users (id,email,name,stage_name,password_salt,password_hash,plan,onboarding_complete,email_verified_at,age_verified_at,eligibility_accepted_at,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now()) ON CONFLICT (id) DO UPDATE SET
+        `INSERT INTO users (id,email,name,stage_name,password_salt,password_hash,plan,onboarding_complete,email_verified_at,age_verified_at,eligibility_accepted_at,mfa_secret_ciphertext,mfa_enabled_at,mfa_recovery_hashes,created_at,updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,now()) ON CONFLICT (id) DO UPDATE SET
          email=EXCLUDED.email,name=EXCLUDED.name,stage_name=EXCLUDED.stage_name,password_salt=EXCLUDED.password_salt,
          password_hash=EXCLUDED.password_hash,plan=EXCLUDED.plan,onboarding_complete=EXCLUDED.onboarding_complete,
          email_verified_at=EXCLUDED.email_verified_at,age_verified_at=EXCLUDED.age_verified_at,
-         eligibility_accepted_at=EXCLUDED.eligibility_accepted_at,updated_at=now()`,
+         eligibility_accepted_at=EXCLUDED.eligibility_accepted_at,mfa_secret_ciphertext=EXCLUDED.mfa_secret_ciphertext,
+         mfa_enabled_at=EXCLUDED.mfa_enabled_at,mfa_recovery_hashes=EXCLUDED.mfa_recovery_hashes,updated_at=now()`,
         [
           user.id,
           user.email,
@@ -284,6 +288,9 @@ export async function savePostgresState(state) {
           user.emailVerifiedAt || null,
           user.ageVerifiedAt || null,
           user.eligibilityAcceptedAt || null,
+          user.mfaSecretCiphertext || null,
+          user.mfaEnabledAt || null,
+          JSON.stringify(user.mfaRecoveryHashes || []),
           user.createdAt || new Date().toISOString(),
         ],
       );
