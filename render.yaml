@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: content-protect-staging
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYMENTS_MODE
+        value: sandbox
+      - key: TAKEDOWNS_MODE
+        value: sandbox
+      - key: BIOMETRICS_ENABLED
+        value: "false"
+      - key: CONTENT_PROTECT_MASTER_KEY
+        generateValue: true
+    disk:
+      name: content-protect-staging-data
+      mountPath: /app/.traceguard-data
+      sizeGB: 1
