@@ -411,7 +411,7 @@ function Landing({ onStart, onLogin }) {
   );
 }
 
-function AccountSettings({ user, subscription, onDeleted }) {
+function AccountSettings({ user, subscription, billingMode, onDeleted }) {
   const [passwords, setPasswords] = useState({
     currentPassword: "",
     newPassword: "",
@@ -508,9 +508,15 @@ function AccountSettings({ user, subscription, onDeleted }) {
           {subscription?.status || "No completed Stripe subscription"}
         </p>
         <button className="btn btn-outline" onClick={openPortal}>
-          Manage test subscription
+          Manage subscription
         </button>
-        <small>Stripe test portal only. No live charges.</small>
+        <small>
+          {billingMode === "stripe_live"
+            ? "Secure billing is managed by Stripe."
+            : billingMode === "stripe_test"
+              ? "Stripe test mode — test cards only, no live charges."
+              : "Billing activation is not complete; no payment can be taken."}
+        </small>
       </section>
       <section className="account-card danger-zone">
         <h2>Delete account</h2>
@@ -535,7 +541,7 @@ function HelpSafety() {
         </div>
         <h2>Customer support</h2>
         <p>
-          Questions about your account, billing test, evidence or using the
+          Questions about your account, billing, evidence or using the
           protected workspace.
         </p>
         <a
@@ -694,7 +700,7 @@ function Dashboard({ onLogout, user }) {
       location.assign(d.checkoutUrl);
       return;
     }
-    alert(d.notice || `${plan} is active in test mode. No payment was taken.`);
+    alert(d.notice || "Billing is not available yet. No payment was taken.");
   };
   const deleteAsset = async (asset) => {
     if (
@@ -948,15 +954,18 @@ function Dashboard({ onLogout, user }) {
                   <i></i>
                 </div>
                 <div>
-                  <b>Run protected sandbox scan</b>
+                  <b>Run protected image scan</b>
                   <span>
                     {data.assets.length
-                      ? "Tests the workflow using your encrypted references"
-                      : "Add a reference asset before testing a scan"}
+                      ? data.scannerMode === "tineye-commercial"
+                        ? "Search the commercial provider using encrypted references"
+                        : "Commercial scanning awaits provider activation"
+                      : "Add a reference asset before starting a scan"}
                   </span>
                 </div>
                 <span className="live">
-                  <i></i> TEST
+                  <i></i>{" "}
+                  {data.scannerMode === "tineye-commercial" ? "LIVE" : "WAITING"}
                 </span>
               </button>
             </>
@@ -1053,6 +1062,7 @@ function Dashboard({ onLogout, user }) {
             <AccountSettings
               user={user}
               subscription={data.subscription}
+              billingMode={data.billingMode}
               onDeleted={onLogout}
             />
           )}
@@ -1062,10 +1072,19 @@ function Dashboard({ onLogout, user }) {
               <div className="sandbox-note">
                 <Zap />
                 <div>
-                  <b>Billing sandbox is active</b>
+                  <b>
+                    {data.billingMode === "stripe_live"
+                      ? "Secure Stripe billing is active"
+                      : data.billingMode === "stripe_test"
+                        ? "Stripe test billing is active"
+                        : "Billing activation is pending"}
+                  </b>
                   <span>
-                    Choose any plan to test account permissions. No card details
-                    are collected and no payment is taken.
+                    {data.billingMode === "stripe_live"
+                      ? "Subscriptions and payment details are handled by Stripe."
+                      : data.billingMode === "stripe_test"
+                        ? "Only Stripe test cards are accepted; no live charge is made."
+                        : "Checkout is disabled until Stripe products, prices and webhook verification are configured."}
                   </span>
                 </div>
               </div>
@@ -1090,9 +1109,14 @@ function Dashboard({ onLogout, user }) {
                     <p>{desc}</p>
                     <button
                       className="btn btn-primary"
+                      disabled={data.billingMode === "unconfigured"}
                       onClick={() => selectPlan(name)}
                     >
-                      Select in test mode
+                      {data.billingMode === "stripe_live"
+                        ? "Choose plan"
+                        : data.billingMode === "stripe_test"
+                          ? "Test checkout"
+                          : "Unavailable"}
                     </button>
                   </div>
                 ))}
@@ -1265,7 +1289,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
           </h2>
           <p>
             {mode === "register"
-              ? "Start in local test mode. No payment is taken."
+              ? "Create your account free. Choose a protection plan after verification."
               : "Sign in to your protected workspace."}
           </p>
         </div>
@@ -1664,8 +1688,8 @@ function Onboarding({ user, onDone }) {
             <div>
               <Eye />
               <span>
-                <b>Transparent sandbox</b>Test results are always clearly marked
-                as demonstrations.
+                <b>Transparent provider status</b>Unavailable services are
+                clearly identified and never replaced with simulated results.
               </span>
             </div>
           </div>
@@ -1879,7 +1903,7 @@ function App() {
             if (r.ok) {
               u = d.user;
               history.replaceState({}, "", location.pathname);
-              alert(`Test subscription activated: ${d.subscription.plan}.`);
+              alert(`Subscription confirmed: ${d.subscription.plan}.`);
             }
           } else if (q.get("checkout") === "cancelled") {
             history.replaceState({}, "", location.pathname);

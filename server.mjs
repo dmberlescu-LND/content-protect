@@ -31,9 +31,28 @@ const PORT = Number(process.env.PORT || 8787),
   DB = path.join(ROOT, "db.json"),
   VAULT = path.join(ROOT, "vault"),
   KEY_FILE = path.join(ROOT, ".vault-key");
-const STRIPE_TEST_KEY = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")
-  ? process.env.STRIPE_SECRET_KEY
-  : null;
+const PAYMENTS_MODE = ["test", "live"].includes(process.env.PAYMENTS_MODE)
+    ? process.env.PAYMENTS_MODE
+    : "unconfigured",
+  STRIPE_KEY =
+    (PAYMENTS_MODE === "test" &&
+      process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) ||
+    (PAYMENTS_MODE === "live" &&
+      process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_"))
+      ? process.env.STRIPE_SECRET_KEY
+      : null,
+  STRIPE_PRICES = {
+    Monitor: process.env.STRIPE_PRICE_MONITOR,
+    Protect: process.env.STRIPE_PRICE_PROTECT,
+    Pro: process.env.STRIPE_PRICE_PRO,
+  },
+  STRIPE_CONFIGURED = Boolean(
+    STRIPE_KEY &&
+      process.env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_") &&
+      Object.values(STRIPE_PRICES).every((value) =>
+        /^price_[A-Za-z0-9]+$/.test(value || ""),
+      ),
+  );
 const YOTI_CONFIGURED = Boolean(
   process.env.YOTI_API_KEY && process.env.YOTI_SDK_ID,
 );
@@ -483,9 +502,9 @@ http
       )
         return send(res, 403, { error: "Invalid request origin." });
       if (route === "/api/billing/webhook" && req.method === "POST") {
-        if (!STRIPE_TEST_KEY || !process.env.STRIPE_WEBHOOK_SECRET)
+        if (!STRIPE_CONFIGURED)
           return send(res, 503, { error: "Webhook is not configured." });
-        const stripe = new Stripe(STRIPE_TEST_KEY),
+        const stripe = new Stripe(STRIPE_KEY),
           payload = await raw(req);
         let event;
         try {
@@ -497,47 +516,93 @@ http
         } catch {
           return send(res, 400, { error: "Invalid webhook signature." });
         }
+        if (Boolean(event.livemode) !== (PAYMENTS_MODE === "live"))
+          return send(res, 400, { error: "Webhook mode mismatch." });
         const d = await load();
+        if (
+          d.processedWebhooks.some(
+            (item) => item.provider === "stripe" && item.eventId === event.id,
+          )
+        )
+          return send(res, 200, { received: true, duplicate: true });
         if (
           [
             "checkout.session.completed",
             "customer.subscription.updated",
             "customer.subscription.deleted",
+            "invoice.paid",
+            "invoice.payment_failed",
           ].includes(event.type)
         ) {
           const o = event.data.object,
-            userId = o.metadata?.userId,
-            plan = o.metadata?.plan;
+            subscriptionId =
+              typeof o.subscription === "string"
+                ? o.subscription
+                : typeof o.parent?.subscription_details?.subscription ===
+                    "string"
+                  ? o.parent.subscription_details.subscription
+                  : typeof o.id === "string" && o.object === "subscription"
+                    ? o.id
+                    : null,
+            customerId =
+              typeof o.customer === "string" ? o.customer : null,
+            existing = d.subscriptions.find(
+              (item) =>
+                (subscriptionId &&
+                  item.stripeSubscriptionId === subscriptionId) ||
+                (customerId && item.stripeCustomerId === customerId),
+            ),
+            userId = o.metadata?.userId || existing?.userId,
+            plan = o.metadata?.plan || existing?.plan;
           if (userId) {
-            let sub = d.subscriptions.find((x) => x.userId === userId);
+            let sub = existing || d.subscriptions.find((x) => x.userId === userId);
             if (!sub) {
               sub = { id: randomUUID(), userId };
               d.subscriptions.push(sub);
             }
+            const nextStatus =
+              event.type === "customer.subscription.deleted"
+                ? "cancelled"
+                : event.type === "invoice.payment_failed"
+                  ? "past_due"
+                  : event.type === "invoice.paid"
+                    ? "active"
+                    : o.status || sub.status || "active";
             Object.assign(sub, {
               plan: plan || sub.plan,
-              status:
-                event.type === "customer.subscription.deleted"
-                  ? "cancelled"
-                  : o.status || "active",
-              mode: "stripe_test",
-              stripeCustomerId:
-                typeof o.customer === "string"
-                  ? o.customer
-                  : sub.stripeCustomerId,
-              stripeSubscriptionId:
-                typeof o.subscription === "string"
-                  ? o.subscription
-                  : typeof o.id === "string" && o.object === "subscription"
-                    ? o.id
-                    : sub.stripeSubscriptionId,
+              status: nextStatus,
+              mode: `stripe_${PAYMENTS_MODE}`,
+              stripeLivemode: Boolean(event.livemode),
+              stripePriceId: o.metadata?.priceId || sub.stripePriceId,
+              stripeCustomerId: customerId || sub.stripeCustomerId,
+              stripeSubscriptionId: subscriptionId || sub.stripeSubscriptionId,
+              renewalAt: o.current_period_end
+                ? new Date(o.current_period_end * 1000).toISOString()
+                : sub.renewalAt,
               updatedAt: new Date().toISOString(),
             });
             const user = d.users.find((x) => x.id === userId);
-            if (user && plan) user.plan = plan;
-            await save(d);
+            if (
+              user &&
+              plan &&
+              ["active", "trialing"].includes(nextStatus)
+            )
+              user.plan = plan;
+            if (user)
+              audit(d, user, "billing.webhook_processed", {
+                type: event.type,
+                status: nextStatus,
+                mode: PAYMENTS_MODE,
+              });
           }
         }
+        d.processedWebhooks.push({
+          provider: "stripe",
+          eventId: event.id,
+          processedAt: new Date().toISOString(),
+        });
+        d.processedWebhooks = d.processedWebhooks.slice(-5000);
+        await save(d);
         return send(res, 200, { received: true });
       }
       if (route === "/api/takedowns/webhook" && req.method === "POST") {
@@ -634,6 +699,9 @@ http
           scanner: scannerMode(),
           takedownDelivery: TAKEDOWN_DELIVERY_CONFIGURED
             ? "operator-reviewed"
+            : "unconfigured",
+          billing: STRIPE_CONFIGURED
+            ? `stripe-${PAYMENTS_MODE}`
             : "unconfigured",
         });
       if (route === "/api/operator/session" && req.method === "POST") {
@@ -1198,6 +1266,10 @@ http
           cases,
           scans,
           subscription: d.subscriptions.find((x) => x.userId === u.id),
+          billingMode: STRIPE_CONFIGURED
+            ? `stripe_${PAYMENTS_MODE}`
+            : "unconfigured",
+          scannerMode: scannerMode(),
           audit: d.audit.filter((x) => x.userId === u.id).slice(0, 20),
           stats: {
             matches: matches.length,
@@ -1394,88 +1466,82 @@ http
         }
       }
       if (route === "/api/billing/checkout" && req.method === "POST") {
-        const b = await parse(req),
-          prices = { Monitor: 1900, Protect: 4900, Pro: 9900 };
-        if (!prices[b.plan]) return send(res, 400, { error: "Invalid plan." });
-        if (STRIPE_TEST_KEY) {
-          const stripe = new Stripe(STRIPE_TEST_KEY),
-            base = (
-              process.env.APP_URL || "https://content-protect.com"
-            ).replace(/\/$/, "");
-          const session = await stripe.checkout.sessions.create({
+        const b = await parse(req);
+        if (!STRIPE_PRICES[b.plan])
+          return send(res, 400, { error: "Invalid plan." });
+        if (!u.emailVerifiedAt || !u.ageVerifiedAt)
+          return send(res, 403, {
+            error: "Verify your email and age before purchasing a plan.",
+          });
+        if (!STRIPE_CONFIGURED)
+          return send(res, 503, {
+            error:
+              "Billing is not configured. No subscription was created and no payment was taken.",
+          });
+        const current = d.subscriptions.find((x) => x.userId === u.id);
+        if (
+          current?.stripeSubscriptionId &&
+          ["active", "trialing", "past_due"].includes(current.status)
+        )
+          return send(res, 409, {
+            error:
+              "An existing subscription must be managed from the billing portal.",
+          });
+        const stripe = new Stripe(STRIPE_KEY),
+          base = (process.env.APP_URL || "https://content-protect.com").replace(
+            /\/$/,
+            "",
+          ),
+          metadata = {
+            userId: u.id,
+            plan: b.plan,
+            priceId: STRIPE_PRICES[b.plan],
+            mode: PAYMENTS_MODE,
+          },
+          session = await stripe.checkout.sessions.create({
             mode: "subscription",
-            customer_email: u.email,
-            line_items: [
-              {
-                quantity: 1,
-                price_data: {
-                  currency: "gbp",
-                  unit_amount: prices[b.plan],
-                  recurring: { interval: "month" },
-                  product_data: {
-                    name: `Content Protect ${b.plan}`,
-                    description:
-                      "Creator protection subscription — Stripe test mode",
-                  },
-                },
-              },
-            ],
+            client_reference_id: u.id,
+            ...(current?.stripeCustomerId
+              ? { customer: current.stripeCustomerId }
+              : { customer_email: u.email }),
+            line_items: [{ quantity: 1, price: STRIPE_PRICES[b.plan] }],
+            billing_address_collection: "required",
+            automatic_tax: {
+              enabled: process.env.STRIPE_TAX_ENABLED === "true",
+            },
             success_url: `${base}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${base}/?checkout=cancelled`,
-            metadata: { userId: u.id, plan: b.plan, mode: "sandbox" },
-            subscription_data: {
-              metadata: { userId: u.id, plan: b.plan, mode: "sandbox" },
-            },
+            metadata,
+            subscription_data: { metadata },
           });
-          audit(d, u, "billing.test_checkout_created", {
-            plan: b.plan,
-            sessionId: session.id,
-          });
-          await save(d);
-          return send(res, 200, {
-            checkoutUrl: session.url,
-            mode: "stripe_test",
-          });
-        }
-        let sub = d.subscriptions.find((x) => x.userId === u.id);
-        if (!sub) {
-          sub = { id: randomUUID(), userId: u.id };
-          d.subscriptions.push(sub);
-        }
-        Object.assign(sub, {
+        audit(d, u, "billing.checkout_created", {
           plan: b.plan,
-          status: "test_active",
-          mode: "sandbox",
-          renewalAt: null,
-          updatedAt: new Date().toISOString(),
+          mode: PAYMENTS_MODE,
+          sessionId: session.id,
         });
-        u.plan = b.plan;
-        audit(d, u, "billing.test_plan_selected", { plan: b.plan });
         await save(d);
         return send(res, 200, {
-          subscription: sub,
-          user: safe(u),
-          notice:
-            "Stripe test key is not configured yet. The plan was simulated and no payment was taken.",
+          checkoutUrl: session.url,
+          mode: `stripe_${PAYMENTS_MODE}`,
         });
       }
       if (route === "/api/billing/session" && req.method === "GET") {
-        if (!STRIPE_TEST_KEY)
+        if (!STRIPE_CONFIGURED)
           return send(res, 503, {
-            error: "Stripe test mode is not configured.",
+            error: "Stripe billing is not configured.",
           });
         const id = new URL(
           req.url,
           "https://content-protect.com",
         ).searchParams.get("session_id");
         if (!id) return send(res, 400, { error: "Missing checkout session." });
-        const stripe = new Stripe(STRIPE_TEST_KEY),
+        const stripe = new Stripe(STRIPE_KEY),
           session = await stripe.checkout.sessions.retrieve(id);
         if (session.metadata?.userId !== u.id)
           return send(res, 403, {
             error: "Checkout session does not belong to this account.",
           });
-        if (session.payment_status !== "paid")
+        if (session.status !== "complete" || !session.subscription)
           return send(res, 409, { error: "Checkout is not complete." });
         let sub = d.subscriptions.find((x) => x.userId === u.id);
         if (!sub) {
@@ -1485,31 +1551,34 @@ http
         Object.assign(sub, {
           plan: session.metadata.plan,
           status: "active",
-          mode: "stripe_test",
+          mode: `stripe_${PAYMENTS_MODE}`,
+          stripeLivemode: session.livemode,
+          stripePriceId: session.metadata.priceId,
           stripeCustomerId: session.customer,
           stripeSubscriptionId: session.subscription,
           updatedAt: new Date().toISOString(),
         });
         u.plan = session.metadata.plan;
-        audit(d, u, "billing.test_checkout_completed", {
+        audit(d, u, "billing.checkout_completed", {
           sessionId: id,
           plan: u.plan,
+          mode: PAYMENTS_MODE,
         });
         await save(d);
         return send(res, 200, { subscription: sub, user: safe(u) });
       }
       if (route === "/api/billing/portal" && req.method === "POST") {
-        if (!STRIPE_TEST_KEY)
+        if (!STRIPE_CONFIGURED)
           return send(res, 503, {
-            error: "Stripe test mode is not configured.",
+            error: "Stripe billing is not configured.",
           });
         const sub = d.subscriptions.find((x) => x.userId === u.id);
         if (!sub?.stripeCustomerId)
           return send(res, 409, {
             error:
-              "Complete a Stripe test checkout before opening the billing portal.",
+              "Complete a Stripe checkout before opening the billing portal.",
           });
-        const stripe = new Stripe(STRIPE_TEST_KEY),
+        const stripe = new Stripe(STRIPE_KEY),
           base = (process.env.APP_URL || "https://content-protect.com").replace(
             /\/$/,
             "",
@@ -1518,9 +1587,12 @@ http
             customer: sub.stripeCustomerId,
             return_url: `${base}/`,
           });
-        audit(d, u, "billing.portal_opened", { mode: "stripe_test" });
+        audit(d, u, "billing.portal_opened", { mode: PAYMENTS_MODE });
         await save(d);
-        return send(res, 200, { url: session.url, mode: "stripe_test" });
+        return send(res, 200, {
+          url: session.url,
+          mode: `stripe_${PAYMENTS_MODE}`,
+        });
       }
       if (route === "/api/account/password" && req.method === "PATCH") {
         const b = await parse(req),

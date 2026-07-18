@@ -188,7 +188,13 @@ export async function loadPostgresState() {
         userId: row.user_id,
         plan: row.plan,
         status: row.status,
-        mode: row.stripe_customer_id ? "stripe_test" : "sandbox",
+        mode: row.stripe_customer_id
+          ? row.stripe_livemode
+            ? "stripe_live"
+            : "stripe_test"
+          : "unconfigured",
+        stripeLivemode: row.stripe_livemode,
+        stripePriceId: row.stripe_price_id,
         stripeCustomerId: row.stripe_customer_id,
         stripeSubscriptionId: row.stripe_subscription_id,
         renewalAt: iso(row.current_period_end),
@@ -432,8 +438,8 @@ async function upsertBusinessData(client, state) {
   }
   for (const item of state.subscriptions)
     await client.query(
-      `INSERT INTO subscriptions (id,user_id,plan,status,stripe_customer_id,stripe_subscription_id,current_period_end,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now())
-     ON CONFLICT (user_id) DO UPDATE SET plan=EXCLUDED.plan,status=EXCLUDED.status,stripe_customer_id=EXCLUDED.stripe_customer_id,stripe_subscription_id=EXCLUDED.stripe_subscription_id,current_period_end=EXCLUDED.current_period_end,updated_at=now()`,
+      `INSERT INTO subscriptions (id,user_id,plan,status,stripe_customer_id,stripe_subscription_id,current_period_end,stripe_livemode,stripe_price_id,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now())
+     ON CONFLICT (user_id) DO UPDATE SET plan=EXCLUDED.plan,status=EXCLUDED.status,stripe_customer_id=EXCLUDED.stripe_customer_id,stripe_subscription_id=EXCLUDED.stripe_subscription_id,current_period_end=EXCLUDED.current_period_end,stripe_livemode=EXCLUDED.stripe_livemode,stripe_price_id=EXCLUDED.stripe_price_id,updated_at=now()`,
       [
         item.id,
         item.userId,
@@ -442,6 +448,8 @@ async function upsertBusinessData(client, state) {
         item.stripeCustomerId || null,
         item.stripeSubscriptionId || null,
         item.renewalAt || null,
+        Boolean(item.stripeLivemode),
+        item.stripePriceId || null,
       ],
     );
   for (const item of state.processedWebhooks || [])
