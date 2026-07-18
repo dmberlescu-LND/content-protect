@@ -9,6 +9,7 @@
     "dev:api": "node server.mjs",
     "start": "NODE_ENV=production node server.mjs",
     "build": "vite build",
+    "db:migrate": "node scripts/migrate.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,5 +22,8 @@
     "stripe": "^22.3.2",
     "typescript": "latest",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.5"
   }
 }

@@ -1,127 +1,1723 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import React, { useEffect, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
 import {
-  ArrowRight, Bell, Check, ChevronDown, ChevronRight, CircleCheck, Clock3,
-  Eye, FileCheck2, Fingerprint, Globe2, HelpCircle, Image, LayoutDashboard,
-  Link2, LockKeyhole, Menu, MoreHorizontal, Plus, Search, ShieldCheck,
-  Sparkles, Upload, Video, X, Zap
-} from 'lucide-react';
-import './styles.css';
-import './auth.css';
-import './onboarding.css';
+  ArrowRight,
+  Bell,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleCheck,
+  Clock3,
+  Eye,
+  FileCheck2,
+  Fingerprint,
+  Globe2,
+  HelpCircle,
+  Image,
+  LayoutDashboard,
+  Link2,
+  LockKeyhole,
+  Menu,
+  MoreHorizontal,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  Video,
+  X,
+  Zap,
+} from "lucide-react";
+import "./styles.css";
+import "./auth.css";
+import "./onboarding.css";
 
 const matches = [
-  { id: 1, site: 'mirror-stream.net', type: 'Video', confidence: 98, status: 'Action needed', age: '12 min ago', color: 'violet' },
-  { id: 2, site: 'social-repost.co', type: 'Photo set', confidence: 94, status: 'Monitoring', age: '2 hrs ago', color: 'blue' },
-  { id: 3, site: 'forumvault.io', type: 'Image', confidence: 91, status: 'Takedown sent', age: 'Yesterday', color: 'peach' },
-  { id: 4, site: 'cliparchive.tv', type: 'Video', confidence: 87, status: 'Removed', age: 'Jul 14', color: 'mint' },
+  {
+    id: 1,
+    site: "mirror-stream.net",
+    type: "Video",
+    confidence: 98,
+    status: "Action needed",
+    age: "12 min ago",
+    color: "violet",
+  },
+  {
+    id: 2,
+    site: "social-repost.co",
+    type: "Photo set",
+    confidence: 94,
+    status: "Monitoring",
+    age: "2 hrs ago",
+    color: "blue",
+  },
+  {
+    id: 3,
+    site: "forumvault.io",
+    type: "Image",
+    confidence: 91,
+    status: "Takedown sent",
+    age: "Yesterday",
+    color: "peach",
+  },
+  {
+    id: 4,
+    site: "cliparchive.tv",
+    type: "Video",
+    confidence: 87,
+    status: "Removed",
+    age: "Jul 14",
+    color: "mint",
+  },
 ];
 
 function Logo({ dark = false }) {
-  return <div className={`logo ${dark ? 'dark' : ''}`}><span className="logo-mark"><Fingerprint size={19}/></span><span>content protect</span></div>;
+  return (
+    <div className={`logo ${dark ? "dark" : ""}`}>
+      <span className="logo-mark">
+        <Fingerprint size={19} />
+      </span>
+      <span>content protect</span>
+    </div>
+  );
 }
 
 function Landing({ onStart, onLogin }) {
   const [menu, setMenu] = useState(false);
-  return <div className="landing">
-    <nav className="nav wrap">
-      <Logo />
-      <div className={`nav-links ${menu ? 'open' : ''}`}>
-        <a href="#how">How it works</a><a href="#safety">Safety</a><a href="#pricing">Pricing</a>
-      </div>
-      <div className="nav-actions"><button className="text-btn" onClick={onLogin}>Log in</button><button className="btn btn-dark" onClick={onStart}>Start protecting <ArrowRight size={16}/></button></div>
-      <button className="menu-btn" onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
-    </nav>
-
-    <main>
-      <section className="hero wrap">
-        <div className="hero-copy">
-          <div className="eyebrow"><span></span> Built for creators, not platforms</div>
-          <h1>Your content.<br/><em>Your control.</em></h1>
-          <p className="hero-sub">Find unauthorized copies of your photos and videos across the web. Preserve evidence, send takedowns, and take back control—all from one private workspace.</p>
-          <div className="hero-actions"><button className="btn btn-primary btn-large" onClick={onStart}>Scan my content <ArrowRight size={18}/></button><button className="play-btn" onClick={() => document.querySelector('#how').scrollIntoView({behavior:'smooth'})}><span>▶</span> See how it works</button></div>
-          <div className="trust-line"><div className="faces"><i><LockKeyhole size={13}/></i><i><ShieldCheck size={13}/></i></div><span><b>Private UK-built workspace</b> for creator-led protection</span></div>
+  return (
+    <div className="landing">
+      <nav className="nav wrap">
+        <Logo />
+        <div className={`nav-links ${menu ? "open" : ""}`}>
+          <a href="#how">How it works</a>
+          <a href="#safety">Safety</a>
+          <a href="#pricing">Pricing</a>
         </div>
-        <div className="hero-visual">
-          <div className="orbit orbit-one"></div><div className="orbit orbit-two"></div>
-          <div className="scan-card main-scan">
-            <div className="scan-top"><span className="pulse-dot"></span><span>Scanning the open web</span><b>76%</b></div>
-            <div className="scan-progress"><i></i></div>
-            <div className="content-preview"><div className="portrait abstract-one"><span></span></div><div className="preview-info"><small>PROTECTED ASSET</small><strong>Summer Campaign 04</strong><span><Image size={14}/> 8 reference images</span></div><ShieldCheck className="shield" size={31}/></div>
-            <div className="found-row"><span><Globe2 size={17}/> Sources checked</span><b>14,208</b></div>
-            <div className="found-row danger"><span><Zap size={17}/> Potential matches</span><b>3 found</b></div>
+        <div className="nav-actions">
+          <button className="text-btn" onClick={onLogin}>
+            Log in
+          </button>
+          <button className="btn btn-dark" onClick={onStart}>
+            Start protecting <ArrowRight size={16} />
+          </button>
+        </div>
+        <button className="menu-btn" onClick={() => setMenu(!menu)}>
+          {menu ? <X /> : <Menu />}
+        </button>
+      </nav>
+
+      <main>
+        <section className="hero wrap">
+          <div className="hero-copy">
+            <div className="eyebrow">
+              <span></span> Built for creators, not platforms
+            </div>
+            <h1>
+              Your content.
+              <br />
+              <em>Your control.</em>
+            </h1>
+            <p className="hero-sub">
+              Find unauthorized copies of your photos and videos across the web.
+              Preserve evidence, send takedowns, and take back control—all from
+              one private workspace.
+            </p>
+            <div className="hero-actions">
+              <button className="btn btn-primary btn-large" onClick={onStart}>
+                Scan my content <ArrowRight size={18} />
+              </button>
+              <button
+                className="play-btn"
+                onClick={() =>
+                  document
+                    .querySelector("#how")
+                    .scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                <span>▶</span> See how it works
+              </button>
+            </div>
+            <div className="trust-line">
+              <div className="faces">
+                <i>
+                  <LockKeyhole size={13} />
+                </i>
+                <i>
+                  <ShieldCheck size={13} />
+                </i>
+              </div>
+              <span>
+                <b>Private UK-built workspace</b> for creator-led protection
+              </span>
+            </div>
           </div>
-          <div className="floating-card verified"><CircleCheck size={25}/><div><b>Match verified</b><span>97% confidence</span></div></div>
-          <div className="floating-card private"><LockKeyhole size={21}/><div><b>Private by design</b><span>Encrypted & deleted anytime</span></div></div>
+          <div className="hero-visual">
+            <div className="orbit orbit-one"></div>
+            <div className="orbit orbit-two"></div>
+            <div className="scan-card main-scan">
+              <div className="scan-top">
+                <span className="pulse-dot"></span>
+                <span>Scanning the open web</span>
+                <b>76%</b>
+              </div>
+              <div className="scan-progress">
+                <i></i>
+              </div>
+              <div className="content-preview">
+                <div className="portrait abstract-one">
+                  <span></span>
+                </div>
+                <div className="preview-info">
+                  <small>PROTECTED ASSET</small>
+                  <strong>Summer Campaign 04</strong>
+                  <span>
+                    <Image size={14} /> 8 reference images
+                  </span>
+                </div>
+                <ShieldCheck className="shield" size={31} />
+              </div>
+              <div className="found-row">
+                <span>
+                  <Globe2 size={17} /> Sources checked
+                </span>
+                <b>14,208</b>
+              </div>
+              <div className="found-row danger">
+                <span>
+                  <Zap size={17} /> Potential matches
+                </span>
+                <b>3 found</b>
+              </div>
+            </div>
+            <div className="floating-card verified">
+              <CircleCheck size={25} />
+              <div>
+                <b>Match verified</b>
+                <span>97% confidence</span>
+              </div>
+            </div>
+            <div className="floating-card private">
+              <LockKeyhole size={21} />
+              <div>
+                <b>Private by design</b>
+                <span>Encrypted & deleted anytime</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="proof-strip">
+          <div className="wrap proof-grid">
+            <div>
+              <strong>Private</strong>
+              <span>encrypted reference vault</span>
+            </div>
+            <div>
+              <strong>Creator-led</strong>
+              <span>approval before action</span>
+            </div>
+            <div>
+              <strong>Transparent</strong>
+              <span>clear evidence and status</span>
+            </div>
+            <div>
+              <strong>UK</strong>
+              <span>company and GBP billing</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="how" className="how wrap section">
+          <div className="section-label">Simple protection</div>
+          <h2>
+            From stolen to removed,
+            <br />
+            without the chaos.
+          </h2>
+          <p className="section-lead">
+            A clear workflow that keeps you informed and in control at every
+            step.
+          </p>
+          <div className="steps">
+            <div className="step">
+              <span className="step-num">01</span>
+              <div className="step-icon">
+                <Upload />
+              </div>
+              <h3>Add your content</h3>
+              <p>
+                Upload reference photos or videos securely. You choose what we
+                search for and can delete it anytime.
+              </p>
+            </div>
+            <div className="step">
+              <span className="step-num">02</span>
+              <div className="step-icon">
+                <Search />
+              </div>
+              <h3>We find copies</h3>
+              <p>
+                Visual matching surfaces likely copies and preserves the URL,
+                date, and page evidence for your review.
+              </p>
+            </div>
+            <div className="step">
+              <span className="step-num">03</span>
+              <div className="step-icon">
+                <FileCheck2 />
+              </div>
+              <h3>Take action</h3>
+              <p>
+                Approve a prepared notice, track its status, and escalate
+                stubborn cases with specialist support.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="safety" className="safety section">
+          <div className="wrap safety-grid">
+            <div className="safety-visual">
+              <div className="lock-ring">
+                <LockKeyhole size={54} />
+              </div>
+              <span className="safe-chip chip-a">
+                <Check size={14} /> Encrypted storage
+              </span>
+              <span className="safe-chip chip-b">
+                <Eye size={14} /> You control access
+              </span>
+            </div>
+            <div>
+              <div className="section-label">Privacy first</div>
+              <h2>Intimate content deserves serious protection.</h2>
+              <p>
+                We designed Content Protect for people whose safety, identity,
+                and livelihood depend on discretion. Reference files are
+                private, encrypted, and never used for advertising or public
+                profiles.
+              </p>
+              <ul>
+                <li>
+                  <Check /> Delete your content and account whenever you choose
+                </li>
+                <li>
+                  <Check /> Review every match before any action is taken
+                </li>
+                <li>
+                  <Check /> No contact with uploaders in your name without
+                  approval
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="pricing wrap section">
+          <div className="section-label">Clear pricing</div>
+          <h2>Protection that grows with you.</h2>
+          <div className="price-cards">
+            <div className="price-card">
+              <h3>Monitor</h3>
+              <p>Know where your content appears.</p>
+              <div className="price">
+                <strong>£19</strong>
+                <span>/ month</span>
+              </div>
+              <ul>
+                <li>
+                  <Check /> 50 reference assets
+                </li>
+                <li>
+                  <Check /> Monthly web scans
+                </li>
+                <li>
+                  <Check /> Match alerts & evidence
+                </li>
+              </ul>
+              <button className="btn btn-outline" onClick={onStart}>
+                Choose Monitor
+              </button>
+            </div>
+            <div className="price-card featured">
+              <span className="popular">MOST POPULAR</span>
+              <h3>Protect</h3>
+              <p>Find copies and act quickly.</p>
+              <div className="price">
+                <strong>£49</strong>
+                <span>/ month</span>
+              </div>
+              <ul>
+                <li>
+                  <Check /> 250 reference assets
+                </li>
+                <li>
+                  <Check /> Daily web scans
+                </li>
+                <li>
+                  <Check /> Guided takedown notices
+                </li>
+                <li>
+                  <Check /> Case status tracking
+                </li>
+              </ul>
+              <button className="btn btn-primary" onClick={onStart}>
+                Start protecting
+              </button>
+            </div>
+            <div className="price-card">
+              <h3>Pro</h3>
+              <p>High-volume, priority protection.</p>
+              <div className="price">
+                <strong>£99</strong>
+                <span>/ month</span>
+              </div>
+              <ul>
+                <li>
+                  <Check /> 1,000 reference assets
+                </li>
+                <li>
+                  <Check /> Continuous monitoring
+                </li>
+                <li>
+                  <Check /> Priority specialist review
+                </li>
+              </ul>
+              <button className="btn btn-outline" onClick={onStart}>
+                Choose Pro
+              </button>
+            </div>
+          </div>
+          <p className="disclaimer">
+            *Removal rates and response times shown are product targets for this
+            MVP, not guaranteed outcomes. Court orders and legal representation
+            are not included.
+          </p>
+        </section>
+      </main>
+      <footer>
+        <div className="wrap footer-inner">
+          <Logo dark />
+          <p>Protecting the people behind the content.</p>
+          <div>
+            <a href="/privacy.html">Privacy</a>
+            <a href="/terms.html">Terms</a>
+            <a href="/safety.html">Safety</a>
+          </div>
         </div>
-      </section>
-
-      <section className="proof-strip"><div className="wrap proof-grid"><div><strong>Private</strong><span>encrypted reference vault</span></div><div><strong>Creator-led</strong><span>approval before action</span></div><div><strong>Transparent</strong><span>clear evidence and status</span></div><div><strong>UK</strong><span>company and GBP billing</span></div></div></section>
-
-      <section id="how" className="how wrap section">
-        <div className="section-label">Simple protection</div><h2>From stolen to removed,<br/>without the chaos.</h2><p className="section-lead">A clear workflow that keeps you informed and in control at every step.</p>
-        <div className="steps">
-          <div className="step"><span className="step-num">01</span><div className="step-icon"><Upload/></div><h3>Add your content</h3><p>Upload reference photos or videos securely. You choose what we search for and can delete it anytime.</p></div>
-          <div className="step"><span className="step-num">02</span><div className="step-icon"><Search/></div><h3>We find copies</h3><p>Visual matching surfaces likely copies and preserves the URL, date, and page evidence for your review.</p></div>
-          <div className="step"><span className="step-num">03</span><div className="step-icon"><FileCheck2/></div><h3>Take action</h3><p>Approve a prepared notice, track its status, and escalate stubborn cases with specialist support.</p></div>
-        </div>
-      </section>
-
-      <section id="safety" className="safety section"><div className="wrap safety-grid"><div className="safety-visual"><div className="lock-ring"><LockKeyhole size={54}/></div><span className="safe-chip chip-a"><Check size={14}/> Encrypted storage</span><span className="safe-chip chip-b"><Eye size={14}/> You control access</span></div><div><div className="section-label">Privacy first</div><h2>Intimate content deserves serious protection.</h2><p>We designed Content Protect for people whose safety, identity, and livelihood depend on discretion. Reference files are private, encrypted, and never used for advertising or public profiles.</p><ul><li><Check/> Delete your content and account whenever you choose</li><li><Check/> Review every match before any action is taken</li><li><Check/> No contact with uploaders in your name without approval</li></ul></div></div></section>
-
-      <section id="pricing" className="pricing wrap section"><div className="section-label">Clear pricing</div><h2>Protection that grows with you.</h2><div className="price-cards"><div className="price-card"><h3>Monitor</h3><p>Know where your content appears.</p><div className="price"><strong>£19</strong><span>/ month</span></div><ul><li><Check/> 50 reference assets</li><li><Check/> Monthly web scans</li><li><Check/> Match alerts & evidence</li></ul><button className="btn btn-outline" onClick={onStart}>Choose Monitor</button></div><div className="price-card featured"><span className="popular">MOST POPULAR</span><h3>Protect</h3><p>Find copies and act quickly.</p><div className="price"><strong>£49</strong><span>/ month</span></div><ul><li><Check/> 250 reference assets</li><li><Check/> Daily web scans</li><li><Check/> Guided takedown notices</li><li><Check/> Case status tracking</li></ul><button className="btn btn-primary" onClick={onStart}>Start protecting</button></div><div className="price-card"><h3>Pro</h3><p>High-volume, priority protection.</p><div className="price"><strong>£99</strong><span>/ month</span></div><ul><li><Check/> 1,000 reference assets</li><li><Check/> Continuous monitoring</li><li><Check/> Priority specialist review</li></ul><button className="btn btn-outline" onClick={onStart}>Choose Pro</button></div></div><p className="disclaimer">*Removal rates and response times shown are product targets for this MVP, not guaranteed outcomes. Court orders and legal representation are not included.</p></section>
-    </main>
-    <footer><div className="wrap footer-inner"><Logo dark/><p>Protecting the people behind the content.</p><div><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/safety.html">Safety</a></div></div></footer>
-  </div>;
+      </footer>
+    </div>
+  );
 }
 
-function AccountSettings({user,subscription,onDeleted}){const [passwords,setPasswords]=useState({currentPassword:'',newPassword:''});const [busy,setBusy]=useState(false);const changePassword=async e=>{e.preventDefault();setBusy(true);const r=await fetch('/api/account/password',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(passwords)}),d=await r.json();setBusy(false);if(!r.ok){alert(d.error||'Password could not be changed.');return}setPasswords({currentPassword:'',newPassword:''});alert('Password changed. Other sessions have been signed out.')};const openPortal=async()=>{const r=await fetch('/api/billing/portal',{method:'POST'}),d=await r.json();if(!r.ok){alert(d.error);return}location.assign(d.url)};const deleteAccount=async()=>{const password=prompt('Enter your password to permanently delete your account and encrypted files.');if(!password)return;if(!confirm('This permanently deletes your account, vault files, scans and cases. This cannot be undone.'))return;const r=await fetch('/api/account',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({password})}),d=await r.json();if(!r.ok){alert(d.error||'Account could not be deleted.');return}onDeleted()};return <div className="account-grid"><section className="account-card"><h2>Account security</h2><p>{user.email}</p><form onSubmit={changePassword}><label>Current password<input type="password" required value={passwords.currentPassword} onChange={e=>setPasswords({...passwords,currentPassword:e.target.value})}/></label><label>New password<input type="password" required minLength="10" value={passwords.newPassword} onChange={e=>setPasswords({...passwords,newPassword:e.target.value})}/><small>At least 10 characters</small></label><button className="btn btn-primary" disabled={busy}>{busy?'Updating…':'Change password'}</button></form></section><section className="account-card"><h2>Subscription</h2><p><b>{subscription?.plan||user.plan}</b> · {subscription?.status||'No completed Stripe subscription'}</p><button className="btn btn-outline" onClick={openPortal}>Manage test subscription</button><small>Stripe test portal only. No live charges.</small></section><section className="account-card danger-zone"><h2>Delete account</h2><p>Permanently removes your profile, encrypted reference files, scans, cases and active sessions.</p><button className="btn danger-btn" onClick={deleteAccount}>Delete my account</button></section></div>}
+function AccountSettings({ user, subscription, onDeleted }) {
+  const [passwords, setPasswords] = useState({
+    currentPassword: "",
+    newPassword: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const changePassword = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    const r = await fetch("/api/account/password", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(passwords),
+      }),
+      d = await r.json();
+    setBusy(false);
+    if (!r.ok) {
+      alert(d.error || "Password could not be changed.");
+      return;
+    }
+    setPasswords({ currentPassword: "", newPassword: "" });
+    alert("Password changed. Other sessions have been signed out.");
+  };
+  const openPortal = async () => {
+    const r = await fetch("/api/billing/portal", { method: "POST" }),
+      d = await r.json();
+    if (!r.ok) {
+      alert(d.error);
+      return;
+    }
+    location.assign(d.url);
+  };
+  const deleteAccount = async () => {
+    const password = prompt(
+      "Enter your password to permanently delete your account and encrypted files.",
+    );
+    if (!password) return;
+    if (
+      !confirm(
+        "This permanently deletes your account, vault files, scans and cases. This cannot be undone.",
+      )
+    )
+      return;
+    const r = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password }),
+      }),
+      d = await r.json();
+    if (!r.ok) {
+      alert(d.error || "Account could not be deleted.");
+      return;
+    }
+    onDeleted();
+  };
+  return (
+    <div className="account-grid">
+      <section className="account-card">
+        <h2>Account security</h2>
+        <p>{user.email}</p>
+        <form onSubmit={changePassword}>
+          <label>
+            Current password
+            <input
+              type="password"
+              required
+              value={passwords.currentPassword}
+              onChange={(e) =>
+                setPasswords({ ...passwords, currentPassword: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            New password
+            <input
+              type="password"
+              required
+              minLength="10"
+              value={passwords.newPassword}
+              onChange={(e) =>
+                setPasswords({ ...passwords, newPassword: e.target.value })
+              }
+            />
+            <small>At least 10 characters</small>
+          </label>
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? "Updating…" : "Change password"}
+          </button>
+        </form>
+      </section>
+      <section className="account-card">
+        <h2>Subscription</h2>
+        <p>
+          <b>{subscription?.plan || user.plan}</b> ·{" "}
+          {subscription?.status || "No completed Stripe subscription"}
+        </p>
+        <button className="btn btn-outline" onClick={openPortal}>
+          Manage test subscription
+        </button>
+        <small>Stripe test portal only. No live charges.</small>
+      </section>
+      <section className="account-card danger-zone">
+        <h2>Delete account</h2>
+        <p>
+          Permanently removes your profile, encrypted reference files, scans,
+          cases and active sessions.
+        </p>
+        <button className="btn danger-btn" onClick={deleteAccount}>
+          Delete my account
+        </button>
+      </section>
+    </div>
+  );
+}
 
-function HelpSafety(){return <div className="account-grid help-grid"><section className="account-card"><div className="support-icon"><HelpCircle/></div><h2>Customer support</h2><p>Questions about your account, billing test, evidence or using the protected workspace.</p><a className="btn btn-primary" href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20support">Email support</a><small>Include your account email, but never send passwords or sensitive media by email.</small></section><section className="account-card"><div className="support-icon urgent"><ShieldCheck/></div><h2>Safety guidance</h2><p>Practical steps for intimate-image abuse, account security and situations where contacting an uploader may increase risk.</p><a className="btn btn-outline" href="/safety.html">Open safety centre</a><small>Content Protect is not an emergency or law-enforcement service.</small></section><section className="account-card"><div className="support-icon"><FileCheck2/></div><h2>Report a problem</h2><p>Report a suspected security issue, incorrect match, disputed ownership claim or accessibility problem.</p><a className="btn btn-outline" href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20problem%20report">Send a problem report</a><small>For security reports, describe the issue without including live passwords or private content.</small></section></div>}
+function HelpSafety() {
+  return (
+    <div className="account-grid help-grid">
+      <section className="account-card">
+        <div className="support-icon">
+          <HelpCircle />
+        </div>
+        <h2>Customer support</h2>
+        <p>
+          Questions about your account, billing test, evidence or using the
+          protected workspace.
+        </p>
+        <a
+          className="btn btn-primary"
+          href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20support"
+        >
+          Email support
+        </a>
+        <small>
+          Include your account email, but never send passwords or sensitive
+          media by email.
+        </small>
+      </section>
+      <section className="account-card">
+        <div className="support-icon urgent">
+          <ShieldCheck />
+        </div>
+        <h2>Safety guidance</h2>
+        <p>
+          Practical steps for intimate-image abuse, account security and
+          situations where contacting an uploader may increase risk.
+        </p>
+        <a className="btn btn-outline" href="/safety.html">
+          Open safety centre
+        </a>
+        <small>
+          Content Protect is not an emergency or law-enforcement service.
+        </small>
+      </section>
+      <section className="account-card">
+        <div className="support-icon">
+          <FileCheck2 />
+        </div>
+        <h2>Report a problem</h2>
+        <p>
+          Report a suspected security issue, incorrect match, disputed ownership
+          claim or accessibility problem.
+        </p>
+        <a
+          className="btn btn-outline"
+          href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20problem%20report"
+        >
+          Send a problem report
+        </a>
+        <small>
+          For security reports, describe the issue without including live
+          passwords or private content.
+        </small>
+      </section>
+    </div>
+  );
+}
 
 function Dashboard({ onLogout, user }) {
-  const [tab, setTab] = useState('Overview');
+  const [tab, setTab] = useState("Overview");
   const [modal, setModal] = useState(false);
-  const [filter, setFilter] = useState('All matches');
-  const [data,setData]=useState({matches:[],assets:[],cases:[],scans:[],stats:{matches:0,review:0,active:0,removed:0,sources:0}});
-  const [loading,setLoading]=useState(true);
-  const refresh=async()=>{const r=await fetch('/api/dashboard');if(r.status===401){onLogout();return}const d=await r.json();if(r.ok)setData(d);setLoading(false)};
-  useEffect(()=>{refresh()},[]);
-  const liveMatches=data.matches.length?data.matches:matches;
-  const filtered = useMemo(() => filter === 'All matches' ? liveMatches : liveMatches.filter(m => m.status === filter), [filter,liveMatches]);
-  const initials=(user?.name||'Creator').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
-  const uploadFile=async(e)=>{const file=e.target.files?.[0];if(!file)return;const encoded=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file)});const response=await fetch('/api/assets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:file.name,mime:file.type,data:encoded})});if(!response.ok){const result=await response.json();alert(result.error||'Upload failed');return}setModal(false);await refresh();alert('Content encrypted and added to your private vault.')};
-  const createCase=async(matchId)=>{const response=await fetch('/api/cases',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({matchId})});const result=await response.json();if(!response.ok){alert(result.error||'Could not create case');return}await refresh();setTab('Takedowns');alert('Evidence preserved. The case is waiting for creator approval before any notice is sent.')};
-  const runScan=async()=>{const response=await fetch('/api/scans',{method:'POST'});const result=await response.json();if(!response.ok){alert(result.error||'Scan could not start');return}await refresh();alert(`Sandbox scan complete: ${result.scan.sourcesChecked.toLocaleString()} sources simulated and ${result.scan.matchesFound} matches found. No external website was accessed.`)};
-  const selectPlan=async(plan)=>{const r=await fetch('/api/billing/checkout',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan})});const d=await r.json();if(!r.ok){alert(d.error);return}if(d.checkoutUrl){location.assign(d.checkoutUrl);return}alert(d.notice||`${plan} is active in test mode. No payment was taken.`)};
-  const deleteAsset=async asset=>{if(!confirm(`Permanently delete “${asset.name}” from your encrypted vault?`))return;const r=await fetch(`/api/assets/${asset.id}`,{method:'DELETE'});const d=await r.json();if(!r.ok){alert(d.error||'Could not delete asset');return}await refresh()};
-  const approveCase=async caseId=>{const r=await fetch(`/api/cases/${caseId}/approve`,{method:'POST'});const d=await r.json();if(!r.ok){alert(d.error||'Could not approve case');return}await refresh();alert(d.notice)};
-  const logout=async()=>{await fetch('/api/auth/logout',{method:'POST'});onLogout()};
-  return <div className="app-shell">
-    <aside><Logo dark/><button className="workspace" onClick={()=>setTab('Account')}><span>{initials}</span><div><b>{user?.stageName||user?.name||'Creator'}</b><small>{user?.plan||'Protect'} plan</small></div><ChevronDown size={15}/></button><div className="side-label">WORKSPACE</div>{['Overview','Matches','My content','Takedowns'].map((x,i)=>{const Icon=[LayoutDashboard,Search,Image,FileCheck2][i];return <button key={x} className={`side-link ${tab===x?'active':''}`} onClick={()=>setTab(x)}><Icon size={18}/>{x}{x==='Matches'&&<em>3</em>}</button>})}<div className="side-label lower">ACCOUNT</div><button className={`side-link ${tab==='Billing'?'active':''}`} onClick={()=>setTab('Billing')}><Sparkles size={18}/>Plans & billing</button><button className={`side-link ${tab==='Account'?'active':''}`} onClick={()=>setTab('Account')}><LockKeyhole size={18}/>Account & security</button><button className={`side-link ${tab==='Help & safety'?'active':''}`} onClick={()=>setTab('Help & safety')}><HelpCircle size={18}/>Help & safety</button><div className="upgrade"><Sparkles/><b>Protection active</b><span>Daily scans enabled</span><div><i></i></div><small>Private creator vault</small></div><button className="logout" onClick={logout}>Log out</button></aside>
-    <main className="dashboard"><header><div><button className="mobile-menu"><Menu/></button><span>Workspace</span><ChevronRight size={15}/><b>{tab}</b></div><div><button className="icon-button"><Bell size={19}/><i></i></button><button className="avatar">AM</button></div></header>
-      <div className={`dash-content tab-${tab.replaceAll(' ','-')}`}>
-        <div className="dash-title"><div><p>Saturday, 18 July</p><h1>{tab === 'Overview' ? `Good morning, ${user?.name?.split(' ')[0]||'Creator'}.` : tab}</h1><span>{tab === 'Overview' ? 'Your content is protected. Here’s what changed since your last visit.' : 'Review and manage your protection workspace.'}</span></div><button className="btn btn-primary" onClick={()=>setModal(true)}><Plus size={18}/> Add content</button></div>
-        {tab === 'Overview' && <><div className="stat-grid"><div className="stat-card"><div className="stat-icon purple"><Search/></div><span>Matches found</span><strong>{data.stats.matches}</strong><small>{loading?'Loading…':`${data.assets.length} protected assets`}</small></div><div className="stat-card"><div className="stat-icon amber"><Clock3/></div><span>Need your review</span><strong>{data.stats.review}</strong><small>Creator approval required</small></div><div className="stat-card"><div className="stat-icon blue"><FileCheck2/></div><span>Takedown cases</span><strong>{data.cases.length}</strong><small>{data.stats.active} active</small></div><div className="stat-card"><div className="stat-icon green"><ShieldCheck/></div><span>Successfully removed</span><strong>{data.stats.removed}</strong><small>Verified outcomes only</small></div></div><button className="scan-status scan-button" onClick={runScan}><div className="scanner"><Search size={19}/><i></i></div><div><b>Run protected sandbox scan</b><span>{data.assets.length?'Tests the workflow using your encrypted references':'Add a reference asset before testing a scan'}</span></div><span className="live"><i></i> TEST</span></button></>}
-        {tab==='My content'&&<div className="matches-card"><div className="matches-head"><div><h2>Private reference vault</h2><p>Encrypted files owned by this account</p></div></div>{data.assets.length?data.assets.map(a=><div className="match-row" key={a.id}><div className="thumb mint"><ShieldCheck/></div><div className="source"><b>{a.name}</b><span>{a.mime} · {(a.size/1024/1024).toFixed(2)} MB</span></div><div className="confidence"><b>Encrypted</b></div><div><span className="status removed">{a.status}</span></div><button className="more" title="Delete permanently" onClick={()=>deleteAsset(a)}><X/></button></div>):<div className="empty-state">No reference content yet. Choose “Add content” to test the secure vault.</div>}</div>}
-        {tab==='Takedowns'&&<div className="matches-card"><div className="matches-head"><div><h2>Takedown cases</h2><p>Every action requires creator approval</p></div></div>{data.cases.length?data.cases.map(c=><div className="match-row" key={c.id}><div className="thumb blue"><FileCheck2/></div><div className="source"><b>{c.source}</b><span>Case opened {new Date(c.createdAt).toLocaleDateString('en-GB')}</span></div><div className="confidence"><b>{c.mode==='sandbox'?'Sandbox':'Live'}</b></div><div><span className="status monitoring">{c.status}</span></div>{c.status==='Evidence review'&&<button className="btn btn-primary" onClick={()=>approveCase(c.id)}>Approve test</button>}</div>):<div className="empty-state">No cases yet. Open Matches and select a result to preserve evidence.</div>}</div>}
-        {tab==='Account'&&<AccountSettings user={user} subscription={data.subscription} onDeleted={onLogout}/>}
-        {tab==='Help & safety'&&<HelpSafety/>}
-        {tab==='Billing'?<div className="sandbox-plans"><div className="sandbox-note"><Zap/><div><b>Billing sandbox is active</b><span>Choose any plan to test account permissions. No card details are collected and no payment is taken.</span></div></div><div className="mini-plans">{[['Monitor','£19','Monthly scans'],['Protect','£49','Daily scans + cases'],['Pro','£99','Priority protection']].map(([name,price,desc])=><div className={`mini-plan ${name==='Protect'?'recommended':''}`} key={name}><span>{name==='Protect'?'RECOMMENDED':'CREATOR PLAN'}</span><h3>{name}</h3><strong>{price}<small>/mo</small></strong><p>{desc}</p><button className="btn btn-primary" onClick={()=>selectPlan(name)}>Select in test mode</button></div>)}</div></div>:<div className="matches-card"><div className="matches-head"><div><h2>{tab === 'Takedowns' ? 'Takedown cases' : 'Recent matches'}</h2><p>Potential unauthorized uses detected by visual similarity</p></div><select value={filter} onChange={e=>setFilter(e.target.value)}><option>All matches</option><option>Action needed</option><option>Monitoring</option><option>Takedown sent</option><option>Removed</option></select></div><div className="table-head"><span>FOUND CONTENT</span><span>SOURCE</span><span>CONFIDENCE</span><span>STATUS</span><span></span></div>{filtered.map(m=><div className="match-row" key={m.id}><div className={`thumb ${m.color}`}><div></div><span>{m.type==='Video'?<Video/>:<Image/>}</span></div><div className="source"><b>{m.site}</b><span><Link2/> Public page · {m.age}</span></div><div className="confidence"><b>{m.confidence}%</b><div><i style={{width:m.confidence+'%'}}></i></div></div><div><span className={`status ${m.status.toLowerCase().replaceAll(' ','-')}`}>{m.status}</span></div><button className="more" title="Create protected case" onClick={()=>createCase(m.id)}><Plus/></button></div>)}</div>}
-      </div>
-    </main>
-    {modal && <div className="modal-backdrop" onMouseDown={()=>setModal(false)}><div className="modal" onMouseDown={e=>e.stopPropagation()}><button className="modal-x" onClick={()=>setModal(false)}><X/></button><div className="modal-icon"><Upload/></div><h2>Add reference content</h2><p>Upload content you own so Content Protect can look for likely copies. Nothing is published.</p><label className="dropzone"><Upload/><b>Choose a photo or short test video</b><span>Encrypted locally · test limit 8 MB</span><input type="file" accept="image/*,video/*" onChange={uploadFile}/></label><div className="consent"><ShieldCheck/><span><b>Your privacy comes first</b>Files are encrypted before storage and never appear in a public folder.</span></div></div></div>}
-  </div>;
+  const [filter, setFilter] = useState("All matches");
+  const [data, setData] = useState({
+    matches: [],
+    assets: [],
+    cases: [],
+    scans: [],
+    stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
+  });
+  const [loading, setLoading] = useState(true);
+  const refresh = async () => {
+    const r = await fetch("/api/dashboard");
+    if (r.status === 401) {
+      onLogout();
+      return;
+    }
+    const d = await r.json();
+    if (r.ok) setData(d);
+    setLoading(false);
+  };
+  useEffect(() => {
+    refresh();
+  }, []);
+  const liveMatches = data.matches.length ? data.matches : matches;
+  const filtered = useMemo(
+    () =>
+      filter === "All matches"
+        ? liveMatches
+        : liveMatches.filter((m) => m.status === filter),
+    [filter, liveMatches],
+  );
+  const initials = (user?.name || "Creator")
+    .split(" ")
+    .map((x) => x[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const uploadFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const encoded = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(",")[1]);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    const response = await fetch("/api/assets", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: file.name, mime: file.type, data: encoded }),
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      alert(result.error || "Upload failed");
+      return;
+    }
+    setModal(false);
+    await refresh();
+    alert("Content encrypted and added to your private vault.");
+  };
+  const createCase = async (matchId) => {
+    const response = await fetch("/api/cases", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ matchId }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Could not create case");
+      return;
+    }
+    await refresh();
+    setTab("Takedowns");
+    alert(
+      "Evidence preserved. The case is waiting for creator approval before any notice is sent.",
+    );
+  };
+  const runScan = async () => {
+    const response = await fetch("/api/scans", { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Scan could not start");
+      return;
+    }
+    await refresh();
+    alert(
+      `Sandbox scan complete: ${result.scan.sourcesChecked.toLocaleString()} sources simulated and ${result.scan.matchesFound} matches found. No external website was accessed.`,
+    );
+  };
+  const selectPlan = async (plan) => {
+    const r = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      alert(d.error);
+      return;
+    }
+    if (d.checkoutUrl) {
+      location.assign(d.checkoutUrl);
+      return;
+    }
+    alert(d.notice || `${plan} is active in test mode. No payment was taken.`);
+  };
+  const deleteAsset = async (asset) => {
+    if (
+      !confirm(`Permanently delete “${asset.name}” from your encrypted vault?`)
+    )
+      return;
+    const r = await fetch(`/api/assets/${asset.id}`, { method: "DELETE" });
+    const d = await r.json();
+    if (!r.ok) {
+      alert(d.error || "Could not delete asset");
+      return;
+    }
+    await refresh();
+  };
+  const approveCase = async (caseId) => {
+    const r = await fetch(`/api/cases/${caseId}/approve`, { method: "POST" });
+    const d = await r.json();
+    if (!r.ok) {
+      alert(d.error || "Could not approve case");
+      return;
+    }
+    await refresh();
+    alert(d.notice);
+  };
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    onLogout();
+  };
+  const resendVerification = async () => {
+    const r = await fetch("/api/auth/resend-verification", { method: "POST" });
+    const d = await r.json();
+    alert(
+      r.ok
+        ? d.notice || "Verification email sent."
+        : d.error || "Could not send verification email.",
+    );
+  };
+  return (
+    <div className="app-shell">
+      <aside>
+        <Logo dark />
+        <button className="workspace" onClick={() => setTab("Account")}>
+          <span>{initials}</span>
+          <div>
+            <b>{user?.stageName || user?.name || "Creator"}</b>
+            <small>{user?.plan || "Protect"} plan</small>
+          </div>
+          <ChevronDown size={15} />
+        </button>
+        <div className="side-label">WORKSPACE</div>
+        {["Overview", "Matches", "My content", "Takedowns"].map((x, i) => {
+          const Icon = [LayoutDashboard, Search, Image, FileCheck2][i];
+          return (
+            <button
+              key={x}
+              className={`side-link ${tab === x ? "active" : ""}`}
+              onClick={() => setTab(x)}
+            >
+              <Icon size={18} />
+              {x}
+              {x === "Matches" && <em>3</em>}
+            </button>
+          );
+        })}
+        <div className="side-label lower">ACCOUNT</div>
+        <button
+          className={`side-link ${tab === "Billing" ? "active" : ""}`}
+          onClick={() => setTab("Billing")}
+        >
+          <Sparkles size={18} />
+          Plans & billing
+        </button>
+        <button
+          className={`side-link ${tab === "Account" ? "active" : ""}`}
+          onClick={() => setTab("Account")}
+        >
+          <LockKeyhole size={18} />
+          Account & security
+        </button>
+        <button
+          className={`side-link ${tab === "Help & safety" ? "active" : ""}`}
+          onClick={() => setTab("Help & safety")}
+        >
+          <HelpCircle size={18} />
+          Help & safety
+        </button>
+        <div className="upgrade">
+          <Sparkles />
+          <b>Protection active</b>
+          <span>Daily scans enabled</span>
+          <div>
+            <i></i>
+          </div>
+          <small>Private creator vault</small>
+        </div>
+        <button className="logout" onClick={logout}>
+          Log out
+        </button>
+      </aside>
+      <main className="dashboard">
+        <header>
+          <div>
+            <button className="mobile-menu">
+              <Menu />
+            </button>
+            <span>Workspace</span>
+            <ChevronRight size={15} />
+            <b>{tab}</b>
+          </div>
+          <div>
+            <button className="icon-button">
+              <Bell size={19} />
+              <i></i>
+            </button>
+            <button className="avatar">AM</button>
+          </div>
+        </header>
+        <div className={`dash-content tab-${tab.replaceAll(" ", "-")}`}>
+          {!user.emailVerifiedAt && (
+            <div className="verification-banner">
+              <ShieldCheck />
+              <div>
+                <b>Verify your email before uploading content</b>
+                <span>
+                  We sent a secure 24-hour verification link to {user.email}.
+                </span>
+              </div>
+              <button className="btn btn-outline" onClick={resendVerification}>
+                Resend email
+              </button>
+            </div>
+          )}
+          <div className="dash-title">
+            <div>
+              <p>Saturday, 18 July</p>
+              <h1>
+                {tab === "Overview"
+                  ? `Good morning, ${user?.name?.split(" ")[0] || "Creator"}.`
+                  : tab}
+              </h1>
+              <span>
+                {tab === "Overview"
+                  ? "Your content is protected. Here’s what changed since your last visit."
+                  : "Review and manage your protection workspace."}
+              </span>
+            </div>
+            <button className="btn btn-primary" onClick={() => setModal(true)}>
+              <Plus size={18} /> Add content
+            </button>
+          </div>
+          {tab === "Overview" && (
+            <>
+              <div className="stat-grid">
+                <div className="stat-card">
+                  <div className="stat-icon purple">
+                    <Search />
+                  </div>
+                  <span>Matches found</span>
+                  <strong>{data.stats.matches}</strong>
+                  <small>
+                    {loading
+                      ? "Loading…"
+                      : `${data.assets.length} protected assets`}
+                  </small>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon amber">
+                    <Clock3 />
+                  </div>
+                  <span>Need your review</span>
+                  <strong>{data.stats.review}</strong>
+                  <small>Creator approval required</small>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon blue">
+                    <FileCheck2 />
+                  </div>
+                  <span>Takedown cases</span>
+                  <strong>{data.cases.length}</strong>
+                  <small>{data.stats.active} active</small>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon green">
+                    <ShieldCheck />
+                  </div>
+                  <span>Successfully removed</span>
+                  <strong>{data.stats.removed}</strong>
+                  <small>Verified outcomes only</small>
+                </div>
+              </div>
+              <button className="scan-status scan-button" onClick={runScan}>
+                <div className="scanner">
+                  <Search size={19} />
+                  <i></i>
+                </div>
+                <div>
+                  <b>Run protected sandbox scan</b>
+                  <span>
+                    {data.assets.length
+                      ? "Tests the workflow using your encrypted references"
+                      : "Add a reference asset before testing a scan"}
+                  </span>
+                </div>
+                <span className="live">
+                  <i></i> TEST
+                </span>
+              </button>
+            </>
+          )}
+          {tab === "My content" && (
+            <div className="matches-card">
+              <div className="matches-head">
+                <div>
+                  <h2>Private reference vault</h2>
+                  <p>Encrypted files owned by this account</p>
+                </div>
+              </div>
+              {data.assets.length ? (
+                data.assets.map((a) => (
+                  <div className="match-row" key={a.id}>
+                    <div className="thumb mint">
+                      <ShieldCheck />
+                    </div>
+                    <div className="source">
+                      <b>{a.name}</b>
+                      <span>
+                        {a.mime} · {(a.size / 1024 / 1024).toFixed(2)} MB
+                      </span>
+                    </div>
+                    <div className="confidence">
+                      <b>Encrypted</b>
+                    </div>
+                    <div>
+                      <span className="status removed">{a.status}</span>
+                    </div>
+                    <button
+                      className="more"
+                      title="Delete permanently"
+                      onClick={() => deleteAsset(a)}
+                    >
+                      <X />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  No reference content yet. Choose “Add content” to test the
+                  secure vault.
+                </div>
+              )}
+            </div>
+          )}
+          {tab === "Takedowns" && (
+            <div className="matches-card">
+              <div className="matches-head">
+                <div>
+                  <h2>Takedown cases</h2>
+                  <p>Every action requires creator approval</p>
+                </div>
+              </div>
+              {data.cases.length ? (
+                data.cases.map((c) => (
+                  <div className="match-row" key={c.id}>
+                    <div className="thumb blue">
+                      <FileCheck2 />
+                    </div>
+                    <div className="source">
+                      <b>{c.source}</b>
+                      <span>
+                        Case opened{" "}
+                        {new Date(c.createdAt).toLocaleDateString("en-GB")}
+                      </span>
+                    </div>
+                    <div className="confidence">
+                      <b>{c.mode === "sandbox" ? "Sandbox" : "Live"}</b>
+                    </div>
+                    <div>
+                      <span className="status monitoring">{c.status}</span>
+                    </div>
+                    {c.status === "Evidence review" && (
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => approveCase(c.id)}
+                      >
+                        Approve test
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  No cases yet. Open Matches and select a result to preserve
+                  evidence.
+                </div>
+              )}
+            </div>
+          )}
+          {tab === "Account" && (
+            <AccountSettings
+              user={user}
+              subscription={data.subscription}
+              onDeleted={onLogout}
+            />
+          )}
+          {tab === "Help & safety" && <HelpSafety />}
+          {tab === "Billing" ? (
+            <div className="sandbox-plans">
+              <div className="sandbox-note">
+                <Zap />
+                <div>
+                  <b>Billing sandbox is active</b>
+                  <span>
+                    Choose any plan to test account permissions. No card details
+                    are collected and no payment is taken.
+                  </span>
+                </div>
+              </div>
+              <div className="mini-plans">
+                {[
+                  ["Monitor", "£19", "Monthly scans"],
+                  ["Protect", "£49", "Daily scans + cases"],
+                  ["Pro", "£99", "Priority protection"],
+                ].map(([name, price, desc]) => (
+                  <div
+                    className={`mini-plan ${name === "Protect" ? "recommended" : ""}`}
+                    key={name}
+                  >
+                    <span>
+                      {name === "Protect" ? "RECOMMENDED" : "CREATOR PLAN"}
+                    </span>
+                    <h3>{name}</h3>
+                    <strong>
+                      {price}
+                      <small>/mo</small>
+                    </strong>
+                    <p>{desc}</p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => selectPlan(name)}
+                    >
+                      Select in test mode
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="matches-card">
+              <div className="matches-head">
+                <div>
+                  <h2>
+                    {tab === "Takedowns" ? "Takedown cases" : "Recent matches"}
+                  </h2>
+                  <p>
+                    Potential unauthorized uses detected by visual similarity
+                  </p>
+                </div>
+                <select
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                >
+                  <option>All matches</option>
+                  <option>Action needed</option>
+                  <option>Monitoring</option>
+                  <option>Takedown sent</option>
+                  <option>Removed</option>
+                </select>
+              </div>
+              <div className="table-head">
+                <span>FOUND CONTENT</span>
+                <span>SOURCE</span>
+                <span>CONFIDENCE</span>
+                <span>STATUS</span>
+                <span></span>
+              </div>
+              {filtered.map((m) => (
+                <div className="match-row" key={m.id}>
+                  <div className={`thumb ${m.color}`}>
+                    <div></div>
+                    <span>{m.type === "Video" ? <Video /> : <Image />}</span>
+                  </div>
+                  <div className="source">
+                    <b>{m.site}</b>
+                    <span>
+                      <Link2 /> Public page · {m.age}
+                    </span>
+                  </div>
+                  <div className="confidence">
+                    <b>{m.confidence}%</b>
+                    <div>
+                      <i style={{ width: m.confidence + "%" }}></i>
+                    </div>
+                  </div>
+                  <div>
+                    <span
+                      className={`status ${m.status.toLowerCase().replaceAll(" ", "-")}`}
+                    >
+                      {m.status}
+                    </span>
+                  </div>
+                  <button
+                    className="more"
+                    title="Create protected case"
+                    onClick={() => createCase(m.id)}
+                  >
+                    <Plus />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+      {modal && (
+        <div className="modal-backdrop" onMouseDown={() => setModal(false)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <button className="modal-x" onClick={() => setModal(false)}>
+              <X />
+            </button>
+            <div className="modal-icon">
+              <Upload />
+            </div>
+            <h2>Add reference content</h2>
+            <p>
+              Upload content you own so Content Protect can look for likely
+              copies. Nothing is published.
+            </p>
+            <label className="dropzone">
+              <Upload />
+              <b>Choose a photo or short test video</b>
+              <span>Encrypted locally · test limit 8 MB</span>
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={uploadFile}
+              />
+            </label>
+            <div className="consent">
+              <ShieldCheck />
+              <span>
+                <b>Your privacy comes first</b>Files are encrypted before
+                storage and never appear in a public folder.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function Auth({mode,setMode,onSuccess,onClose}){const [form,setForm]=useState({name:'',stageName:'',email:'',password:''});const [error,setError]=useState('');const [busy,setBusy]=useState(false);const submit=async(e)=>{e.preventDefault();setBusy(true);setError('');try{const r=await fetch(`/api/auth/${mode}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const d=await r.json();if(!r.ok)throw Error(d.error);onSuccess(d.user)}catch(e){setError(e.message)}finally{setBusy(false)}};return <div className="modal-backdrop"><form className="auth-modal" onSubmit={submit}><button type="button" className="modal-x" onClick={onClose}><X/></button><Logo/><div className="auth-heading"><span>PRIVATE CREATOR PROTECTION</span><h2>{mode==='register'?'Create your secure workspace':'Welcome back'}</h2><p>{mode==='register'?'Start in local test mode. No payment is taken.':'Sign in to your protected workspace.'}</p></div>{mode==='register'&&<div className="field-row"><label>Full name<input required maxLength="100" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Stage name<input maxLength="100" value={form.stageName} onChange={e=>setForm({...form,stageName:e.target.value})}/></label></div>}<label>Email address<input type="email" autoComplete="email" required value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Password<input type="password" autoComplete={mode==='register'?'new-password':'current-password'} required minLength={mode==='register'?10:1} maxLength="128" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/><small>{mode==='register'?'10–128 characters':'Enter your account password'}</small></label>{mode==='login'&&<button className="forgot-link" type="button" onClick={()=>setMode('forgot')}>Forgot your password?</button>}{error&&<div className="auth-error">{error}</div>}<button className="btn btn-primary auth-submit" disabled={busy}>{busy?'Securing workspace…':mode==='register'?'Create protected account':'Log in securely'} <ArrowRight size={17}/></button><div className="auth-switch">{mode==='register'?'Already protected?':'New to Content Protect?'} <button type="button" onClick={()=>setMode(mode==='register'?'login':'register')}>{mode==='register'?'Log in':'Create an account'}</button></div><div className="auth-trust"><LockKeyhole/> Passwords are cryptographically protected. Sessions use secure HTTP-only cookies.</div></form></div>}
+function Auth({ mode, setMode, onSuccess, onClose }) {
+  const [form, setForm] = useState({
+    name: "",
+    stageName: "",
+    email: "",
+    password: "",
+    ageConfirmed: false,
+    rightsConfirmed: false,
+    termsAccepted: false,
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch(`/api/auth/${mode}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error);
+      onSuccess(d.user);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop">
+      <form className="auth-modal" onSubmit={submit}>
+        <button type="button" className="modal-x" onClick={onClose}>
+          <X />
+        </button>
+        <Logo />
+        <div className="auth-heading">
+          <span>PRIVATE CREATOR PROTECTION</span>
+          <h2>
+            {mode === "register"
+              ? "Create your secure workspace"
+              : "Welcome back"}
+          </h2>
+          <p>
+            {mode === "register"
+              ? "Start in local test mode. No payment is taken."
+              : "Sign in to your protected workspace."}
+          </p>
+        </div>
+        {mode === "register" && (
+          <div className="field-row">
+            <label>
+              Full name
+              <input
+                required
+                maxLength="100"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </label>
+            <label>
+              Stage name
+              <input
+                maxLength="100"
+                value={form.stageName}
+                onChange={(e) =>
+                  setForm({ ...form, stageName: e.target.value })
+                }
+              />
+            </label>
+          </div>
+        )}
+        <label>
+          Email address
+          <input
+            type="email"
+            autoComplete="email"
+            required
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            autoComplete={
+              mode === "register" ? "new-password" : "current-password"
+            }
+            required
+            minLength={mode === "register" ? 10 : 1}
+            maxLength="128"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+          <small>
+            {mode === "register"
+              ? "10–128 characters"
+              : "Enter your account password"}
+          </small>
+        </label>
+        {mode === "register" && (
+          <div className="eligibility-checks">
+            <label>
+              <input
+                type="checkbox"
+                required
+                checked={form.ageConfirmed}
+                onChange={(e) =>
+                  setForm({ ...form, ageConfirmed: e.target.checked })
+                }
+              />
+              <span>I confirm that I am at least 18 years old.</span>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                required
+                checked={form.rightsConfirmed}
+                onChange={(e) =>
+                  setForm({ ...form, rightsConfirmed: e.target.checked })
+                }
+              />
+              <span>
+                I own or am authorised to protect the content I submit.
+              </span>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                required
+                checked={form.termsAccepted}
+                onChange={(e) =>
+                  setForm({ ...form, termsAccepted: e.target.checked })
+                }
+              />
+              <span>
+                I accept the{" "}
+                <a href="/terms.html" target="_blank">
+                  Terms
+                </a>{" "}
+                and{" "}
+                <a href="/privacy.html" target="_blank">
+                  Privacy Notice
+                </a>
+                .
+              </span>
+            </label>
+          </div>
+        )}
+        {mode === "login" && (
+          <button
+            className="forgot-link"
+            type="button"
+            onClick={() => setMode("forgot")}
+          >
+            Forgot your password?
+          </button>
+        )}
+        {error && <div className="auth-error">{error}</div>}
+        <button className="btn btn-primary auth-submit" disabled={busy}>
+          {busy
+            ? "Securing workspace…"
+            : mode === "register"
+              ? "Create protected account"
+              : "Log in securely"}{" "}
+          <ArrowRight size={17} />
+        </button>
+        <div className="auth-switch">
+          {mode === "register"
+            ? "Already protected?"
+            : "New to Content Protect?"}{" "}
+          <button
+            type="button"
+            onClick={() => setMode(mode === "register" ? "login" : "register")}
+          >
+            {mode === "register" ? "Log in" : "Create an account"}
+          </button>
+        </div>
+        <div className="auth-trust">
+          <LockKeyhole /> Passwords are cryptographically protected. Sessions
+          use secure HTTP-only cookies.
+        </div>
+      </form>
+    </div>
+  );
+}
 
-function ForgotPassword({onBack,onClose}){const [email,setEmail]=useState('');const [busy,setBusy]=useState(false);const [sent,setSent]=useState(false);const [error,setError]=useState('');const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{const r=await fetch('/api/auth/forgot',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email})});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed.');setSent(true)}catch(e){setError(e.message)}finally{setBusy(false)}};return <div className="modal-backdrop"><form className="auth-modal" onSubmit={submit}><button type="button" className="modal-x" onClick={onClose}><X/></button><Logo/><div className="auth-heading"><span>SECURE ACCOUNT RECOVERY</span><h2>{sent?'Check your email':'Reset your password'}</h2><p>{sent?'If an account exists for that address, a secure link is on its way. It expires in 30 minutes.':'Enter the email address used for your protected workspace.'}</p></div>{sent?<div className="recovery-success"><CircleCheck/><div><b>Request received</b><span>For privacy, we do not confirm whether an address is registered.</span></div></div>:<><label>Email address<input type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)}/></label>{error&&<div className="auth-error">{error}</div>}<button className="btn btn-primary auth-submit" disabled={busy}>{busy?'Sending secure link…':'Send reset link'} <ArrowRight size={17}/></button></>}<button className="recovery-back" type="button" onClick={onBack}>Back to login</button><div className="auth-trust"><LockKeyhole/> Reset links are single-use and expire after 30 minutes.</div></form></div>}
+function ForgotPassword({ onBack, onClose }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/auth/forgot", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Request failed.");
+      setSent(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop">
+      <form className="auth-modal" onSubmit={submit}>
+        <button type="button" className="modal-x" onClick={onClose}>
+          <X />
+        </button>
+        <Logo />
+        <div className="auth-heading">
+          <span>SECURE ACCOUNT RECOVERY</span>
+          <h2>{sent ? "Check your email" : "Reset your password"}</h2>
+          <p>
+            {sent
+              ? "If an account exists for that address, a secure link is on its way. It expires in 30 minutes."
+              : "Enter the email address used for your protected workspace."}
+          </p>
+        </div>
+        {sent ? (
+          <div className="recovery-success">
+            <CircleCheck />
+            <div>
+              <b>Request received</b>
+              <span>
+                For privacy, we do not confirm whether an address is registered.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <>
+            <label>
+              Email address
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            {error && <div className="auth-error">{error}</div>}
+            <button className="btn btn-primary auth-submit" disabled={busy}>
+              {busy ? "Sending secure link…" : "Send reset link"}{" "}
+              <ArrowRight size={17} />
+            </button>
+          </>
+        )}
+        <button className="recovery-back" type="button" onClick={onBack}>
+          Back to login
+        </button>
+        <div className="auth-trust">
+          <LockKeyhole /> Reset links are single-use and expire after 30
+          minutes.
+        </div>
+      </form>
+    </div>
+  );
+}
 
-function ResetPassword({token,onDone,onClose}){const [form,setForm]=useState({password:'',confirm:''});const [busy,setBusy]=useState(false);const [error,setError]=useState('');const submit=async e=>{e.preventDefault();setError('');if(form.password!==form.confirm){setError('Passwords do not match.');return}setBusy(true);try{const r=await fetch('/api/auth/reset',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,password:form.password})});const d=await r.json();if(!r.ok)throw Error(d.error||'Password could not be reset.');history.replaceState({},'',location.pathname);onDone()}catch(e){setError(e.message)}finally{setBusy(false)}};return <div className="modal-backdrop"><form className="auth-modal" onSubmit={submit}><button type="button" className="modal-x" onClick={onClose}><X/></button><Logo/><div className="auth-heading"><span>SECURE ACCOUNT RECOVERY</span><h2>Choose a new password</h2><p>Use a unique password you do not use on creator platforms.</p></div><label>New password<input type="password" autoComplete="new-password" required minLength="10" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/><small>At least 10 characters</small></label><label>Confirm new password<input type="password" autoComplete="new-password" required minLength="10" value={form.confirm} onChange={e=>setForm({...form,confirm:e.target.value})}/></label>{error&&<div className="auth-error">{error}</div>}<button className="btn btn-primary auth-submit" disabled={busy}>{busy?'Updating password…':'Set new password'} <ArrowRight size={17}/></button><div className="auth-trust"><LockKeyhole/> Completing this reset signs out all existing sessions.</div></form></div>}
+function ResetPassword({ token, onDone, onClose }) {
+  const [form, setForm] = useState({ password: "", confirm: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (form.password !== form.confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await fetch("/api/auth/reset", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, password: form.password }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Password could not be reset.");
+      history.replaceState({}, "", location.pathname);
+      onDone();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop">
+      <form className="auth-modal" onSubmit={submit}>
+        <button type="button" className="modal-x" onClick={onClose}>
+          <X />
+        </button>
+        <Logo />
+        <div className="auth-heading">
+          <span>SECURE ACCOUNT RECOVERY</span>
+          <h2>Choose a new password</h2>
+          <p>Use a unique password you do not use on creator platforms.</p>
+        </div>
+        <label>
+          New password
+          <input
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength="10"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+          <small>At least 10 characters</small>
+        </label>
+        <label>
+          Confirm new password
+          <input
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength="10"
+            value={form.confirm}
+            onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+          />
+        </label>
+        {error && <div className="auth-error">{error}</div>}
+        <button className="btn btn-primary auth-submit" disabled={busy}>
+          {busy ? "Updating password…" : "Set new password"}{" "}
+          <ArrowRight size={17} />
+        </button>
+        <div className="auth-trust">
+          <LockKeyhole /> Completing this reset signs out all existing sessions.
+        </div>
+      </form>
+    </div>
+  );
+}
 
-function Onboarding({user,onDone}){const [stage,setStage]=useState(1);const [aliases,setAliases]=useState('');const [platforms,setPlatforms]=useState('');const finish=async()=>{const r=await fetch('/api/profile',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({stageName:user.stageName,aliases:aliases.split(',').map(x=>x.trim()).filter(Boolean),platforms:platforms.split(',').map(x=>x.trim()).filter(Boolean),onboardingComplete:true})});const d=await r.json();onDone(d.user)};return <div className="modal-backdrop"><div className="auth-modal onboarding"><div className="onboarding-progress"><i style={{width:`${stage*33.33}%`}}/></div><Logo/><div className="auth-heading"><span>STEP {stage} OF 3</span><h2>{stage===1?'Build your identity shield':stage===2?'Connect your public presence':'Protection rules'}</h2><p>{stage===1?'Add public aliases that could be used to find impersonations.':stage===2?'Only enter public profile URLs—never passwords.':'Content Protect starts safely, with your approval required.'}</p></div>{stage===1&&<label>Stage names and aliases<input placeholder="NameOne, NameTwo" value={aliases} onChange={e=>setAliases(e.target.value)}/><small>Separate names with commas</small></label>}{stage===2&&<label>Public creator profile URLs<input placeholder="https://… , https://…" value={platforms} onChange={e=>setPlatforms(e.target.value)}/><small>We never request passwords for creator platforms</small></label>}{stage===3&&<div className="rule-list"><div><ShieldCheck/><span><b>Creator approval required</b>No notice is sent before you approve the evidence.</span></div><div><LockKeyhole/><span><b>Private reference vault</b>Your source content remains encrypted and private.</span></div><div><Eye/><span><b>Transparent sandbox</b>Test results are always clearly marked as demonstrations.</span></div></div>}<button className="btn btn-primary auth-submit" onClick={()=>stage<3?setStage(stage+1):finish()}>{stage<3?'Continue':'Activate protected workspace'} <ArrowRight size={17}/></button>{stage>1&&<button className="onboarding-back" onClick={()=>setStage(stage-1)}>Back</button>}</div></div>}
+function Onboarding({ user, onDone }) {
+  const [stage, setStage] = useState(1);
+  const [aliases, setAliases] = useState("");
+  const [platforms, setPlatforms] = useState("");
+  const finish = async () => {
+    const r = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        stageName: user.stageName,
+        aliases: aliases
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        platforms: platforms
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        onboardingComplete: true,
+      }),
+    });
+    const d = await r.json();
+    onDone(d.user);
+  };
+  return (
+    <div className="modal-backdrop">
+      <div className="auth-modal onboarding">
+        <div className="onboarding-progress">
+          <i style={{ width: `${stage * 33.33}%` }} />
+        </div>
+        <Logo />
+        <div className="auth-heading">
+          <span>STEP {stage} OF 3</span>
+          <h2>
+            {stage === 1
+              ? "Build your identity shield"
+              : stage === 2
+                ? "Connect your public presence"
+                : "Protection rules"}
+          </h2>
+          <p>
+            {stage === 1
+              ? "Add public aliases that could be used to find impersonations."
+              : stage === 2
+                ? "Only enter public profile URLs—never passwords."
+                : "Content Protect starts safely, with your approval required."}
+          </p>
+        </div>
+        {stage === 1 && (
+          <label>
+            Stage names and aliases
+            <input
+              placeholder="NameOne, NameTwo"
+              value={aliases}
+              onChange={(e) => setAliases(e.target.value)}
+            />
+            <small>Separate names with commas</small>
+          </label>
+        )}
+        {stage === 2 && (
+          <label>
+            Public creator profile URLs
+            <input
+              placeholder="https://… , https://…"
+              value={platforms}
+              onChange={(e) => setPlatforms(e.target.value)}
+            />
+            <small>We never request passwords for creator platforms</small>
+          </label>
+        )}
+        {stage === 3 && (
+          <div className="rule-list">
+            <div>
+              <ShieldCheck />
+              <span>
+                <b>Creator approval required</b>No notice is sent before you
+                approve the evidence.
+              </span>
+            </div>
+            <div>
+              <LockKeyhole />
+              <span>
+                <b>Private reference vault</b>Your source content remains
+                encrypted and private.
+              </span>
+            </div>
+            <div>
+              <Eye />
+              <span>
+                <b>Transparent sandbox</b>Test results are always clearly marked
+                as demonstrations.
+              </span>
+            </div>
+          </div>
+        )}
+        <button
+          className="btn btn-primary auth-submit"
+          onClick={() => (stage < 3 ? setStage(stage + 1) : finish())}
+        >
+          {stage < 3 ? "Continue" : "Activate protected workspace"}{" "}
+          <ArrowRight size={17} />
+        </button>
+        {stage > 1 && (
+          <button
+            className="onboarding-back"
+            onClick={() => setStage(stage - 1)}
+          >
+            Back
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
-function App(){const resetToken=new URLSearchParams(location.search).get('reset');const [view,setView]=useState('loading');const [auth,setAuth]=useState(resetToken?'reset':null);const [user,setUser]=useState(null);useEffect(()=>{fetch('/api/me').then(async r=>r.ok?(await r.json()).user:null).then(async u=>{if(u&&!resetToken){const q=new URLSearchParams(location.search),sessionId=q.get('session_id');if(q.get('checkout')==='success'&&sessionId){const r=await fetch(`/api/billing/session?session_id=${encodeURIComponent(sessionId)}`),d=await r.json();if(r.ok){u=d.user;history.replaceState({},'',location.pathname);alert(`Test subscription activated: ${d.subscription.plan}.`)}}else if(q.get('checkout')==='cancelled'){history.replaceState({},'',location.pathname);alert('Checkout cancelled. No payment was taken.')}setUser(u);setView('dashboard')}else setView('landing')}).catch(()=>setView('landing'))},[]);const success=u=>{setUser(u);setAuth(null);setView('dashboard')};const closeReset=()=>{history.replaceState({},'',location.pathname);setAuth(null)};if(view==='loading')return <div className="boot-screen"><Logo/><span>Opening your protected workspace…</span></div>;return <>{view==='dashboard'?<Dashboard user={user} onLogout={()=>{setUser(null);setView('landing')}}/>:<Landing onStart={()=>setAuth('register')} onLogin={()=>setAuth('login')}/>} {auth==='forgot'&&<ForgotPassword onBack={()=>setAuth('login')} onClose={()=>setAuth(null)}/>} {auth==='reset'&&<ResetPassword token={resetToken} onDone={()=>setAuth('login')} onClose={closeReset}/>} {(auth==='login'||auth==='register')&&<Auth mode={auth} setMode={setAuth} onSuccess={success} onClose={()=>setAuth(null)}/>} {user&&!user.onboardingComplete&&<Onboarding user={user} onDone={setUser}/>}</>}
+function App() {
+  const query = new URLSearchParams(location.search);
+  const resetToken = query.get("reset");
+  const verifyToken = query.get("verify");
+  const [view, setView] = useState("loading");
+  const [auth, setAuth] = useState(resetToken ? "reset" : null);
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    const boot = async () => {
+      try {
+        if (verifyToken) {
+          const verification = await fetch("/api/auth/verify-email", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ token: verifyToken }),
+          });
+          const result = await verification.json();
+          history.replaceState({}, "", location.pathname);
+          alert(
+            verification.ok
+              ? "Email verified successfully."
+              : result.error || "Verification failed.",
+          );
+        }
+        const me = await fetch("/api/me");
+        let u = me.ok ? (await me.json()).user : null;
+        if (u && !resetToken) {
+          const q = new URLSearchParams(location.search),
+            sessionId = q.get("session_id");
+          if (q.get("checkout") === "success" && sessionId) {
+            const r = await fetch(
+                `/api/billing/session?session_id=${encodeURIComponent(sessionId)}`,
+              ),
+              d = await r.json();
+            if (r.ok) {
+              u = d.user;
+              history.replaceState({}, "", location.pathname);
+              alert(`Test subscription activated: ${d.subscription.plan}.`);
+            }
+          } else if (q.get("checkout") === "cancelled") {
+            history.replaceState({}, "", location.pathname);
+            alert("Checkout cancelled. No payment was taken.");
+          }
+          setUser(u);
+          setView("dashboard");
+        } else setView("landing");
+      } catch {
+        setView("landing");
+      }
+    };
+    boot();
+  }, []);
+  const success = (u) => {
+    setUser(u);
+    setAuth(null);
+    setView("dashboard");
+  };
+  const closeReset = () => {
+    history.replaceState({}, "", location.pathname);
+    setAuth(null);
+  };
+  if (view === "loading")
+    return (
+      <div className="boot-screen">
+        <Logo />
+        <span>Opening your protected workspace…</span>
+      </div>
+    );
+  return (
+    <>
+      {view === "dashboard" ? (
+        <Dashboard
+          user={user}
+          onLogout={() => {
+            setUser(null);
+            setView("landing");
+          }}
+        />
+      ) : (
+        <Landing
+          onStart={() => setAuth("register")}
+          onLogin={() => setAuth("login")}
+        />
+      )}{" "}
+      {auth === "forgot" && (
+        <ForgotPassword
+          onBack={() => setAuth("login")}
+          onClose={() => setAuth(null)}
+        />
+      )}{" "}
+      {auth === "reset" && (
+        <ResetPassword
+          token={resetToken}
+          onDone={() => setAuth("login")}
+          onClose={closeReset}
+        />
+      )}{" "}
+      {(auth === "login" || auth === "register") && (
+        <Auth
+          mode={auth}
+          setMode={setAuth}
+          onSuccess={success}
+          onClose={() => setAuth(null)}
+        />
+      )}{" "}
+      {user && !user.onboardingComplete && (
+        <Onboarding user={user} onDone={setUser} />
+      )}
+    </>
+  );
+}
 
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById("root")).render(<App />);
