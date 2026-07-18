@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.traceguard-data/
+.env

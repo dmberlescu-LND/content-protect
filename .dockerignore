@@ -1,0 +1,6 @@
+node_modules
+dist
+.git
+.traceguard-data
+.env
+*.log
