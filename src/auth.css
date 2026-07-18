@@ -1,33 +1,277 @@
-.auth-modal{width:min(540px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:20px;padding:34px;position:relative;box-shadow:0 30px 90px #0005}
-.auth-modal>.logo{justify-content:center;margin-bottom:26px}
-.auth-heading{text-align:center}
-.auth-heading>span{font-size:9px;letter-spacing:1.5px;color:#7256e8;font-weight:800}
-.auth-heading h2{font:750 25px 'Manrope';letter-spacing:-.8px;margin:10px 0 6px}
-.auth-heading p{color:#817c87;font-size:12px;margin:0 0 24px}
-.auth-modal>label,.field-row label{display:flex;flex-direction:column;gap:7px;color:#49454f;font-size:11px;font-weight:700;margin-bottom:14px}
-.auth-modal input{height:45px;border:1px solid #dedbe3;border-radius:9px;padding:0 13px;outline:none;background:#fcfbfd}
-.auth-modal input:focus{border-color:#8066e8;box-shadow:0 0 0 3px #7256e814}
-.auth-modal label small{font-weight:400;color:#99949e}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.auth-submit{width:100%;margin-top:8px}
-.auth-submit:disabled{opacity:.65}
-.auth-error{background:#fff0ee;color:#b74338;border-radius:8px;padding:10px 12px;font-size:11px;margin-bottom:8px}
-.auth-switch{text-align:center;font-size:11px;color:#85808b;margin:18px 0}
-.auth-switch button{border:0;background:none;color:#7256e8;font-weight:700}
-.auth-trust{border-top:1px solid #ece9ef;padding-top:15px;color:#8c8792;font-size:9px;display:flex;justify-content:center;align-items:center;gap:7px}
-.auth-trust svg{width:14px;color:#7256e8}
-.forgot-link{display:block;margin:-8px 0 13px auto;border:0;background:none;color:#7256e8;font-size:10px;font-weight:750;cursor:pointer}
-.forgot-link:hover{text-decoration:underline}
-.recovery-back{display:block;margin:15px auto;border:0;background:none;color:#7256e8;font-size:11px;font-weight:750;cursor:pointer}
-.recovery-success{display:flex;gap:12px;align-items:flex-start;background:#effaf4;border:1px solid #cfedde;color:#286546;border-radius:11px;padding:16px;margin:4px 0 18px}
-.recovery-success svg{flex:0 0 auto}
-.recovery-success div{display:flex;flex-direction:column;gap:4px}
-.recovery-success b{font-size:12px}
-.recovery-success span{font-size:10px;line-height:1.5;color:#547363}
-.help-grid .account-card{display:flex;flex-direction:column;align-items:flex-start}
-.help-grid .account-card .btn{margin-top:auto;text-decoration:none}
-.support-icon{width:44px;height:44px;border-radius:12px;background:#efebff;color:#7256e8;display:grid;place-items:center;margin-bottom:15px}
-.support-icon.urgent{background:#fff0ee;color:#c55045}
-.support-icon svg{width:21px}
-.eligibility-checks{display:grid;gap:9px;margin:4px 0 14px}.eligibility-checks label{display:flex;align-items:flex-start;gap:9px;color:#5f5a66;font-size:10px;line-height:1.45;cursor:pointer}.eligibility-checks input{width:16px;height:16px;flex:0 0 auto;margin-top:0}.eligibility-checks a{color:#7256e8;font-weight:700}.verification-banner{display:flex;align-items:center;gap:13px;background:#fff8e8;border:1px solid #f0dfac;border-radius:12px;padding:14px 16px;margin-bottom:22px;color:#735d22}.verification-banner>svg{flex:0 0 auto}.verification-banner>div{display:flex;flex-direction:column;gap:3px;flex:1}.verification-banner b{font-size:12px}.verification-banner span{font-size:10px;color:#82734b}.verification-banner .btn{height:36px;font-size:10px}
-@media(max-width:600px){.auth-modal{padding:27px 20px}.field-row{grid-template-columns:1fr}}
+.auth-modal {
+  width: min(540px, 100%);
+  max-height: 94vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 34px;
+  position: relative;
+  box-shadow: 0 30px 90px #0005;
+}
+.auth-modal > .logo {
+  justify-content: center;
+  margin-bottom: 26px;
+}
+.auth-heading {
+  text-align: center;
+}
+.auth-heading > span {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #7256e8;
+  font-weight: 800;
+}
+.auth-heading h2 {
+  font: 750 25px "Manrope";
+  letter-spacing: -0.8px;
+  margin: 10px 0 6px;
+}
+.auth-heading p {
+  color: #817c87;
+  font-size: 12px;
+  margin: 0 0 24px;
+}
+.auth-modal > label,
+.field-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #49454f;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.auth-modal input {
+  height: 45px;
+  border: 1px solid #dedbe3;
+  border-radius: 9px;
+  padding: 0 13px;
+  outline: none;
+  background: #fcfbfd;
+}
+.auth-modal input:focus {
+  border-color: #8066e8;
+  box-shadow: 0 0 0 3px #7256e814;
+}
+.auth-modal label small {
+  font-weight: 400;
+  color: #99949e;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.auth-submit {
+  width: 100%;
+  margin-top: 8px;
+}
+.auth-submit:disabled {
+  opacity: 0.65;
+}
+.auth-error {
+  background: #fff0ee;
+  color: #b74338;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.auth-switch {
+  text-align: center;
+  font-size: 11px;
+  color: #85808b;
+  margin: 18px 0;
+}
+.auth-switch button {
+  border: 0;
+  background: none;
+  color: #7256e8;
+  font-weight: 700;
+}
+.auth-trust {
+  border-top: 1px solid #ece9ef;
+  padding-top: 15px;
+  color: #8c8792;
+  font-size: 9px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+}
+.auth-trust svg {
+  width: 14px;
+  color: #7256e8;
+}
+.forgot-link {
+  display: block;
+  margin: -8px 0 13px auto;
+  border: 0;
+  background: none;
+  color: #7256e8;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.forgot-link:hover {
+  text-decoration: underline;
+}
+.recovery-back {
+  display: block;
+  margin: 15px auto;
+  border: 0;
+  background: none;
+  color: #7256e8;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.recovery-success {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #effaf4;
+  border: 1px solid #cfedde;
+  color: #286546;
+  border-radius: 11px;
+  padding: 16px;
+  margin: 4px 0 18px;
+}
+.recovery-success svg {
+  flex: 0 0 auto;
+}
+.recovery-success div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.recovery-success b {
+  font-size: 12px;
+}
+.recovery-success span {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #547363;
+}
+.help-grid .account-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.help-grid .account-card .btn {
+  margin-top: auto;
+  text-decoration: none;
+}
+.support-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #efebff;
+  color: #7256e8;
+  display: grid;
+  place-items: center;
+  margin-bottom: 15px;
+}
+.support-icon.urgent {
+  background: #fff0ee;
+  color: #c55045;
+}
+.support-icon svg {
+  width: 21px;
+}
+.eligibility-checks {
+  display: grid;
+  gap: 9px;
+  margin: 4px 0 14px;
+}
+.eligibility-checks label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #5f5a66;
+  font-size: 10px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.eligibility-checks input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.eligibility-checks a {
+  color: #7256e8;
+  font-weight: 700;
+}
+.verification-banner {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: #fff8e8;
+  border: 1px solid #f0dfac;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+  color: #735d22;
+}
+.verification-banner > svg {
+  flex: 0 0 auto;
+}
+.verification-banner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.verification-banner b {
+  font-size: 12px;
+}
+.verification-banner span {
+  font-size: 10px;
+  color: #82734b;
+}
+.verification-banner .btn {
+  height: 36px;
+  font-size: 10px;
+}
+.mobile-close {
+  display: none;
+}
+@media (max-width: 900px) {
+  .app-shell aside.mobile-open {
+    display: flex;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(86vw, 300px);
+    z-index: 1000;
+    box-shadow: 20px 0 60px #0005;
+  }
+  .mobile-close {
+    display: grid;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    background: #ffffff18;
+    color: #fff;
+  }
+  .verification-banner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .verification-banner .btn {
+    width: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .auth-modal {
+    padding: 27px 20px;
+  }
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -590,6 +590,7 @@ function HelpSafety() {
 
 function Dashboard({ onLogout, user }) {
   const [tab, setTab] = useState("Overview");
+  const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [filter, setFilter] = useState("All matches");
   const [data, setData] = useState({
@@ -734,7 +735,14 @@ function Dashboard({ onLogout, user }) {
   };
   return (
     <div className="app-shell">
-      <aside>
+      <aside className={navOpen ? "mobile-open" : ""}>
+        <button
+          className="mobile-close"
+          aria-label="Close navigation"
+          onClick={() => setNavOpen(false)}
+        >
+          <X />
+        </button>
         <Logo dark />
         <button className="workspace" onClick={() => setTab("Account")}>
           <span>{initials}</span>
@@ -797,7 +805,11 @@ function Dashboard({ onLogout, user }) {
       <main className="dashboard">
         <header>
           <div>
-            <button className="mobile-menu">
+            <button
+              className="mobile-menu"
+              aria-label="Open navigation"
+              onClick={() => setNavOpen(true)}
+            >
               <Menu />
             </button>
             <span>Workspace</span>
@@ -805,11 +817,13 @@ function Dashboard({ onLogout, user }) {
             <b>{tab}</b>
           </div>
           <div>
-            <button className="icon-button">
+            <button className="icon-button" aria-label="Notifications">
               <Bell size={19} />
               <i></i>
             </button>
-            <button className="avatar">AM</button>
+            <button className="avatar" aria-label="Account menu">
+              {initials}
+            </button>
           </div>
         </header>
         <div className={`dash-content tab-${tab.replaceAll(" ", "-")}`}>
@@ -1111,7 +1125,11 @@ function Dashboard({ onLogout, user }) {
       {modal && (
         <div className="modal-backdrop" onMouseDown={() => setModal(false)}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-            <button className="modal-x" onClick={() => setModal(false)}>
+            <button
+              className="modal-x"
+              aria-label="Close upload dialog"
+              onClick={() => setModal(false)}
+            >
               <X />
             </button>
             <div className="modal-icon">
@@ -1180,7 +1198,12 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
   return (
     <div className="modal-backdrop">
       <form className="auth-modal" onSubmit={submit}>
-        <button type="button" className="modal-x" onClick={onClose}>
+        <button
+          type="button"
+          className="modal-x"
+          aria-label="Close account dialog"
+          onClick={onClose}
+        >
           <X />
         </button>
         <Logo />
@@ -1363,7 +1386,12 @@ function ForgotPassword({ onBack, onClose }) {
   return (
     <div className="modal-backdrop">
       <form className="auth-modal" onSubmit={submit}>
-        <button type="button" className="modal-x" onClick={onClose}>
+        <button
+          type="button"
+          className="modal-x"
+          aria-label="Close password recovery"
+          onClick={onClose}
+        >
           <X />
         </button>
         <Logo />
@@ -1448,7 +1476,12 @@ function ResetPassword({ token, onDone, onClose }) {
   return (
     <div className="modal-backdrop">
       <form className="auth-modal" onSubmit={submit}>
-        <button type="button" className="modal-x" onClick={onClose}>
+        <button
+          type="button"
+          className="modal-x"
+          aria-label="Close password reset"
+          onClick={onClose}
+        >
           <X />
         </button>
         <Logo />
