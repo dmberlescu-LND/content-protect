@@ -42,7 +42,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 
 - Verify ownership/authority before acting.
 - Require a versioned declaration for every reference file and an operator-reviewed restricted evidence reference before notice preparation; never treat the registration checkbox alone as proof.
-- Preserve URL, timestamp, page capture and content-match evidence.
+- Preserve URL, timestamp, content-match evidence and a creator-supplied JPEG/PNG/WebP page capture. The capture must be encrypted, SHA-256 bound to the exact case evidence and immutable after case creation; the operator must still review the live URL because the capture is not an independent notarisation.
 - Route notices by the recipient's jurisdiction: UK copyright complaint, US DMCA, platform-specific report, host/CDN/registrar escalation.
 - Include a counter-notice and dispute workflow.
 - Never describe delisting as deletion from the source website.

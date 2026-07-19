@@ -43,7 +43,10 @@ const [
   dpia,
   videoRuntimeTest,
   contentRightsPolicy,
+  pageCapturePolicy,
   takedownPolicy,
+  retentionPolicy,
+  database,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -66,7 +69,10 @@ const [
   read("docs/compliance/DPIA-DRAFT.md"),
   read("scripts/test-video-frames-runtime.mjs"),
   read("content-rights-policy.mjs"),
+  read("page-capture-policy.mjs"),
   read("takedown-policy.mjs"),
+  read("retention-policy.mjs"),
+  read("database.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -78,8 +84,10 @@ for (const [name, page] of [
   requireText(name, page, "E1 1AG");
   requireText(name, page, "white.eagles.dm@gmail.com");
 }
-requireText("privacy notice", privacy, "18 July 2026");
-requireText("privacy notice", privacy, "Version 1.0");
+requireText("privacy notice", privacy, "19 July 2026");
+requireText("privacy notice", privacy, "Version 1.1");
+requireText("privacy notice", privacy, "creator-supplied page captures");
+requireText("privacy notice", privacy, "not independent notarisation");
 requireText("service terms", terms, "19 July 2026");
 requireText("service terms", terms, "Version 1.1");
 for (const [plan, entitlement] of Object.entries(PLAN_ENTITLEMENTS))
@@ -96,6 +104,7 @@ for (const key of [
   "eligibility",
   "sensitiveMediaConsent",
   "contentRightsDeclaration",
+  "pageCaptureConsent",
   "serviceTerms",
   "takedownTemplate",
 ]) {
@@ -162,6 +171,19 @@ requireText("server", server, "contentRightsRecordForAsset");
 requireText("server", server, "contentRightsReview");
 requireText("server", server, 'req.method === "PUT"');
 requireText("server", server, "rightsDeclarationRecordId");
+requireText("page capture policy", pageCapturePolicy, "Evidence capture");
+requireText("page capture policy", pageCapturePolicy, "checksumSha256");
+requireText("page capture policy", pageCapturePolicy, "attestedTargetPage");
+requireText("page capture policy", pageCapturePolicy, "attestedUnaltered");
+requireText("server", server, "/page-capture");
+requireText("server", server, "confirmPageCaptureReviewed");
+requireText("server", server, "case.page_capture_accessed");
+requireText("server", server, "pageCaptureChecksum");
+requireText("retention policy", retentionPolicy, "pageCapture?.assetId");
+requireText("retention database", database, "orphanEvidenceCaptures");
+requireText("operations runbook", runbook, "creator-supplied JPEG");
+requireText("takedown procedure", takedowns, "evidence snapshot version 3");
+requireText("DPIA", dpia, "current page capture");
 requireText("takedown notice", takedownPolicy, "Claimant: ${creator.name}");
 requireText("takedown notice", takedownPolicy, "Rights holder:");
 requireText("takedown notice", takedownPolicy, "Claimant capacity:");

@@ -233,3 +233,20 @@
     display: none;
   }
 }
+.operator-evidence-download {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid #ded9e8;
+  border-radius: 7px;
+  background: #f8f6fc;
+  color: #6247d8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.operator-evidence-download svg {
+  width: 14px;
+}

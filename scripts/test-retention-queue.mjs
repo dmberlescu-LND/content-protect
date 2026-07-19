@@ -115,7 +115,12 @@ const heldState = {
     { userId: "user-2", matchId: "match-2", legalHold: false },
   ],
   matches: [
-    { id: "match-1", userId: "user-1", assetId: "asset-1" },
+    {
+      id: "match-1",
+      userId: "user-1",
+      assetId: "asset-1",
+      evidence: { pageCapture: { assetId: "capture-1" } },
+    },
     { id: "match-2", userId: "user-2", assetId: "asset-2" },
   ],
 };
@@ -129,6 +134,10 @@ assert.equal(
   assetDeletionBlockedByLegalHold(heldState, "user-2", "asset-2"),
   false,
 );
+assert.equal(
+  assetDeletionBlockedByLegalHold(heldState, "user-1", "capture-1"),
+  true,
+);
 
 console.log(
   JSON.stringify({
@@ -137,6 +146,7 @@ console.log(
     partialFailureFailsClosed: true,
     latestFailureClosesReadiness: true,
     legalHoldBlocksDeletion: true,
+    pageCaptureLegalHoldSupported: true,
     explicitDeletionIntentRequired: true,
   }),
 );

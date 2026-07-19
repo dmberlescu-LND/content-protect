@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,10 +20,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
   userId = "11111111-1111-4111-8111-111111111111",
   assetId = "22222222-2222-4222-8222-222222222222",
   editableAssetId = "22222222-2222-4222-8222-222222222223",
+  captureAssetId = "22222222-2222-4222-8222-222222222224",
   matchId = "33333333-3333-4333-8333-333333333333",
   caseId = "44444444-4444-4444-8444-444444444444",
   rightsRecordId = "55555555-5555-4555-8555-555555555555",
   declaredAt = "2026-07-19T20:00:00.000Z",
+  masterSecret = "operator-integration-master-key-" + "m".repeat(40),
+  captureBytes = Buffer.from("operator page capture integration evidence"),
+  captureChecksum = createHash("sha256").update(captureBytes).digest("hex"),
   rightsDeclaration = {
     recordId: rightsRecordId,
     status: "pending",
@@ -36,14 +40,34 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
     declarationVersion: "2026-07-19-v1",
     declaredAt,
   },
+  pageCapture = {
+    assetId: captureAssetId,
+    sourceUrl: "https://copied.example/post",
+    sourceHost: "copied.example",
+    checksumSha256: captureChecksum,
+    mime: "image/png",
+    byteSize: captureBytes.length,
+    width: 1200,
+    height: 800,
+    capturedAt: declaredAt,
+    consentVersion: "2026-07-19-v1",
+    attestedTargetPage: true,
+    attestedUnaltered: true,
+  },
+  evidenceSnapshot = {
+    version: 3,
+    referenceAssetId: assetId,
+    contentRights: rightsDeclaration,
+    pageCapture,
+    capturedAt: declaredAt,
+  },
   creatorSessionToken = "creator-session-token-for-rights-test",
   childEnvironment = {
     ...process.env,
     PORT: String(port),
     NODE_ENV: "test",
     CONTENT_PROTECT_DATA_DIR: dataDirectory,
-    CONTENT_PROTECT_MASTER_KEY:
-      "operator-integration-master-key-" + "m".repeat(40),
+    CONTENT_PROTECT_MASTER_KEY: masterSecret,
     TAKEDOWN_OPERATOR_ID: "test-director-01",
     TAKEDOWN_OPERATOR_TOKEN: token,
     TAKEDOWN_OPERATOR_TOTP_SECRET: secret,
@@ -92,6 +116,17 @@ await writeFile(
         size: 1024,
         checksum: "b".repeat(64),
         status: "Protected",
+        createdAt: declaredAt,
+      },
+      {
+        id: captureAssetId,
+        userId,
+        objectKey: `${userId}/evidence/${captureAssetId}.vault`,
+        name: "page-capture.png",
+        mime: "image/png",
+        size: captureBytes.length,
+        checksum: captureChecksum,
+        status: "Evidence capture",
         createdAt: declaredAt,
       },
     ],
@@ -153,13 +188,10 @@ await writeFile(
         noticeType: "copyright",
         status: "Awaiting operator preparation",
         mode: "sandbox",
-        evidenceSnapshot: {
-          version: 2,
-          referenceAssetId: assetId,
-          contentRights: rightsDeclaration,
-          capturedAt: declaredAt,
-        },
-        evidenceHash: createHash("sha256").update("evidence").digest("hex"),
+        evidenceSnapshot,
+        evidenceHash: createHash("sha256")
+          .update(JSON.stringify(evidenceSnapshot))
+          .digest("hex"),
         noticeDraft: {
           version: "2026-07-19-v3",
           contentRights: rightsDeclaration,
@@ -173,6 +205,32 @@ await writeFile(
     ],
   }),
 );
+
+const captureIv = randomBytes(12),
+  captureCipher = createCipheriv(
+    "aes-256-gcm",
+    createHash("sha256").update(masterSecret).digest(),
+    captureIv,
+  ),
+  encryptedCapture = Buffer.concat([
+    captureIv,
+    captureCipher.update(captureBytes),
+    captureCipher.final(),
+  ]),
+  captureVault = Buffer.concat([
+    encryptedCapture.subarray(0, 12),
+    captureCipher.getAuthTag(),
+    encryptedCapture.subarray(12),
+  ]),
+  capturePath = join(
+    dataDirectory,
+    "vault",
+    userId,
+    "evidence",
+    `${captureAssetId}.vault`,
+  );
+await mkdir(dirname(capturePath), { recursive: true });
+await writeFile(capturePath, captureVault);
 
 for (const key of [
   "DATABASE_URL",
@@ -297,6 +355,56 @@ try {
     pending.rightsDeclaration.rightsHolderName,
     "Test Creator Legal Name",
   );
+  assert.equal(pending.pageCapture.checksumSha256, captureChecksum);
+  assert.equal(
+    (
+      await fetch(
+        `${origin}/api/operator/cases/${caseId}/page-capture/download`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie, origin },
+          body: JSON.stringify({ confirmEvidenceReview: true }),
+        },
+      )
+    ).status,
+    401,
+  );
+  const captureCode = totpAt(secret, Date.now() + 30000),
+    captureDownload = await fetch(
+      `${origin}/api/operator/cases/${caseId}/page-capture/download`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie, origin },
+        body: JSON.stringify({
+          confirmEvidenceReview: true,
+          mfaCode: captureCode,
+        }),
+      },
+    );
+  if (captureDownload.status !== 200)
+    throw new Error(
+      `Operator capture download failed (${captureDownload.status}): ${await captureDownload.text()}`,
+    );
+  assert.deepEqual(
+    Buffer.from(await captureDownload.arrayBuffer()),
+    captureBytes,
+  );
+  assert.equal(
+    (
+      await fetch(
+        `${origin}/api/operator/cases/${caseId}/page-capture/download`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie, origin },
+          body: JSON.stringify({
+            confirmEvidenceReview: true,
+            mfaCode: captureCode,
+          }),
+        },
+      )
+    ).status,
+    409,
+  );
 
   const preparation = {
     recipientEmail: "copyright@example-host.test",
@@ -316,6 +424,20 @@ try {
     ).status,
     400,
   );
+  assert.equal(
+    (
+      await fetch(`${origin}/api/operator/cases/${caseId}/prepare`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie, origin },
+        body: JSON.stringify({
+          ...preparation,
+          confirmRightsReviewed: true,
+          rightsReviewReference: "restricted-test-file-01",
+        }),
+      })
+    ).status,
+    400,
+  );
   const prepared = await fetch(
     `${origin}/api/operator/cases/${caseId}/prepare`,
     {
@@ -324,6 +446,7 @@ try {
       body: JSON.stringify({
         ...preparation,
         confirmRightsReviewed: true,
+        confirmPageCaptureReviewed: true,
         rightsReviewReference: "restricted-test-file-01",
       }),
     },
@@ -370,7 +493,11 @@ try {
       bearerBypassRejected: true,
       oneHourSecureSession: true,
       perAssetRightsVisibleToOperator: true,
+      pageCaptureVisibleToOperator: true,
+      operatorCaptureTotpRequired: true,
+      operatorCaptureReplayRejected: true,
       preparationBlockedWithoutRightsReview: true,
+      preparationBlockedWithoutCaptureReview: true,
       rightsReviewPersisted: true,
       invalidCreatorDeclarationRejected: true,
       legacyAssetDeclarationSupported: true,

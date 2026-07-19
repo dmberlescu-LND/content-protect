@@ -23,6 +23,8 @@
     "test:backup-schedule": "node scripts/test-backup-schedule.mjs",
     "test:media": "node scripts/test-media-validation.mjs",
     "test:content-rights": "node scripts/test-content-rights-policy.mjs",
+    "test:page-capture": "node scripts/test-page-capture-policy.mjs",
+    "test:page-capture-integration": "node scripts/test-page-capture-integration.mjs",
     "test:video-runtime": "node scripts/test-video-frames-runtime.mjs",
     "test:media-backup-policy": "node scripts/test-media-backup-policy.mjs",
     "test:scanner": "node scripts/test-scanner.mjs",

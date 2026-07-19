@@ -349,11 +349,22 @@ const RETENTION_OBJECT_CANDIDATES_SQL = `
           SELECT 1 FROM billing_consents b WHERE b.user_id=u.id
         )
       )
+      OR (
+        a.status = 'Evidence capture'
+        AND a.created_at < $1
+        AND NOT EXISTS (
+          SELECT 1 FROM matches m
+          WHERE m.evidence->'pageCapture'->>'assetId'=a.id::text
+        )
+      )
     )
     AND NOT EXISTS (
       SELECT 1 FROM matches m
       JOIN takedown_cases c ON c.match_id=m.id
-      WHERE m.asset_id=a.id AND c.legal_hold=true
+      WHERE (
+        m.asset_id=a.id
+        OR m.evidence->'pageCapture'->>'assetId'=a.id::text
+      ) AND c.legal_hold=true
     )`;
 
 const retentionEvidenceIdentity = () => ({
@@ -486,7 +497,13 @@ export async function runRetention({
       [
         "expiredAssets",
         "assets",
-        "(deleted_at IS NOT NULL OR retention_until < $1) AND NOT EXISTS (SELECT 1 FROM matches m JOIN takedown_cases c ON c.match_id=m.id WHERE m.asset_id=assets.id AND c.legal_hold=true)",
+        "(deleted_at IS NOT NULL OR retention_until < $1) AND NOT EXISTS (SELECT 1 FROM matches m JOIN takedown_cases c ON c.match_id=m.id WHERE (m.asset_id=assets.id OR m.evidence->'pageCapture'->>'assetId'=assets.id::text) AND c.legal_hold=true)",
+        evaluatedAt,
+      ],
+      [
+        "orphanEvidenceCaptures",
+        "assets",
+        "status='Evidence capture' AND created_at < $1 AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.evidence->'pageCapture'->>'assetId'=assets.id::text)",
         evaluatedAt,
       ],
       [

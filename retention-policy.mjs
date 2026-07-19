@@ -13,7 +13,8 @@ export function assetDeletionBlockedByLegalHold(state, userId, assetId) {
   return (state.matches || []).some(
     (item) =>
       item.userId === userId &&
-      item.assetId === assetId &&
+      (item.assetId === assetId ||
+        item.evidence?.pageCapture?.assetId === assetId) &&
       heldMatchIds.has(item.id),
   );
 }

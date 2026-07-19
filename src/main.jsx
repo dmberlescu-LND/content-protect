@@ -1027,6 +1027,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     blankRightsDeclaration(user?.name),
   );
   const [rightsAsset, setRightsAsset] = useState(null);
+  const [captureMatch, setCaptureMatch] = useState(null);
+  const [pageCaptureConsent, setPageCaptureConsent] = useState(false);
+  const [confirmTargetPage, setConfirmTargetPage] = useState(false);
+  const [confirmUnaltered, setConfirmUnaltered] = useState(false);
   const [filter, setFilter] = useState("All matches");
   const [data, setData] = useState({
     matches: [],
@@ -1074,7 +1078,9 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       rightsForm.rightsHolderName.trim().length >= 2 &&
       rightsForm.authorityEvidenceReference.trim().length >= 3 &&
       rightsForm.confirmRightsAuthority &&
-      rightsForm.confirmRightsAccurate;
+      rightsForm.confirmRightsAccurate,
+    pageCaptureReady =
+      pageCaptureConsent && confirmTargetPage && confirmUnaltered;
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -1137,7 +1143,82 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     await refresh();
     alert("The per-file rights declaration was recorded for operator review.");
   };
+  const openPageCapture = (match) => {
+    setCaptureMatch(match);
+    setPageCaptureConsent(false);
+    setConfirmTargetPage(false);
+    setConfirmUnaltered(false);
+  };
+  const closePageCapture = () => {
+    setCaptureMatch(null);
+    setPageCaptureConsent(false);
+    setConfirmTargetPage(false);
+    setConfirmUnaltered(false);
+  };
+  const uploadPageCapture = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !captureMatch) return;
+    const encoded = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const response = await fetch(
+      `/api/matches/${captureMatch.id}/page-capture`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: file.name,
+          mime: file.type,
+          data: encoded,
+          pageCaptureConsent,
+          confirmTargetPage,
+          confirmUnaltered,
+        }),
+      },
+    );
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "The page capture could not be preserved.");
+      return;
+    }
+    closePageCapture();
+    await refresh();
+    alert(
+      "The encrypted page capture and its SHA-256 integrity hash were preserved.",
+    );
+  };
+  const downloadPageCapture = async (match) => {
+    const password = prompt(
+      "Enter your password to decrypt and download this preserved page capture.",
+    );
+    if (!password) return;
+    const response = await fetch(
+      `/api/matches/${match.id}/page-capture/download`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password }),
+      },
+    );
+    if (!response.ok) {
+      const result = await response.json();
+      alert(result.error || "The page capture could not be downloaded.");
+      return;
+    }
+    await saveDownload(response, `page-capture-${match.id}.png`);
+  };
   const createCase = async (matchId) => {
+    const match = data.matches.find((item) => item.id === matchId);
+    if (!match?.pageCapture) {
+      if (match) openPageCapture(match);
+      alert(
+        "Preserve a current screenshot of the matched public page before opening the case.",
+      );
+      return;
+    }
     const response = await fetch("/api/cases", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -1735,7 +1816,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <option>All matches</option>
                   <option>Action needed</option>
                   <option>Monitoring</option>
-                  <option>Takedown sent</option>
+                  <option>Case review</option>
+                  <option>Your approval</option>
+                  <option>Delivery pending</option>
+                  <option>Reported</option>
                   <option>Removed</option>
                 </select>
               </div>
@@ -1753,7 +1837,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 </div>
               )}
               {filtered.map((m) => (
-                <div className="match-row" key={m.id}>
+                <div className="match-row content-match-row" key={m.id}>
                   <div className={`thumb ${m.color}`}>
                     <div></div>
                     <span>{m.type === "Video" ? <Video /> : <Image />}</span>
@@ -1762,6 +1846,12 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     <b>{m.site}</b>
                     <span>
                       <Link2 /> Public page · {m.age}
+                    </span>
+                    <span className={m.pageCapture ? "capture-ok" : ""}>
+                      <FileCheck2 />
+                      {m.pageCapture
+                        ? `Capture preserved · ${m.pageCapture.checksumSha256.slice(0, 10)}…`
+                        : "Page capture required for a case"}
                     </span>
                   </div>
                   <div className="confidence">
@@ -1777,19 +1867,158 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                       {m.status}
                     </span>
                   </div>
-                  <button
-                    className="more"
-                    title="Create protected case"
-                    onClick={() => createCase(m.id)}
-                  >
-                    <Plus />
-                  </button>
+                  <div className="match-actions">
+                    <button
+                      className="more"
+                      title={
+                        m.pageCapture
+                          ? m.pageCaptureLocked
+                            ? "Review the capture preserved in the case"
+                            : "Review or replace page capture"
+                          : "Add page capture"
+                      }
+                      onClick={() => openPageCapture(m)}
+                    >
+                      <FileCheck2 />
+                    </button>
+                    <button
+                      className="more"
+                      title="Create protected case"
+                      onClick={() => createCase(m.id)}
+                    >
+                      <Plus />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
       </main>
+      {captureMatch && (
+        <div className="modal-backdrop" onMouseDown={closePageCapture}>
+          <div
+            className="modal capture-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              className="modal-x"
+              aria-label="Close page-capture dialog"
+              onClick={closePageCapture}
+            >
+              <X />
+            </button>
+            <div className="modal-icon">
+              <FileCheck2 />
+            </div>
+            <h2>Preserve the matched page</h2>
+            <p>
+              Take a current screenshot that clearly shows the matched content
+              and page context. It is encrypted and its integrity hash is bound
+              to the case.
+            </p>
+            <div className="capture-target">
+              <b>{captureMatch.site}</b>
+              <span>{captureMatch.sourceUrl}</span>
+              {captureMatch.pageCapture && (
+                <small>
+                  Existing SHA-256: {captureMatch.pageCapture.checksumSha256}
+                </small>
+              )}
+            </div>
+            {captureMatch.pageCapture && (
+              <button
+                className="btn btn-outline capture-download"
+                onClick={() => downloadPageCapture(captureMatch)}
+              >
+                <Download /> Download preserved capture
+              </button>
+            )}
+            {captureMatch.pageCaptureLocked ? (
+              <div className="consent">
+                <LockKeyhole />
+                <span>
+                  <b>Immutable case evidence</b>This capture is already bound to
+                  a case and cannot be replaced.
+                </span>
+              </div>
+            ) : (
+              <>
+                <label className="consent consent-checkbox">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={pageCaptureConsent}
+                    onChange={(event) =>
+                      setPageCaptureConsent(event.target.checked)
+                    }
+                  />
+                  <span>
+                    <b>Explicit evidence-processing consent</b>I consent to
+                    private processing of this screenshot as case evidence. It
+                    may contain sensitive or special-category information.
+                  </span>
+                </label>
+                <label className="consent consent-checkbox">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={confirmTargetPage}
+                    onChange={(event) =>
+                      setConfirmTargetPage(event.target.checked)
+                    }
+                  />
+                  <span>
+                    <b>Target-page confirmation</b>This screenshot shows the
+                    public URL identified above and the suspected copied
+                    content.
+                  </span>
+                </label>
+                <label className="consent consent-checkbox">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={confirmUnaltered}
+                    onChange={(event) =>
+                      setConfirmUnaltered(event.target.checked)
+                    }
+                  />
+                  <span>
+                    <b>Accuracy confirmation</b>The relevant page and content
+                    have not been manipulated; only unrelated material may have
+                    been cropped out.
+                  </span>
+                </label>
+                <label
+                  className={`dropzone ${pageCaptureReady ? "" : "disabled"}`}
+                >
+                  <Upload />
+                  <b>
+                    {captureMatch.pageCapture
+                      ? "Choose a replacement screenshot"
+                      : "Choose a screenshot"}
+                  </b>
+                  <span>JPEG, PNG or WebP · maximum 8 MB</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={!pageCaptureReady}
+                    onChange={uploadPageCapture}
+                  />
+                </label>
+              </>
+            )}
+            <div className="consent">
+              <ShieldCheck />
+              <span>
+                <b>Evidence is not published</b>The original encrypted file and
+                its SHA-256 checksum remain private. A trained operator must
+                still review the live URL and the capture.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
       {modal && (
         <div className="modal-backdrop" onMouseDown={() => setModal(false)}>
           <div
@@ -2449,10 +2678,11 @@ function OperatorConsole() {
       !form.legalBasis ||
       !form.rightsReviewReference ||
       !form.rightsReviewed ||
+      !form.pageCaptureReviewed ||
       !form.jurisdictionReviewed
     ) {
       setError(
-        "Review the per-file rights declaration, recipient, HTTPS source, jurisdiction and legal basis before preparation.",
+        "Review the per-file rights declaration, preserved page capture, recipient, HTTPS source, jurisdiction and legal basis before preparation.",
       );
       return;
     }
@@ -2462,6 +2692,7 @@ function OperatorConsole() {
       body: JSON.stringify({
         ...form,
         confirmRightsReviewed: true,
+        confirmPageCaptureReviewed: true,
         confirmRecipientReviewed: true,
         confirmJurisdictionReviewed: true,
       }),
@@ -2473,6 +2704,39 @@ function OperatorConsole() {
     }
     setError("");
     await loadCases();
+  };
+  const downloadCaseCapture = async (item) => {
+    if (
+      !confirm(
+        "Open this sensitive capture only if it is necessary for the current case review. Continue?",
+      )
+    )
+      return;
+    const code = prompt(
+      "Enter a current authenticator code. This code cannot then be reused to send a notice.",
+    );
+    if (!/^\d{6}$/.test(String(code || "").replace(/\s/g, ""))) {
+      setError("A current six-digit authenticator code is required.");
+      return;
+    }
+    const response = await fetch(
+      `/api/operator/cases/${item.id}/page-capture/download`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          confirmEvidenceReview: true,
+          mfaCode: String(code).replace(/\s/g, ""),
+        }),
+      },
+    );
+    if (!response.ok) {
+      const result = await response.json();
+      setError(result.error || "The page capture could not be downloaded.");
+      return;
+    }
+    setError("");
+    await saveDownload(response, `case-${item.id}-page-capture`);
   };
   const dispatch = async (caseId) => {
     const form = forms[caseId] || {},
@@ -2611,6 +2875,26 @@ function OperatorConsole() {
                   <dd className="operator-hash">{item.evidenceHash}</dd>
                 </div>
                 <div>
+                  <dt>Preserved page capture</dt>
+                  <dd>
+                    {item.pageCapture ? (
+                      <>
+                        <span className="operator-hash">
+                          {item.pageCapture.checksumSha256}
+                        </span>
+                        <button
+                          className="operator-evidence-download"
+                          onClick={() => downloadCaseCapture(item)}
+                        >
+                          <Download /> Review encrypted capture
+                        </button>
+                      </>
+                    ) : (
+                      "Missing"
+                    )}
+                  </dd>
+                </div>
+                <div>
                   <dt>Declared rights holder</dt>
                   <dd>
                     {item.rightsDeclaration?.rightsHolderName || "Missing"}
@@ -2728,23 +3012,42 @@ function OperatorConsole() {
               )}
               <div className="operator-checks">
                 {item.status === "Awaiting operator preparation" && (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={forms[item.id]?.rightsReviewed || false}
-                      onChange={(event) =>
-                        setForms({
-                          ...forms,
-                          [item.id]: {
-                            ...forms[item.id],
-                            rightsReviewed: event.target.checked,
-                          },
-                        })
-                      }
-                    />
-                    I reviewed the per-file ownership/authority declaration and
-                    its restricted supporting record.
-                  </label>
+                  <>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={forms[item.id]?.rightsReviewed || false}
+                        onChange={(event) =>
+                          setForms({
+                            ...forms,
+                            [item.id]: {
+                              ...forms[item.id],
+                              rightsReviewed: event.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      I reviewed the per-file ownership/authority declaration
+                      and its restricted supporting record.
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={forms[item.id]?.pageCaptureReviewed || false}
+                        onChange={(event) =>
+                          setForms({
+                            ...forms,
+                            [item.id]: {
+                              ...forms[item.id],
+                              pageCaptureReviewed: event.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      I reviewed the preserved page capture, its live URL and
+                      SHA-256 integrity binding.
+                    </label>
+                  </>
                 )}
                 {item.status === "Approved — delivery pending" && (
                   <>

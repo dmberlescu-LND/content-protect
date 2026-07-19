@@ -93,6 +93,13 @@ import {
   contentRightsReview,
   contentRightsSnapshot,
 } from "./content-rights-policy.mjs";
+import {
+  PAGE_CAPTURE_ASSET_STATUS,
+  mergeProviderEvidence,
+  pageCaptureMetadata,
+  pageCaptureSnapshot,
+  referenceAssets,
+} from "./page-capture-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -522,6 +529,19 @@ function audit(d, u, action, details = {}, { actorSubject = null } = {}) {
 }
 function evidenceDigest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+function creatorVisibleMatchStatus(match, cases) {
+  const caseRecord = cases.find((item) => item.matchId === match.id);
+  if (!caseRecord) return match.status;
+  return (
+    {
+      "Awaiting operator preparation": "Case review",
+      "Awaiting creator approval": "Your approval",
+      "Approved — delivery pending": "Delivery pending",
+      "Submitted — awaiting delivery confirmation": "Reported",
+      Removed: "Removed",
+    }[caseRecord.status] || "Case review"
+  );
 }
 function safeHttpsReference(value) {
   try {
@@ -1166,12 +1186,93 @@ const appServer = http.createServer(async (req, res) => {
               legalBasis: item.legalBasis || null,
               rightsDeclaration: item.evidenceSnapshot?.contentRights || null,
               rightsReview: item.noticeDraft?.rightsReview || null,
+              pageCapture: item.evidenceSnapshot?.pageCapture || null,
               claimant: creator
                 ? { name: creator.name, stageName: creator.stageName || null }
                 : null,
             };
           }),
       });
+    }
+    if (
+      route.match(/^\/api\/operator\/cases\/[^/]+\/page-capture\/download$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-capture-download:${ip}`, 30, 3600000))
+          .allowed
+      )
+        return send(res, 429, {
+          error: "Too many evidence download attempts.",
+        });
+      const caseId = route.split("/")[4],
+        b = await parse(req),
+        caseRecord = d.cases.find((item) => item.id === caseId);
+      if (!caseRecord) return send(res, 404, { error: "Case not found." });
+      if (
+        evidenceDigest(caseRecord.evidenceSnapshot) !== caseRecord.evidenceHash
+      )
+        return send(res, 409, {
+          error:
+            "The preserved evidence hash no longer matches and the case must be escalated.",
+        });
+      if (b.confirmEvidenceReview !== true)
+        return send(res, 400, {
+          error: "Confirm that the capture is required for this case review.",
+        });
+      if (!operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode))
+        return send(res, 401, {
+          error: "A current authenticator code is required.",
+        });
+      const totpCode = String(b.mfaCode || "").replace(/\s/g, "");
+      if (
+        !(
+          await allowed(
+            req,
+            `operator-totp:${OPERATOR_CONFIGURATION.id}:${totpCode}`,
+            1,
+            90000,
+          )
+        ).allowed
+      )
+        return send(res, 409, {
+          error:
+            "That authenticator code was already used. Wait for a new code.",
+        });
+      const capture = caseRecord.evidenceSnapshot?.pageCapture,
+        asset = d.assets.find(
+          (item) =>
+            item.id === capture?.assetId &&
+            item.userId === caseRecord.userId &&
+            item.status === PAGE_CAPTURE_ASSET_STATUS,
+        );
+      if (!asset || capture.checksumSha256 !== asset.checksum)
+        return send(res, 409, {
+          error:
+            "The preserved page capture is unavailable or failed its integrity binding.",
+        });
+      const encrypted = await getEncryptedObject(asset.objectKey, VAULT),
+        original = unvault(encrypted);
+      if (
+        createHash("sha256").update(original).digest("hex") !== asset.checksum
+      )
+        throw new Error("Page-capture integrity verification failed.");
+      audit(
+        d,
+        null,
+        "case.page_capture_accessed",
+        { caseId, captureChecksum: asset.checksum },
+        { actorSubject: currentOperatorSubject() },
+      );
+      await save(d);
+      return sendDownload(
+        res,
+        original,
+        asset.mime,
+        attachmentName(asset.name, `case-${caseId}-page-capture`),
+      );
     }
     if (
       route.match(/^\/api\/operator\/cases\/[^/]+\/prepare$/) &&
@@ -1197,6 +1298,28 @@ const appServer = http.createServer(async (req, res) => {
       if (!caseRecord) return send(res, 404, { error: "Case not found." });
       if (caseRecord.status !== "Awaiting operator preparation")
         return send(res, 409, { error: "Case is not awaiting preparation." });
+      if (
+        evidenceDigest(caseRecord.evidenceSnapshot) !== caseRecord.evidenceHash
+      )
+        return send(res, 409, {
+          error:
+            "The preserved evidence hash no longer matches and the case must be escalated.",
+        });
+      const preservedCapture = caseRecord.evidenceSnapshot?.pageCapture,
+        preservedCaptureAsset = d.assets.find(
+          (item) =>
+            item.id === preservedCapture?.assetId &&
+            item.userId === caseRecord.userId &&
+            item.status === PAGE_CAPTURE_ASSET_STATUS,
+        );
+      if (
+        !preservedCaptureAsset ||
+        preservedCapture.checksumSha256 !== preservedCaptureAsset.checksum
+      )
+        return send(res, 409, {
+          error:
+            "The preserved page capture is unavailable or failed its integrity binding.",
+        });
       let rightsReview;
       try {
         rightsReview = contentRightsReview(
@@ -1217,12 +1340,14 @@ const appServer = http.createServer(async (req, res) => {
         !recipientSource ||
         jurisdiction.length < 3 ||
         legalBasis.length < 3 ||
+        !caseRecord.evidenceSnapshot?.pageCapture?.checksumSha256 ||
+        b.confirmPageCaptureReviewed !== true ||
         b.confirmRecipientReviewed !== true ||
         b.confirmJurisdictionReviewed !== true
       )
         return send(res, 400, {
           error:
-            "Verified rights evidence, recipient, HTTPS source, jurisdiction and legal basis are required.",
+            "Verified rights evidence, reviewed page capture, recipient, HTTPS source, jurisdiction and legal basis are required.",
         });
       const creator = d.users.find((user) => user.id === caseRecord.userId);
       if (!creator)
@@ -1257,6 +1382,8 @@ const appServer = http.createServer(async (req, res) => {
           operatorReference: OPERATOR_CONFIGURATION.id,
           rightsDeclarationRecordId: rightsReview.declarationRecordId,
           rightsReviewReference: rightsReview.reviewReference,
+          pageCaptureChecksum:
+            caseRecord.evidenceSnapshot.pageCapture.checksumSha256,
         },
         at: caseRecord.preparedAt,
       });
@@ -1268,6 +1395,8 @@ const appServer = http.createServer(async (req, res) => {
           caseId,
           noticeHash: preparedHash,
           rightsDeclarationRecordId: rightsReview.declarationRecordId,
+          pageCaptureChecksum:
+            caseRecord.evidenceSnapshot.pageCapture.checksumSha256,
         },
         { actorSubject: currentOperatorSubject() },
       );
@@ -1856,29 +1985,27 @@ const appServer = http.createServer(async (req, res) => {
       );
     }
     if (route === "/api/dashboard") {
-      const assets = d.assets
-          .filter((x) => x.userId === u.id)
-          .map((asset) => {
-            const rightsRecord = contentRightsRecordForAsset(
-                d.verifications,
-                u.id,
-                asset.id,
-              ),
-              rights = contentRightsSnapshot(rightsRecord);
-            return {
-              ...asset,
-              rights: rights
-                ? {
-                    status: rights.status,
-                    role: rights.role,
-                    roleLabel: rights.roleLabel,
-                    rightsHolderName: rights.rightsHolderName,
-                    declarationVersion: rights.declarationVersion,
-                    declaredAt: rights.declaredAt,
-                  }
-                : null,
-            };
-          }),
+      const assets = referenceAssets(d.assets, u.id).map((asset) => {
+          const rightsRecord = contentRightsRecordForAsset(
+              d.verifications,
+              u.id,
+              asset.id,
+            ),
+            rights = contentRightsSnapshot(rightsRecord);
+          return {
+            ...asset,
+            rights: rights
+              ? {
+                  status: rights.status,
+                  role: rights.role,
+                  roleLabel: rights.roleLabel,
+                  rightsHolderName: rights.rightsHolderName,
+                  declarationVersion: rights.declarationVersion,
+                  declaredAt: rights.declaredAt,
+                }
+              : null,
+          };
+        }),
         cases = d.cases.filter((x) => x.userId === u.id),
         scans = d.scans.filter((x) => x.userId === u.id),
         subscription = activeSubscription(d, u.id),
@@ -1889,9 +2016,9 @@ const appServer = http.createServer(async (req, res) => {
           .map(({ confidence, ...m }) => ({
             ...m,
             matchScore: confidence,
-            status: cases.some((c) => c.matchId === m.id)
-              ? "Takedown sent"
-              : m.status,
+            pageCapture: pageCaptureSnapshot(m, d.assets, u.id),
+            pageCaptureLocked: cases.some((c) => c.matchId === m.id),
+            status: creatorVisibleMatchStatus(m, cases),
           })),
         creatorCases = cases.map((item) => {
           if (item.status !== "Awaiting creator approval") return item;
@@ -1967,9 +2094,7 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "An active Content Protect subscription is required before adding reference files.",
         });
-      const currentAssetCount = d.assets.filter(
-          (item) => item.userId === u.id,
-        ).length,
+      const currentAssetCount = referenceAssets(d.assets, u.id).length,
         allowance = assetAllowance(subscription.plan, currentAssetCount);
       if (!allowance.canAdd)
         return send(res, 409, {
@@ -2058,6 +2183,182 @@ const appServer = http.createServer(async (req, res) => {
         asset: a,
         rights: contentRightsSnapshot(rightsRecord),
       });
+    }
+    if (
+      route.match(/^\/api\/matches\/[^/]+\/page-capture$/) &&
+      req.method === "POST"
+    ) {
+      if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
+        return send(res, 403, {
+          error:
+            "Verify your email, age and eligibility before preserving evidence.",
+        });
+      const subscription = activeSubscription(d, u.id);
+      if (!subscription || !planEntitlements(subscription.plan)?.canCreateCases)
+        return send(res, 402, {
+          error:
+            "An active Protect or Pro subscription is required to preserve takedown evidence.",
+        });
+      const matchId = route.split("/")[3],
+        match = d.matches.find(
+          (item) => item.id === matchId && item.userId === u.id,
+        );
+      if (!match) return send(res, 404, { error: "Match not found." });
+      if (d.cases.some((item) => item.matchId === match.id))
+        return send(res, 409, {
+          error:
+            "The page capture is already preserved in a takedown case and cannot be replaced.",
+        });
+      const b = await parse(req),
+        raw = Buffer.from(b.data || "", "base64");
+      if (!b.name || !b.mime || !raw.length)
+        return send(res, 400, { error: "Missing page-capture file data." });
+      if (
+        b.pageCaptureConsent !== true ||
+        b.confirmTargetPage !== true ||
+        b.confirmUnaltered !== true
+      )
+        return send(res, 400, {
+          error:
+            "Consent and both page-capture accuracy confirmations are required.",
+        });
+      if (raw.length > 8e6)
+        return send(res, 413, {
+          error: "Current page-capture limit: 8 MB.",
+        });
+      if (!["image/jpeg", "image/png", "image/webp"].includes(b.mime))
+        return send(res, 415, {
+          error: "Page captures must be JPEG, PNG or WebP images.",
+        });
+      let media;
+      try {
+        media = await inspectMedia(raw, b.mime);
+      } catch (error) {
+        if (error instanceof MediaValidationError)
+          return send(res, 415, { error: error.message });
+        throw error;
+      }
+      if (!media.mime.startsWith("image/"))
+        return send(res, 415, {
+          error: "Page captures must be a validated still image.",
+        });
+      const capturedAt = new Date().toISOString(),
+        id = randomUUID(),
+        objectKey = `${u.id}/evidence/${id}.vault`,
+        asset = {
+          id,
+          userId: u.id,
+          objectKey,
+          name: String(b.name).slice(0, 160),
+          mime: media.mime,
+          mediaFormat: media.format,
+          width: media.width || null,
+          height: media.height || null,
+          size: raw.length,
+          checksum: createHash("sha256").update(raw).digest("hex"),
+          status: PAGE_CAPTURE_ASSET_STATUS,
+          sensitiveMediaConsentAt: capturedAt,
+          sensitiveMediaConsentVersion: COMPLIANCE_VERSIONS.pageCaptureConsent,
+          createdAt: capturedAt,
+        },
+        previousAsset = d.assets.find(
+          (item) =>
+            item.id === match.evidence?.pageCapture?.assetId &&
+            item.userId === u.id &&
+            item.status === PAGE_CAPTURE_ASSET_STATUS,
+        );
+      await putEncryptedObject(objectKey, vault(raw), VAULT);
+      d.assets.push(asset);
+      match.evidence = {
+        ...(match.evidence || {}),
+        pageCapture: pageCaptureMetadata({
+          asset,
+          match,
+          consentVersion: COMPLIANCE_VERSIONS.pageCaptureConsent,
+          capturedAt,
+        }),
+      };
+      if (previousAsset)
+        d.assets = d.assets.filter((item) => item.id !== previousAsset.id);
+      audit(
+        d,
+        u,
+        previousAsset
+          ? "match.page_capture_replaced"
+          : "match.page_capture_added",
+        {
+          matchId,
+          captureAssetId: asset.id,
+          checksum: asset.checksum,
+          sourceUrl: match.sourceUrl,
+          consentVersion: COMPLIANCE_VERSIONS.pageCaptureConsent,
+        },
+      );
+      await save(
+        d,
+        previousAsset
+          ? {
+              deletedAssetIds: [previousAsset.id],
+              objectDeletions: [previousAsset.objectKey],
+            }
+          : undefined,
+      );
+      let priorDeletionPending = false;
+      if (previousAsset)
+        try {
+          await deleteEncryptedObject(previousAsset.objectKey, VAULT);
+          if (databaseMode() === "postgresql")
+            await markObjectDeletionComplete(previousAsset.objectKey);
+        } catch {
+          priorDeletionPending = true;
+          console.error(
+            "A replaced page-capture object remains safely queued for retry.",
+          );
+        }
+      return send(res, priorDeletionPending ? 202 : 201, {
+        pageCapture: match.evidence.pageCapture,
+        priorDeletionStatus: priorDeletionPending ? "queued" : "complete",
+      });
+    }
+    if (
+      route.match(/^\/api\/matches\/[^/]+\/page-capture\/download$/) &&
+      req.method === "POST"
+    ) {
+      if (
+        !(await allowed(req, `capture-download:${u.id}`, 20, 3600000)).allowed
+      )
+        return send(res, 429, {
+          error: "Too many evidence download attempts. Try again later.",
+        });
+      const matchId = route.split("/")[3],
+        match = d.matches.find(
+          (item) => item.id === matchId && item.userId === u.id,
+        ),
+        b = await parse(req);
+      if (!match) return send(res, 404, { error: "Match not found." });
+      const capture = pageCaptureSnapshot(match, d.assets, u.id),
+        asset = d.assets.find((item) => item.id === capture?.assetId);
+      if (!capture || !asset)
+        return send(res, 404, { error: "Page capture not found." });
+      if (!passwordMatches(u, b.password))
+        return send(res, 403, { error: "Password is incorrect." });
+      const encrypted = await getEncryptedObject(asset.objectKey, VAULT),
+        original = unvault(encrypted);
+      if (
+        createHash("sha256").update(original).digest("hex") !== asset.checksum
+      )
+        throw new Error("Page-capture integrity verification failed.");
+      audit(d, u, "match.page_capture_downloaded", {
+        matchId,
+        captureChecksum: asset.checksum,
+      });
+      await save(d);
+      return sendDownload(
+        res,
+        original,
+        asset.mime,
+        attachmentName(asset.name, `match-${matchId}-page-capture`),
+      );
     }
     if (route.match(/^\/api\/assets\/[^/]+\/rights$/) && req.method === "PUT") {
       const id = route.split("/")[3],
@@ -2152,6 +2453,11 @@ const appServer = http.createServer(async (req, res) => {
       const id = route.split("/").pop(),
         i = d.assets.findIndex((x) => x.id === id && x.userId === u.id);
       if (i < 0) return send(res, 404, { error: "Asset not found." });
+      if (d.assets[i].status === PAGE_CAPTURE_ASSET_STATUS)
+        return send(res, 409, {
+          error:
+            "Page-capture evidence is managed from its match and cannot be deleted through the reference vault.",
+        });
       if (assetDeletionBlockedByLegalHold(d, u.id, id))
         return send(res, 409, {
           error:
@@ -2221,7 +2527,7 @@ const appServer = http.createServer(async (req, res) => {
           error: `${subscription.plan} scanning is available again at ${nextScanAt.toISOString()}.`,
           nextScanAt: nextScanAt.toISOString(),
         });
-      const allAssets = d.assets.filter((x) => x.userId === u.id),
+      const allAssets = referenceAssets(d.assets, u.id),
         videoScannerActivation = videoScannerReadiness(),
         assets = allAssets.filter(
           (asset) =>
@@ -2303,7 +2609,10 @@ const appServer = http.createServer(async (req, res) => {
               existing.confidence || 0,
               found.matchScore,
             );
-            existing.evidence = found.evidence;
+            existing.evidence = mergeProviderEvidence(
+              existing.evidence,
+              found.evidence,
+            );
             continue;
           }
           d.matches.push({
@@ -2706,7 +3015,7 @@ const appServer = http.createServer(async (req, res) => {
           .filter((item) => item.userId === u.id)
           .map(({ userId, ...item }) => item),
         referenceFiles:
-          "Original reference files are downloaded separately from My content so they are not embedded in this JSON export.",
+          "Original reference files and encrypted page-capture evidence are downloaded separately from their protected workspace controls so binary media is not embedded in this JSON export.",
       };
       return sendDownload(
         res,
@@ -2832,9 +3141,15 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 409, {
           error: "A case already exists for this match.",
         });
+      const pageCapture = pageCaptureSnapshot(m, d.assets, u.id);
+      if (!pageCapture)
+        return send(res, 409, {
+          error:
+            "Add a current, unaltered screenshot of the matched public page before opening a takedown case.",
+        });
       const capturedAt = new Date().toISOString(),
         evidenceSnapshot = {
-          version: 2,
+          version: 3,
           matchId: m.id,
           scanId: m.scanId,
           referenceAssetId: m.assetId,
@@ -2843,8 +3158,13 @@ const appServer = http.createServer(async (req, res) => {
           mediaType: m.type,
           providerMatchScore: m.confidence,
           discoveredAt: m.age,
-          providerEvidence: m.evidence || {},
+          providerEvidence: Object.fromEntries(
+            Object.entries(m.evidence || {}).filter(
+              ([keyName]) => keyName !== "pageCapture",
+            ),
+          ),
           contentRights: rightsDeclaration,
+          pageCapture,
           capturedAt,
         },
         caseId = randomUUID();
@@ -2889,6 +3209,7 @@ const appServer = http.createServer(async (req, res) => {
         caseId: c.id,
         matchId: m.id,
         rightsDeclarationRecordId: rightsDeclaration.recordId,
+        pageCaptureChecksum: pageCapture.checksumSha256,
       });
       await save(d);
       return send(res, 201, {
