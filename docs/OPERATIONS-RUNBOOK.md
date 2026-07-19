@@ -58,7 +58,13 @@ After restoring into an isolated empty PostgreSQL database, run `pnpm backup:ver
 
 ## Media storage recovery
 
-Enable private bucket versioning and lifecycle rules. Test recovery with disposable encrypted objects only: upload, read, compare checksum, delete, restore the prior version, compare again, then permanently purge the test object. Public bucket access must remain disabled.
+Cloudflare R2 does not currently implement the S3 bucket-versioning operations, so R2 versioning must not be claimed as recovery evidence. Keep the primary R2 bucket private and create a second private backup bucket with separate credentials that are unavailable to the web service. Run `pnpm backup:media` from an isolated scheduled backup job with the primary read credentials, backup write credentials, PostgreSQL access and `BACKUP_EVIDENCE_KEY`. The job writes each already application-encrypted object under a unique daily or monthly snapshot prefix and publishes the signed manifest only after every object succeeds.
+
+Configure backup-bucket lifecycle rules for `content-protect-media/daily/` and `content-protect-media/monthly/` according to the approved 35-daily/12-monthly retention schedule. The backup credentials used by the web application must not exist: only the isolated backup job may write snapshots, and its normal role should not delete them. Public bucket access must remain disabled.
+
+Run `pnpm backup:verify-media <manifest-key>` using backup read credentials and the evidence key. This verifier needs no primary-bucket or database credentials, requires the enabled 35-day daily and 400-day monthly lifecycle rules (or the explicitly approved override values), validates the signed inventory, downloads every encrypted backup object and compares its size and SHA-256 digest. Retain the resulting JSON with the quarterly restore evidence. An absent object, altered manifest, lifecycle mismatch or checksum mismatch exits non-zero. A manifest is not valid recovery evidence until this independent read test succeeds.
+
+Cloudflare capability reference: https://developers.cloudflare.com/r2/api/s3/api/ and lifecycle reference: https://developers.cloudflare.com/r2/buckets/object-lifecycles/
 
 ## Deployment and rollback
 

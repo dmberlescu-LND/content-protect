@@ -32,6 +32,7 @@ const [
   ropa,
   takedowns,
   readiness,
+  mediaBackup,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -44,6 +45,7 @@ const [
   read("docs/compliance/ROPA.md"),
   read("docs/compliance/TAKEDOWN-AND-DISPUTE-PROCEDURE.md"),
   read("operations-readiness.mjs"),
+  read("media-backup-policy.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -137,6 +139,10 @@ requireText(
 );
 
 requireText("operations readiness", readiness, REQUIRED_MIGRATION);
+requireText("operations runbook", runbook, "R2 does not currently implement");
+requireText("operations runbook", runbook, "second private backup bucket");
+rejectText("operations runbook", runbook, "Enable private bucket versioning");
+requireText("media backup policy", mediaBackup, "must differ from the primary");
 try {
   await access(resolve(root, "db", "migrations", REQUIRED_MIGRATION));
 } catch {

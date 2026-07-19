@@ -9,7 +9,7 @@ The container is suitable for staging and product demonstrations. It is not appr
 1. `content-protect.com` and `www.content-protect.com` terminate HTTPS at the edge.
 2. Traffic is forwarded to the Content Protect container in a UK region.
 3. Application records and sessions move from the local JSON store to managed PostgreSQL.
-4. Encrypted reference files move from the local vault to private object storage with versioning, retention and customer-managed encryption keys.
+4. Encrypted reference files move from the local vault to private object storage with application-managed encryption keys. Because Cloudflare R2 does not implement S3 bucket versioning, recovery uses a separate private backup bucket, separate job credentials, signed append-only snapshot manifests and independently verified retention rules.
 5. Secrets are injected from a managed secret store and are never committed to Git.
 6. Audit logs are written to an append-only destination with restricted access.
 7. Backups are encrypted, tested and kept in a separate account or recovery boundary.
