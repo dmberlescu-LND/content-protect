@@ -182,7 +182,6 @@ function YotiAgeButton({ onVerified }) {
     return () => {
       active = false;
       widget?.destroy?.();
-      if (container.current) container.current.replaceChildren();
     };
   }, []);
   if (status === "unavailable")
@@ -192,12 +191,13 @@ function YotiAgeButton({ onVerified }) {
       </button>
     );
   return (
-    <div
-      ref={container}
-      id="yoti-age-share-button"
-      aria-busy={status === "loading"}
-      aria-label="Start private Yoti age verification"
-    >
+    <div className="yoti-age-control">
+      <div
+        ref={container}
+        id="yoti-age-share-button"
+        aria-busy={status === "loading"}
+        aria-label="Start private Yoti age verification"
+      />
       {status === "loading" && <span>Loading secure age check…</span>}
     </div>
   );
