@@ -793,6 +793,12 @@ function Dashboard({ onLogout, user }) {
     assets: [],
     cases: [],
     scans: [],
+    entitlements: {
+      plan: "Unsubscribed",
+      canScan: false,
+      canCreateCases: false,
+      scanFrequency: "unavailable",
+    },
     stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
   });
   const [loading, setLoading] = useState(true);
@@ -999,7 +1005,7 @@ function Dashboard({ onLogout, user }) {
           <span>{initials}</span>
           <div>
             <b>{user?.stageName || user?.name || "Creator"}</b>
-            <small>{user?.plan || "Protect"} plan</small>
+            <small>{data.entitlements.plan} plan</small>
           </div>
           <ChevronDown size={15} />
         </button>
@@ -1014,7 +1020,9 @@ function Dashboard({ onLogout, user }) {
             >
               <Icon size={18} />
               {x}
-              {x === "Matches" && <em>3</em>}
+              {x === "Matches" && data.matches.length > 0 && (
+                <em>{data.matches.length}</em>
+              )}
             </button>
           );
         })}
@@ -1042,12 +1050,20 @@ function Dashboard({ onLogout, user }) {
         </button>
         <div className="upgrade">
           <Sparkles />
-          <b>Protection active</b>
-          <span>Daily scans enabled</span>
+          <b>{data.entitlements.canScan ? "Protection active" : "Choose a plan"}</b>
+          <span>
+            {data.entitlements.canScan
+              ? `${data.entitlements.scanFrequency} scans enabled`
+              : "Scanning is not active"}
+          </span>
           <div>
             <i></i>
           </div>
-          <small>Private creator vault</small>
+          <small>
+            {data.entitlements.canCreateCases
+              ? "Takedown cases included"
+              : "Private creator vault"}
+          </small>
         </div>
         <button className="logout" onClick={logout}>
           Log out

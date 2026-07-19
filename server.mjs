@@ -30,6 +30,11 @@ import {
 } from "./database.mjs";
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
 import {
+  findActiveSubscription,
+  planForPrice as billingPlanForPrice,
+  scanIntervalMs,
+} from "./billing-policy.mjs";
+import {
   inspectMedia,
   MediaValidationError,
 } from "./media-validation.mjs";
@@ -438,7 +443,7 @@ function userFor(req, d) {
   );
   return d.users.find((x) => x.id === s?.userId);
 }
-function safe(u) {
+function safe(u, d) {
   return {
     id: u.id,
     name: u.name,
@@ -446,7 +451,7 @@ function safe(u) {
     stageName: u.stageName,
     aliases: u.aliases || [],
     platforms: u.platforms || [],
-    plan: u.plan,
+    plan: d ? activeSubscription(d, u.id)?.plan || "Unsubscribed" : u.plan,
     onboardingComplete: u.onboardingComplete,
     emailVerifiedAt: u.emailVerifiedAt || null,
     ageVerifiedAt: u.ageVerifiedAt || null,
@@ -455,6 +460,12 @@ function safe(u) {
     mfaRecoveryCodesRemaining: (u.mfaRecoveryHashes || []).length,
     createdAt: u.createdAt,
   };
+}
+function activeSubscription(d, userId) {
+  return findActiveSubscription(d.subscriptions, userId, {
+    paymentsMode: PAYMENTS_MODE,
+    prices: STRIPE_PRICES,
+  });
 }
 function vault(buf) {
   const iv = randomBytes(12),
@@ -722,7 +733,12 @@ const appServer = http.createServer(async (req, res) => {
                 (customerId && item.stripeCustomerId === customerId),
             ),
             userId = o.metadata?.userId || existing?.userId,
-            plan = o.metadata?.plan || existing?.plan;
+            eventPriceId =
+              o.metadata?.priceId ||
+              o.items?.data?.[0]?.price?.id ||
+              o.lines?.data?.[0]?.pricing?.price_details?.price ||
+              null,
+            plan = billingPlanForPrice(STRIPE_PRICES, eventPriceId) || existing?.plan;
           if (userId) {
             let sub = existing || d.subscriptions.find((x) => x.userId === userId);
             if (!sub) {
@@ -742,7 +758,7 @@ const appServer = http.createServer(async (req, res) => {
               status: nextStatus,
               mode: `stripe_${PAYMENTS_MODE}`,
               stripeLivemode: Boolean(event.livemode),
-              stripePriceId: o.metadata?.priceId || sub.stripePriceId,
+              stripePriceId: eventPriceId || sub.stripePriceId,
               stripeCustomerId: customerId || sub.stripeCustomerId,
               stripeSubscriptionId: subscriptionId || sub.stripeSubscriptionId,
               renewalAt: o.current_period_end
@@ -754,9 +770,12 @@ const appServer = http.createServer(async (req, res) => {
             if (
               user &&
               plan &&
+              STRIPE_PRICES[plan] &&
               ["active", "trialing"].includes(nextStatus)
             )
               user.plan = plan;
+            else if (user && nextStatus === "cancelled")
+              user.plan = "Unsubscribed";
             if (user)
               audit(d, user, "billing.webhook_processed", {
                 type: event.type,
@@ -1130,7 +1149,7 @@ const appServer = http.createServer(async (req, res) => {
             email,
             salt: p.s,
             passwordHash: p.h,
-            plan: "Protect",
+            plan: "Unsubscribed",
             onboardingComplete: false,
             emailVerifiedAt: null,
             ageVerifiedAt: null,
@@ -1153,7 +1172,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(
           res,
           201,
-          { user: safe(u) },
+          { user: safe(u, d) },
           {
             "set-cookie": `cp_session=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
           },
@@ -1194,7 +1213,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(
           res,
           200,
-          { user: safe(u) },
+          { user: safe(u, d) },
           {
             "set-cookie": `cp_session=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
           },
@@ -1319,7 +1338,7 @@ const appServer = http.createServer(async (req, res) => {
         );
         audit(d, account, "email.verified");
         await save(d);
-        return send(res, 200, { ok: true, user: safe(account) });
+        return send(res, 200, { ok: true, user: safe(account, d) });
       }
       const u = userFor(req, d);
       if (!u) return send(res, 401, { error: "Authentication required." });
@@ -1337,14 +1356,14 @@ const appServer = http.createServer(async (req, res) => {
             "If delivery is available, a new verification link has been sent.",
         });
       }
-      if (route === "/api/me") return send(res, 200, { user: safe(u) });
+      if (route === "/api/me") return send(res, 200, { user: safe(u, d) });
       if (route === "/api/verification/age/start" && req.method === "POST") {
         if (!u.emailVerifiedAt)
           return send(res, 403, {
             error: "Verify your email before starting age verification.",
           });
         if (u.ageVerifiedAt)
-          return send(res, 200, { verified: true, user: safe(u) });
+          return send(res, 200, { verified: true, user: safe(u, d) });
         if (!YOTI_CONFIGURED)
           return send(res, 503, {
             error:
@@ -1483,7 +1502,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, complete ? 200 : 409, {
           verified: complete,
           status: record.status,
-          user: safe(u),
+          user: safe(u, d),
           error: complete ? undefined : "Age verification was not completed.",
         });
       }
@@ -1491,6 +1510,7 @@ const appServer = http.createServer(async (req, res) => {
         const assets = d.assets.filter((x) => x.userId === u.id),
           cases = d.cases.filter((x) => x.userId === u.id),
           scans = d.scans.filter((x) => x.userId === u.id),
+          subscription = activeSubscription(d, u.id),
           matches = d.matches
             .filter((m) => m.userId === u.id)
             .map((m) => ({
@@ -1504,7 +1524,19 @@ const appServer = http.createServer(async (req, res) => {
           assets,
           cases,
           scans,
-          subscription: d.subscriptions.find((x) => x.userId === u.id),
+          subscription:
+            subscription || d.subscriptions.find((x) => x.userId === u.id),
+          entitlements: {
+            plan: subscription?.plan || "Unsubscribed",
+            canScan: Boolean(subscription),
+            canCreateCases: ["Protect", "Pro"].includes(subscription?.plan),
+            scanFrequency:
+              subscription?.plan === "Monitor"
+                ? "monthly"
+                : subscription
+                  ? "daily"
+                  : "unavailable",
+          },
           billingMode: STRIPE_CONFIGURED
             ? `stripe_${PAYMENTS_MODE}`
             : "unconfigured",
@@ -1533,7 +1565,7 @@ const appServer = http.createServer(async (req, res) => {
         audit(d, u, "profile.updated");
         await save(d);
         return send(res, 200, {
-          user: { ...safe(u), aliases: u.aliases, platforms: u.platforms },
+          user: { ...safe(u, d), aliases: u.aliases, platforms: u.platforms },
         });
       }
       if (route === "/api/assets" && req.method === "POST") {
@@ -1638,6 +1670,25 @@ const appServer = http.createServer(async (req, res) => {
         if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
           return send(res, 403, {
             error: "Verify your email, age and eligibility before scanning.",
+          });
+        const subscription = activeSubscription(d, u.id);
+        if (!subscription)
+          return send(res, 402, {
+            error: "An active Content Protect subscription is required to scan.",
+          });
+        const latestCompletedScan = d.scans
+          .filter((item) => item.userId === u.id && item.status === "Completed")
+          .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0];
+        const nextScanAt = latestCompletedScan
+          ? new Date(
+              new Date(latestCompletedScan.completedAt).getTime() +
+                scanIntervalMs(subscription.plan),
+            )
+          : null;
+        if (nextScanAt && nextScanAt > new Date())
+          return send(res, 429, {
+            error: `${subscription.plan} scanning is available again at ${nextScanAt.toISOString()}.`,
+            nextScanAt: nextScanAt.toISOString(),
           });
         const assets = d.assets.filter(
           (x) => x.userId === u.id && x.mime.startsWith("image/"),
@@ -1851,19 +1902,37 @@ const appServer = http.createServer(async (req, res) => {
           return send(res, 403, {
             error: "Checkout session does not belong to this account.",
           });
-        if (session.status !== "complete" || !session.subscription)
+        if (
+          Boolean(session.livemode) !== (PAYMENTS_MODE === "live") ||
+          session.status !== "complete" ||
+          !session.subscription
+        )
           return send(res, 409, { error: "Checkout is not complete." });
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+            session.subscription,
+          ),
+          selectedPlan = session.metadata?.plan,
+          selectedPrice = stripeSubscription.items.data[0]?.price?.id;
+        if (
+          !["active", "trialing"].includes(stripeSubscription.status) ||
+          !STRIPE_PRICES[selectedPlan] ||
+          selectedPrice !== STRIPE_PRICES[selectedPlan] ||
+          session.metadata?.priceId !== selectedPrice
+        )
+          return send(res, 409, {
+            error: "The Stripe subscription is not active or its price is invalid.",
+          });
         let sub = d.subscriptions.find((x) => x.userId === u.id);
         if (!sub) {
           sub = { id: randomUUID(), userId: u.id };
           d.subscriptions.push(sub);
         }
         Object.assign(sub, {
-          plan: session.metadata.plan,
-          status: "active",
+          plan: selectedPlan,
+          status: stripeSubscription.status,
           mode: `stripe_${PAYMENTS_MODE}`,
           stripeLivemode: session.livemode,
-          stripePriceId: session.metadata.priceId,
+          stripePriceId: selectedPrice,
           stripeCustomerId: session.customer,
           stripeSubscriptionId: session.subscription,
           updatedAt: new Date().toISOString(),
@@ -1875,7 +1944,7 @@ const appServer = http.createServer(async (req, res) => {
           mode: PAYMENTS_MODE,
         });
         await save(d);
-        return send(res, 200, { subscription: sub, user: safe(u) });
+        return send(res, 200, { subscription: sub, user: safe(u, d) });
       }
       if (route === "/api/billing/portal" && req.method === "POST") {
         if (!STRIPE_CONFIGURED)
@@ -1954,7 +2023,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(
           res,
           200,
-          { user: safe(u), recoveryCodes },
+          { user: safe(u, d), recoveryCodes },
           {
             "set-cookie": `cp_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
           },
@@ -1983,7 +2052,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(
           res,
           200,
-          { user: safe(u) },
+          { user: safe(u, d) },
           {
             "set-cookie": `cp_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
           },
@@ -2033,7 +2102,7 @@ const appServer = http.createServer(async (req, res) => {
             companyNumber: "14978662",
             contact: "white.eagles.dm@gmail.com",
           },
-          account: { ...safe(u), aliases: u.aliases || [], platforms: u.platforms || [] },
+          account: { ...safe(u, d), aliases: u.aliases || [], platforms: u.platforms || [] },
           verification: d.verifications
             .filter((item) => item.userId === u.id)
             .map(({ userId, ...item }) => item),
@@ -2110,6 +2179,12 @@ const appServer = http.createServer(async (req, res) => {
           return send(res, 403, {
             error:
               "Verify your email, age and eligibility before opening a takedown case.",
+          });
+        const subscription = activeSubscription(d, u.id);
+        if (!subscription || !["Protect", "Pro"].includes(subscription.plan))
+          return send(res, 402, {
+            error:
+              "An active Protect or Pro subscription is required to open takedown cases.",
           });
         const b = await parse(req),
           m = d.matches.find((x) => x.id === b.matchId && x.userId === u.id);
