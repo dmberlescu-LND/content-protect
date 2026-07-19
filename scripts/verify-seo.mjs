@@ -3,6 +3,7 @@ const base = (process.env.APP_URL || "https://content-protect.com").replace(
   "",
 );
 const failures = [];
+const sitemapLastModified = "2026-07-19";
 const expect = (condition, message) => {
   if (!condition) failures.push(message);
 };
@@ -49,7 +50,10 @@ for (const path of [
   if (path === "/robots.txt")
     expect(body.includes("Sitemap: https://content-protect.com/sitemap.xml"), "robots sitemap is missing");
   if (path === "/sitemap.xml") {
-    expect(body.includes("<lastmod>2026-07-18</lastmod>"), "sitemap lastmod is missing");
+    expect(
+      body.includes(`<lastmod>${sitemapLastModified}</lastmod>`),
+      `sitemap lastmod ${sitemapLastModified} is missing`,
+    );
     expect(!body.includes("/operator"), "operator console is exposed in sitemap");
   }
   if (path.endsWith("security.txt"))
