@@ -5,11 +5,16 @@ export function textDigest(value) {
 }
 
 export function noticeText(caseRecord, creator) {
-  const displayName = creator.stageName || creator.name;
+  const rightsReview = caseRecord.noticeDraft?.rightsReview,
+    professionalName = creator.stageName
+      ? `\nProfessional name: ${creator.stageName}`
+      : "";
   return `Copyright removal request
 
 Case reference: ${caseRecord.id}
-Claimant: ${displayName}
+Claimant: ${creator.name}${professionalName}
+Rights holder: ${rightsReview?.rightsHolderName || "Not prepared"}
+Claimant capacity: ${rightsReview?.roleLabel || "Not prepared"}
 Recipient: ${caseRecord.recipientEmail || "Not prepared"}
 Recipient verification source: ${caseRecord.recipientSource || "Not prepared"}
 Jurisdiction/channel reviewed: ${caseRecord.jurisdiction || "Not prepared"}
@@ -35,7 +40,7 @@ export function exactNoticeApproved({
   const currentHash = textDigest(renderedNotice);
   return Boolean(
     preparedNoticeHash === currentHash &&
-      creatorApprovedNoticeHash === currentHash &&
-      submittedNoticeHash === currentHash,
+    creatorApprovedNoticeHash === currentHash &&
+    submittedNoticeHash === currentHash,
   );
 }

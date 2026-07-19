@@ -1,11 +1,101 @@
 .match-row.asset-row {
-  grid-template-columns: minmax(220px, 1.6fr) minmax(180px, 1.2fr) 130px 150px 70px;
+  grid-template-columns:
+    minmax(220px, 1.6fr) minmax(180px, 1.2fr)
+    130px 150px 110px;
 }
 
 .asset-actions {
   display: flex;
   gap: 4px;
   justify-content: flex-end;
+}
+
+.rights-state {
+  display: block;
+  margin-top: 6px;
+  color: #77727e;
+  font-size: 9px;
+}
+
+.rights-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #e5e1ec;
+  border-radius: 12px;
+  background: #fbfaff;
+  text-align: left;
+}
+
+.rights-form-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rights-form-heading b {
+  color: #39353f;
+  font-size: 12px;
+}
+
+.rights-form-heading span,
+.rights-form small {
+  color: #817c87;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.rights-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.rights-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #49454f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.rights-form input:not([type="checkbox"]),
+.rights-form select {
+  height: 40px;
+  border: 1px solid #dedbe3;
+  border-radius: 8px;
+  padding: 0 11px;
+  background: #fff;
+  color: #39353f;
+}
+
+.rights-form .rights-check {
+  flex-direction: row;
+  align-items: flex-start;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.rights-check input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: #7256e8;
+}
+
+.modal.upload-modal,
+.modal.rights-modal {
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.rights-submit {
+  width: 100%;
 }
 
 .asset-actions button {
@@ -35,5 +125,9 @@
 
   .asset-row .asset-actions {
     grid-column: 3;
+  }
+
+  .rights-field-row {
+    grid-template-columns: 1fr;
   }
 }

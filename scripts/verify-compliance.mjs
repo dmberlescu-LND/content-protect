@@ -42,6 +42,8 @@ const [
   videoFrames,
   dpia,
   videoRuntimeTest,
+  contentRightsPolicy,
+  takedownPolicy,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -63,6 +65,8 @@ const [
   read("video-frames.mjs"),
   read("docs/compliance/DPIA-DRAFT.md"),
   read("scripts/test-video-frames-runtime.mjs"),
+  read("content-rights-policy.mjs"),
+  read("takedown-policy.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -91,6 +95,7 @@ requireText("server", server, 'from "./compliance-versions.mjs"');
 for (const key of [
   "eligibility",
   "sensitiveMediaConsent",
+  "contentRightsDeclaration",
   "serviceTerms",
   "takedownTemplate",
 ]) {
@@ -138,6 +143,28 @@ requireText(
   takedowns,
   "do not claim full identity verification",
 );
+requireText(
+  "takedown procedure",
+  takedowns,
+  "A general registration checkbox is not sufficient",
+);
+requireText("takedown procedure", takedowns, "legal claimant name");
+requireText("content rights policy", contentRightsPolicy, "copyright-owner");
+requireText("content rights policy", contentRightsPolicy, "authorised-agent");
+requireText("content rights policy", contentRightsPolicy, "exclusive-licensee");
+requireText(
+  "content rights policy",
+  contentRightsPolicy,
+  "confirmRightsAuthority",
+);
+requireText("server", server, "contentRightsDeclaration");
+requireText("server", server, "contentRightsRecordForAsset");
+requireText("server", server, "contentRightsReview");
+requireText("server", server, 'req.method === "PUT"');
+requireText("server", server, "rightsDeclarationRecordId");
+requireText("takedown notice", takedownPolicy, "Claimant: ${creator.name}");
+requireText("takedown notice", takedownPolicy, "Rights holder:");
+requireText("takedown notice", takedownPolicy, "Claimant capacity:");
 
 requireText("Render", render, "PAYMENTS_MODE");
 requireText("Render", render, "YOTI_SDK_ID");

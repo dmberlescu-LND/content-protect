@@ -900,11 +900,133 @@ function HelpSafety() {
   );
 }
 
+function blankRightsDeclaration(name = "") {
+  return {
+    rightsRole: "copyright-owner",
+    rightsHolderName: name,
+    workTitle: "",
+    originalPublicationUrl: "",
+    authorityEvidenceReference: "",
+    confirmRightsAuthority: false,
+    confirmRightsAccurate: false,
+  };
+}
+
+function RightsDeclarationFields({ value, onChange }) {
+  const update = (field, next) => onChange({ ...value, [field]: next });
+  return (
+    <div className="rights-form">
+      <div className="rights-form-heading">
+        <b>Rights and authority declaration</b>
+        <span>
+          This is reviewed by a trained operator before any notice can be
+          prepared. Do not upload contracts or private documents here.
+        </span>
+      </div>
+      <div className="rights-field-row">
+        <label>
+          Your legal relationship to this work
+          <select
+            required
+            value={value.rightsRole}
+            onChange={(event) => update("rightsRole", event.target.value)}
+          >
+            <option value="copyright-owner">Copyright owner</option>
+            <option value="authorised-agent">
+              Authorised agent for the rights holder
+            </option>
+            <option value="exclusive-licensee">
+              Exclusive licensee authorised to enforce
+            </option>
+          </select>
+        </label>
+        <label>
+          Legal or business name of rights holder
+          <input
+            type="text"
+            required
+            maxLength="120"
+            value={value.rightsHolderName}
+            onChange={(event) => update("rightsHolderName", event.target.value)}
+          />
+        </label>
+      </div>
+      <div className="rights-field-row">
+        <label>
+          Work title or internal name (optional)
+          <input
+            type="text"
+            maxLength="160"
+            value={value.workTitle}
+            onChange={(event) => update("workTitle", event.target.value)}
+          />
+        </label>
+        <label>
+          Original publication URL (optional, HTTPS)
+          <input
+            type="url"
+            placeholder="https://…"
+            value={value.originalPublicationUrl}
+            onChange={(event) =>
+              update("originalPublicationUrl", event.target.value)
+            }
+          />
+        </label>
+      </div>
+      <label>
+        Evidence reference
+        <input
+          type="text"
+          required
+          maxLength="200"
+          placeholder="Example: original source file or agency agreement CP-2026-004"
+          value={value.authorityEvidenceReference}
+          onChange={(event) =>
+            update("authorityEvidenceReference", event.target.value)
+          }
+        />
+        <small>
+          Use a short reference only. Keep the underlying document in the
+          approved restricted company record.
+        </small>
+      </label>
+      <label className="rights-check">
+        <input
+          type="checkbox"
+          required
+          checked={value.confirmRightsAuthority}
+          onChange={(event) =>
+            update("confirmRightsAuthority", event.target.checked)
+          }
+        />
+        I own the copyright or am authorised to enforce it for the named rights
+        holder.
+      </label>
+      <label className="rights-check">
+        <input
+          type="checkbox"
+          required
+          checked={value.confirmRightsAccurate}
+          onChange={(event) =>
+            update("confirmRightsAccurate", event.target.checked)
+          }
+        />
+        I confirm this per-file declaration is accurate and understand that
+        false claims may result in suspension.
+      </label>
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, onUserUpdate, user }) {
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [mediaConsent, setMediaConsent] = useState(false);
+  const [rightsForm, setRightsForm] = useState(() =>
+    blankRightsDeclaration(user?.name),
+  );
+  const [rightsAsset, setRightsAsset] = useState(null);
   const [filter, setFilter] = useState("All matches");
   const [data, setData] = useState({
     matches: [],
@@ -947,7 +1069,12 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     ).length,
     videoScanningActive = data.videoScannerMode === "tineye-keyframes",
     scannableAssetCount =
-      imageAssetCount + (videoScanningActive ? videoAssetCount : 0);
+      imageAssetCount + (videoScanningActive ? videoAssetCount : 0),
+    rightsDeclarationReady =
+      rightsForm.rightsHolderName.trim().length >= 2 &&
+      rightsForm.authorityEvidenceReference.trim().length >= 3 &&
+      rightsForm.confirmRightsAuthority &&
+      rightsForm.confirmRightsAccurate;
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -978,6 +1105,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
         mime: file.type,
         data: encoded,
         sensitiveMediaConsent: mediaConsent,
+        ...rightsForm,
       }),
     });
     if (!response.ok) {
@@ -987,8 +1115,27 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     }
     setModal(false);
     setMediaConsent(false);
+    setRightsForm(blankRightsDeclaration(user?.name));
     await refresh();
     alert("Content encrypted and added to your private vault.");
+  };
+  const saveAssetRights = async (event) => {
+    event.preventDefault();
+    if (!rightsAsset) return;
+    const response = await fetch(`/api/assets/${rightsAsset.id}/rights`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(rightsForm),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Rights declaration could not be saved.");
+      return;
+    }
+    setRightsAsset(null);
+    setRightsForm(blankRightsDeclaration(user?.name));
+    await refresh();
+    alert("The per-file rights declaration was recorded for operator review.");
   };
   const createCase = async (matchId) => {
     const response = await fetch("/api/cases", {
@@ -1397,11 +1544,35 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     </div>
                     <div className="confidence">
                       <b>Encrypted</b>
+                      <span className="rights-state">
+                        {a.rights
+                          ? a.rights.status === "verified"
+                            ? "Rights reviewed"
+                            : "Rights declared"
+                          : "Rights declaration missing"}
+                      </span>
                     </div>
                     <div>
                       <span className="status removed">{a.status}</span>
                     </div>
                     <div className="asset-actions">
+                      <button
+                        title={
+                          a.rights
+                            ? "Replace rights declaration"
+                            : "Add rights declaration"
+                        }
+                        onClick={() => {
+                          setRightsAsset(a);
+                          setRightsForm(
+                            blankRightsDeclaration(
+                              a.rights?.rightsHolderName || user?.name,
+                            ),
+                          );
+                        }}
+                      >
+                        <FileCheck2 />
+                      </button>
                       <button
                         title="Download original"
                         onClick={() => downloadAsset(a)}
@@ -1621,7 +1792,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       </main>
       {modal && (
         <div className="modal-backdrop" onMouseDown={() => setModal(false)}>
-          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+          <div
+            className="modal upload-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <button
               className="modal-x"
               aria-label="Close upload dialog"
@@ -1657,7 +1831,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 orientation, and I can withdraw consent by deleting the file.
               </span>
             </div>
-            <label className={`dropzone ${mediaConsent ? "" : "disabled"}`}>
+            <RightsDeclarationFields
+              value={rightsForm}
+              onChange={setRightsForm}
+            />
+            <label
+              className={`dropzone ${mediaConsent && rightsDeclarationReady ? "" : "disabled"}`}
+            >
               <Upload />
               <b>Choose a supported photo or short video</b>
               <span>
@@ -1667,7 +1847,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,image/avif,image/heic,video/mp4,video/quicktime,video/webm"
-                disabled={!mediaConsent}
+                disabled={!mediaConsent || !rightsDeclarationReady}
                 onChange={uploadFile}
               />
             </label>
@@ -1680,6 +1860,39 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               </span>
             </div>
           </div>
+        </div>
+      )}
+      {rightsAsset && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={() => setRightsAsset(null)}
+        >
+          <form
+            className="modal rights-modal"
+            onSubmit={saveAssetRights}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-x"
+              aria-label="Close rights declaration"
+              onClick={() => setRightsAsset(null)}
+            >
+              <X />
+            </button>
+            <div className="modal-icon">
+              <FileCheck2 />
+            </div>
+            <h2>Declare rights for this file</h2>
+            <p>{rightsAsset.name}</p>
+            <RightsDeclarationFields
+              value={rightsForm}
+              onChange={setRightsForm}
+            />
+            <button className="btn btn-primary rights-submit" type="submit">
+              Record declaration
+            </button>
+          </form>
         </div>
       )}
     </div>
@@ -2234,10 +2447,12 @@ function OperatorConsole() {
       !form.recipientSource ||
       !form.jurisdiction ||
       !form.legalBasis ||
+      !form.rightsReviewReference ||
+      !form.rightsReviewed ||
       !form.jurisdictionReviewed
     ) {
       setError(
-        "Verify the recipient, HTTPS source, jurisdiction and legal basis before preparation.",
+        "Review the per-file rights declaration, recipient, HTTPS source, jurisdiction and legal basis before preparation.",
       );
       return;
     }
@@ -2246,6 +2461,7 @@ function OperatorConsole() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...form,
+        confirmRightsReviewed: true,
         confirmRecipientReviewed: true,
         confirmJurisdictionReviewed: true,
       }),
@@ -2394,6 +2610,23 @@ function OperatorConsole() {
                   <dt>Evidence hash</dt>
                   <dd className="operator-hash">{item.evidenceHash}</dd>
                 </div>
+                <div>
+                  <dt>Declared rights holder</dt>
+                  <dd>
+                    {item.rightsDeclaration?.rightsHolderName || "Missing"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Claimant capacity</dt>
+                  <dd>{item.rightsDeclaration?.roleLabel || "Missing"}</dd>
+                </div>
+                <div>
+                  <dt>Creator evidence reference</dt>
+                  <dd>
+                    {item.rightsDeclaration?.authorityEvidenceReference ||
+                      "Missing"}
+                  </dd>
+                </div>
               </dl>
               {item.noticeText && (
                 <div className="operator-notice">
@@ -2409,6 +2642,23 @@ function OperatorConsole() {
               )}
               {item.status === "Awaiting operator preparation" && (
                 <div className="operator-fields">
+                  <label>
+                    Restricted rights-review record reference
+                    <input
+                      type="text"
+                      placeholder="restricted-case-file-…"
+                      value={forms[item.id]?.rightsReviewReference || ""}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            rightsReviewReference: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
                   <label>
                     Verified recipient email
                     <input
@@ -2477,6 +2727,25 @@ function OperatorConsole() {
                 </div>
               )}
               <div className="operator-checks">
+                {item.status === "Awaiting operator preparation" && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={forms[item.id]?.rightsReviewed || false}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            rightsReviewed: event.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    I reviewed the per-file ownership/authority declaration and
+                    its restricted supporting record.
+                  </label>
+                )}
                 {item.status === "Approved — delivery pending" && (
                   <>
                     <label>

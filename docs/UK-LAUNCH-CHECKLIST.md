@@ -38,9 +38,10 @@ Status: implementation checklist, not legal advice. Company identity is verified
 
 ## Copyright and takedowns
 
-- Obtain specialist counsel approval for notice template `2026-07-19-v2` and record the same version in `TAKEDOWN_LEGAL_APPROVED_VERSION`; do not enable live delivery before this evidence exists.
+- Obtain specialist counsel approval for notice template `2026-07-19-v3` and record the same version in `TAKEDOWN_LEGAL_APPROVED_VERSION`; do not enable live delivery before this evidence exists. The review must cover disclosure of the claimant's legal name, optional professional name, rights holder and claimant capacity.
 
 - Verify ownership/authority before acting.
+- Require a versioned declaration for every reference file and an operator-reviewed restricted evidence reference before notice preparation; never treat the registration checkbox alone as proof.
 - Preserve URL, timestamp, page capture and content-match evidence.
 - Route notices by the recipient's jurisdiction: UK copyright complaint, US DMCA, platform-specific report, host/CDN/registrar escalation.
 - Include a counter-notice and dispute workflow.

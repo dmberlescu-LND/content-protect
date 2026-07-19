@@ -8,6 +8,7 @@ const checks = [
   "test-backup-schedule.mjs",
   "test-isolated-restore-policy.mjs",
   "test-media-validation.mjs",
+  "test-content-rights-policy.mjs",
   "test-video-frames.mjs",
   "test-media-backup-policy.mjs",
   "test-scanner.mjs",

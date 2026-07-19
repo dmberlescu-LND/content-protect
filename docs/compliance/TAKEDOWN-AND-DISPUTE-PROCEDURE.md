@@ -4,19 +4,21 @@ Status: operational draft; no real notice may be sent until counsel approves jur
 
 ## Case opening
 
-1. Confirm the account is adult-, email- and authority-verified; do not claim identity verification unless a separately approved identity flow is active.
-2. Preserve source URL, host, UTC timestamp, matched asset reference, provider evidence and evidence-object hash. A page-capture hash must not be claimed until page capture is implemented.
-3. Record why the content appears unauthorised and identify ambiguity, licence or fair-dealing risks.
-4. Redact unrelated personal data and intimate thumbnails from routine staff views.
+1. Confirm the account is adult- and email-verified; do not claim identity verification unless a separately approved identity flow is active.
+2. Require a versioned declaration for the specific reference file: claimant capacity, legal/business rights-holder name, a restricted evidence reference, authority and accuracy confirmations, and an optional original-publication HTTPS URL. A general registration checkbox is not sufficient.
+3. Preserve the rights declaration with the source URL, host, UTC timestamp, matched asset reference, provider evidence and evidence-object hash. A page-capture hash must not be claimed until page capture is implemented.
+4. Record why the content appears unauthorised and identify ambiguity, licence or fair-dealing risks.
+5. Redact unrelated personal data and intimate thumbnails from routine staff views. Supporting contracts or identity documents stay in the separately restricted company record and are referenced by an opaque identifier; they are not uploaded through the creator form.
 
 ## Human review and approval
 
 1. A new case starts in `Awaiting operator preparation`; nothing can be approved or sent yet.
-2. A trained reviewer confirms evidence quality, the recipient from an HTTPS source, jurisdiction/channel and legal basis.
-3. Those fields are inserted into the exact rendered notice and its SHA-256 hash is stored before creator review.
-4. The creator sees the evidence, recipient, verification source, legal basis, jurisdiction and exact notice text, then explicitly approves that hash. Any later mutation invalidates approval.
-5. A separate final operator review can dispatch only the stored recipient and the exact creator-approved hash.
-6. High-risk, disputed or unclear ownership cases require specialist escalation. Automated bulk dispatch is prohibited.
+2. A trained reviewer confirms the per-file rights declaration and restricted supporting record, then records a non-public review reference. Missing rights review blocks preparation.
+3. The reviewer confirms evidence quality, the recipient from an HTTPS source, jurisdiction/channel and legal basis.
+4. The notice uses the legal claimant name, separately labels any professional name, identifies the reviewed rights holder and claimant capacity, and stores the SHA-256 hash before creator review.
+5. The creator sees the evidence, recipient, verification source, legal basis, jurisdiction and exact notice text—including the legal name that will be disclosed—then explicitly approves that hash. Any later mutation invalidates approval.
+6. A separate final operator review can dispatch only the stored recipient and the exact creator-approved hash.
+7. High-risk, disputed or unclear ownership cases require specialist escalation. Automated bulk dispatch is prohibited.
 
 ## Delivery and tracking
 

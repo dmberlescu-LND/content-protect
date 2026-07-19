@@ -86,6 +86,13 @@ import {
   operatorActorSubject,
   operatorTotpValid,
 } from "./operator-access-policy.mjs";
+import {
+  contentRightsDeclaration,
+  ContentRightsError,
+  contentRightsRecordForAsset,
+  contentRightsReview,
+  contentRightsSnapshot,
+} from "./content-rights-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -532,7 +539,13 @@ function safeHttpsReference(value) {
     return null;
   }
 }
-function buildCopyrightNotice(user, match, caseId, capturedAt) {
+function buildCopyrightNotice(
+  user,
+  match,
+  caseId,
+  capturedAt,
+  rightsDeclaration,
+) {
   return {
     version: TAKEDOWN_TEMPLATE_VERSION,
     type: "copyright-removal-request",
@@ -549,6 +562,8 @@ function buildCopyrightNotice(user, match, caseId, capturedAt) {
       discoveredAt: match.age,
       capturedAt,
     },
+    contentRights: rightsDeclaration,
+    rightsReview: null,
     request:
       "Please remove or disable access to the identified material and preserve relevant records in accordance with applicable law and your platform policies.",
     declarationsRequired: [
@@ -1149,6 +1164,8 @@ const appServer = http.createServer(async (req, res) => {
               recipientSource: item.recipientSource || null,
               jurisdiction: item.jurisdiction || null,
               legalBasis: item.legalBasis || null,
+              rightsDeclaration: item.evidenceSnapshot?.contentRights || null,
+              rightsReview: item.noticeDraft?.rightsReview || null,
               claimant: creator
                 ? { name: creator.name, stageName: creator.stageName || null }
                 : null,
@@ -1180,6 +1197,21 @@ const appServer = http.createServer(async (req, res) => {
       if (!caseRecord) return send(res, 404, { error: "Case not found." });
       if (caseRecord.status !== "Awaiting operator preparation")
         return send(res, 409, { error: "Case is not awaiting preparation." });
+      let rightsReview;
+      try {
+        rightsReview = contentRightsReview(
+          caseRecord.evidenceSnapshot?.contentRights,
+          {
+            confirmed: b.confirmRightsReviewed,
+            reviewReference: b.rightsReviewReference,
+            operatorId: OPERATOR_CONFIGURATION.id,
+          },
+        );
+      } catch (error) {
+        if (error instanceof ContentRightsError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
       if (
         !EMAIL.test(recipientEmail) ||
         !recipientSource ||
@@ -1190,15 +1222,28 @@ const appServer = http.createServer(async (req, res) => {
       )
         return send(res, 400, {
           error:
-            "Verified recipient, HTTPS source, jurisdiction and legal basis are required.",
+            "Verified rights evidence, recipient, HTTPS source, jurisdiction and legal basis are required.",
         });
       const creator = d.users.find((user) => user.id === caseRecord.userId);
       if (!creator)
         return send(res, 409, { error: "Case claimant no longer exists." });
+      const rightsRecord = d.verifications.find(
+        (item) =>
+          item.id === rightsReview.declarationRecordId &&
+          item.userId === caseRecord.userId &&
+          item.kind === "content_rights" &&
+          ["pending", "verified"].includes(item.status),
+      );
+      if (!rightsRecord)
+        return send(res, 409, {
+          error:
+            "The preserved per-file rights declaration is unavailable and the case must be escalated.",
+        });
       caseRecord.recipientEmail = recipientEmail;
       caseRecord.recipientSource = recipientSource;
       caseRecord.jurisdiction = jurisdiction;
       caseRecord.legalBasis = legalBasis;
+      caseRecord.noticeDraft.rightsReview = rightsReview;
       caseRecord.status = "Awaiting creator approval";
       caseRecord.preparedAt = new Date().toISOString();
       caseRecord.updatedAt = caseRecord.preparedAt;
@@ -1210,6 +1255,8 @@ const appServer = http.createServer(async (req, res) => {
           noticeHash: preparedHash,
           recipientSource,
           operatorReference: OPERATOR_CONFIGURATION.id,
+          rightsDeclarationRecordId: rightsReview.declarationRecordId,
+          rightsReviewReference: rightsReview.reviewReference,
         },
         at: caseRecord.preparedAt,
       });
@@ -1217,9 +1264,21 @@ const appServer = http.createServer(async (req, res) => {
         d,
         null,
         "case.prepared",
-        { caseId, noticeHash: preparedHash },
+        {
+          caseId,
+          noticeHash: preparedHash,
+          rightsDeclarationRecordId: rightsReview.declarationRecordId,
+        },
         { actorSubject: currentOperatorSubject() },
       );
+      rightsRecord.status = "verified";
+      rightsRecord.updatedAt = caseRecord.preparedAt;
+      rightsRecord.evidence = {
+        ...rightsRecord.evidence,
+        operatorReviewedAt: caseRecord.preparedAt,
+        operatorReference: OPERATOR_CONFIGURATION.id,
+        reviewReference: rightsReview.reviewReference,
+      };
       await save(d);
       return send(res, 200, { ok: true, noticeHash: preparedHash });
     }
@@ -1797,7 +1856,29 @@ const appServer = http.createServer(async (req, res) => {
       );
     }
     if (route === "/api/dashboard") {
-      const assets = d.assets.filter((x) => x.userId === u.id),
+      const assets = d.assets
+          .filter((x) => x.userId === u.id)
+          .map((asset) => {
+            const rightsRecord = contentRightsRecordForAsset(
+                d.verifications,
+                u.id,
+                asset.id,
+              ),
+              rights = contentRightsSnapshot(rightsRecord);
+            return {
+              ...asset,
+              rights: rights
+                ? {
+                    status: rights.status,
+                    role: rights.role,
+                    roleLabel: rights.roleLabel,
+                    rightsHolderName: rights.rightsHolderName,
+                    declarationVersion: rights.declarationVersion,
+                    declaredAt: rights.declaredAt,
+                  }
+                : null,
+            };
+          }),
         cases = d.cases.filter((x) => x.userId === u.id),
         scans = d.scans.filter((x) => x.userId === u.id),
         subscription = activeSubscription(d, u.id),
@@ -1904,6 +1985,16 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 400, {
           error: "Explicit consent to process this reference file is required.",
         });
+      let rightsDeclaration;
+      try {
+        rightsDeclaration = contentRightsDeclaration(b, {
+          version: COMPLIANCE_VERSIONS.contentRightsDeclaration,
+        });
+      } catch (error) {
+        if (error instanceof ContentRightsError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
       if (raw.length > 8e6)
         return send(res, 413, {
           error: "Current upload limit: 8 MB per file.",
@@ -1936,6 +2027,19 @@ const appServer = http.createServer(async (req, res) => {
         createdAt: new Date().toISOString(),
       };
       d.assets.push(a);
+      const rightsRecord = {
+        id: randomUUID(),
+        userId: u.id,
+        kind: "content_rights",
+        provider: "creator-attestation",
+        providerReference: id,
+        status: "pending",
+        evidence: { assetId: id, ...rightsDeclaration },
+        expiresAt: null,
+        createdAt: rightsDeclaration.declaredAt,
+        updatedAt: rightsDeclaration.declaredAt,
+      };
+      d.verifications.push(rightsRecord);
       audit(d, u, "vault.asset_added", {
         assetId: id,
         mime: a.mime,
@@ -1946,9 +2050,74 @@ const appServer = http.createServer(async (req, res) => {
         size: a.size,
         storage: storageMode(),
         consentVersion: a.sensitiveMediaConsentVersion,
+        rightsRole: rightsDeclaration.role,
+        rightsDeclarationVersion: rightsDeclaration.declarationVersion,
       });
       await save(d);
-      return send(res, 201, { asset: a });
+      return send(res, 201, {
+        asset: a,
+        rights: contentRightsSnapshot(rightsRecord),
+      });
+    }
+    if (route.match(/^\/api\/assets\/[^/]+\/rights$/) && req.method === "PUT") {
+      const id = route.split("/")[3],
+        asset = d.assets.find((item) => item.id === id && item.userId === u.id);
+      if (!asset) return send(res, 404, { error: "Asset not found." });
+      const assetMatchIds = new Set(
+        d.matches
+          .filter((item) => item.userId === u.id && item.assetId === id)
+          .map((item) => item.id),
+      );
+      if (
+        d.cases.some(
+          (item) => item.userId === u.id && assetMatchIds.has(item.matchId),
+        )
+      )
+        return send(res, 409, {
+          error:
+            "The rights declaration is already preserved in a takedown case and cannot be replaced.",
+        });
+      const b = await parse(req);
+      let declaration;
+      try {
+        declaration = contentRightsDeclaration(b, {
+          version: COMPLIANCE_VERSIONS.contentRightsDeclaration,
+        });
+      } catch (error) {
+        if (error instanceof ContentRightsError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+      for (const item of d.verifications)
+        if (
+          item.userId === u.id &&
+          item.kind === "content_rights" &&
+          item.providerReference === id &&
+          ["pending", "verified"].includes(item.status)
+        ) {
+          item.status = "expired";
+          item.updatedAt = declaration.declaredAt;
+        }
+      const record = {
+        id: randomUUID(),
+        userId: u.id,
+        kind: "content_rights",
+        provider: "creator-attestation",
+        providerReference: id,
+        status: "pending",
+        evidence: { assetId: id, ...declaration },
+        expiresAt: null,
+        createdAt: declaration.declaredAt,
+        updatedAt: declaration.declaredAt,
+      };
+      d.verifications.push(record);
+      audit(d, u, "content_rights.declared", {
+        assetId: id,
+        rightsRole: declaration.role,
+        declarationVersion: declaration.declarationVersion,
+      });
+      await save(d);
+      return send(res, 200, { rights: contentRightsSnapshot(record) });
     }
     if (
       route.match(/^\/api\/assets\/[^/]+\/download$/) &&
@@ -1991,6 +2160,21 @@ const appServer = http.createServer(async (req, res) => {
       const [asset] = d.assets.splice(i, 1),
         objectKey = asset.objectKey || `${id}.vault`,
         durableQueue = databaseMode() === "postgresql";
+      const assetHasCase = d.cases.some((caseRecord) => {
+        const match = d.matches.find((item) => item.id === caseRecord.matchId);
+        return match?.assetId === id;
+      });
+      if (!assetHasCase)
+        for (const item of d.verifications)
+          if (
+            item.userId === u.id &&
+            item.kind === "content_rights" &&
+            item.providerReference === id &&
+            ["pending", "verified"].includes(item.status)
+          ) {
+            item.status = "expired";
+            item.updatedAt = new Date().toISOString();
+          }
       if (!durableQueue) await deleteEncryptedObject(objectKey, VAULT);
       audit(d, u, "vault.asset_deleted", { assetId: id, name: asset.name });
       await save(d, {
@@ -2633,6 +2817,17 @@ const appServer = http.createServer(async (req, res) => {
       const b = await parse(req),
         m = d.matches.find((x) => x.id === b.matchId && x.userId === u.id);
       if (!m) return send(res, 404, { error: "Match not found." });
+      const rightsRecord = contentRightsRecordForAsset(
+          d.verifications,
+          u.id,
+          m.assetId,
+        ),
+        rightsDeclaration = contentRightsSnapshot(rightsRecord);
+      if (!rightsDeclaration)
+        return send(res, 409, {
+          error:
+            "Add a current per-file ownership or authority declaration before opening a takedown case.",
+        });
       if (d.cases.some((x) => x.userId === u.id && x.matchId === m.id))
         return send(res, 409, {
           error: "A case already exists for this match.",
@@ -2649,6 +2844,7 @@ const appServer = http.createServer(async (req, res) => {
           providerMatchScore: m.confidence,
           discoveredAt: m.age,
           providerEvidence: m.evidence || {},
+          contentRights: rightsDeclaration,
           capturedAt,
         },
         caseId = randomUUID();
@@ -2665,7 +2861,13 @@ const appServer = http.createServer(async (req, res) => {
         mode: "sandbox",
         evidenceSnapshot,
         evidenceHash: evidenceDigest(evidenceSnapshot),
-        noticeDraft: buildCopyrightNotice(u, m, caseId, capturedAt),
+        noticeDraft: buildCopyrightNotice(
+          u,
+          m,
+          caseId,
+          capturedAt,
+          rightsDeclaration,
+        ),
         declarations: {},
         createdAt: capturedAt,
         updatedAt: capturedAt,
@@ -2683,7 +2885,11 @@ const appServer = http.createServer(async (req, res) => {
         ],
       };
       d.cases.push(c);
-      audit(d, u, "case.created", { caseId: c.id, matchId: m.id });
+      audit(d, u, "case.created", {
+        caseId: c.id,
+        matchId: m.id,
+        rightsDeclarationRecordId: rightsDeclaration.recordId,
+      });
       await save(d);
       return send(res, 201, {
         case: c,
