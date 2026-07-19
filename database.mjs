@@ -1,6 +1,8 @@
+import { createHmac } from "node:crypto";
 import pg from "pg";
 
 const { Pool } = pg;
+const localRateLimits = new Map();
 const pool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL, max: 5 })
   : null;
@@ -26,6 +28,79 @@ export async function databaseProbe() {
 
 export async function closeDatabase() {
   if (pool) await pool.end();
+}
+
+export async function consumeRateLimit({
+  key,
+  max,
+  windowMs,
+  now = new Date(),
+}) {
+  const hashKey =
+      process.env.CONTENT_PROTECT_MASTER_KEY || "local-development-only",
+    keyHash = createHmac("sha256", hashKey)
+      .update(`rate-limit:${String(key)}`)
+      .digest("hex"),
+    timestamp = new Date(now),
+    windowStart = new Date(timestamp.getTime() - windowMs),
+    expiresAt = new Date(timestamp.getTime() + windowMs);
+  if (!pool) {
+    const previous = localRateLimits.get(keyHash),
+      count =
+        previous && previous.windowStartedAt > windowStart
+          ? Math.min(previous.count + 1, max + 1)
+          : 1,
+      startedAt =
+        previous && previous.windowStartedAt > windowStart
+          ? previous.windowStartedAt
+          : timestamp;
+    localRateLimits.set(keyHash, {
+      count,
+      windowStartedAt: startedAt,
+      expiresAt: new Date(startedAt.getTime() + windowMs),
+    });
+    if (localRateLimits.size > 10_000)
+      for (const [candidate, record] of localRateLimits)
+        if (record.expiresAt <= timestamp) localRateLimits.delete(candidate);
+    return {
+      allowed: count <= max,
+      remaining: Math.max(0, max - count),
+      retryAfterSeconds:
+        count <= max
+          ? 0
+          : Math.max(
+              1,
+              Math.ceil(
+                (startedAt.getTime() + windowMs - timestamp.getTime()) / 1000,
+              ),
+            ),
+    };
+  }
+  const result = await pool.query(
+    `INSERT INTO rate_limits (key_hash,window_started_at,request_count,expires_at)
+     VALUES ($1,$2,1,$3)
+     ON CONFLICT (key_hash) DO UPDATE SET
+       window_started_at=CASE WHEN rate_limits.window_started_at <= $4 THEN EXCLUDED.window_started_at ELSE rate_limits.window_started_at END,
+       request_count=CASE WHEN rate_limits.window_started_at <= $4 THEN 1 ELSE LEAST(rate_limits.request_count + 1,$5 + 1) END,
+       expires_at=CASE WHEN rate_limits.window_started_at <= $4 THEN EXCLUDED.expires_at ELSE rate_limits.expires_at END
+     RETURNING request_count,window_started_at`,
+    [keyHash, timestamp, expiresAt, windowStart, max],
+  );
+  const count = Number(result.rows[0].request_count),
+    startedAt = new Date(result.rows[0].window_started_at);
+  return {
+    allowed: count <= max,
+    remaining: Math.max(0, max - count),
+    retryAfterSeconds:
+      count <= max
+        ? 0
+        : Math.max(
+            1,
+            Math.ceil(
+              (startedAt.getTime() + windowMs - timestamp.getTime()) / 1000,
+            ),
+          ),
+  };
 }
 
 export async function archiveAccountingRecords(userId, now = new Date()) {
@@ -121,6 +196,7 @@ export async function runRetention({ execute = false, now = new Date() } = {}) {
       "retained_until < $1",
       now,
     ],
+    ["expiredRateLimits", "rate_limits", "expires_at < $1", now],
   ];
   try {
     await client.query("BEGIN");
@@ -145,7 +221,10 @@ export async function runRetention({ execute = false, now = new Date() } = {}) {
       execute,
       evaluatedAt: now.toISOString(),
       cutoffs: Object.fromEntries(
-        Object.entries(cutoffs).map(([name, value]) => [name, value.toISOString()]),
+        Object.entries(cutoffs).map(([name, value]) => [
+          name,
+          value.toISOString(),
+        ]),
       ),
       counts,
     };

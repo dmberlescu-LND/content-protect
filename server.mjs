@@ -25,6 +25,7 @@ import {
 import {
   archiveAccountingRecords,
   closeDatabase,
+  consumeRateLimit,
   databaseProbe,
   loadPostgresState,
   savePostgresState,
@@ -103,8 +104,7 @@ const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
   TAKEDOWN_LEGAL_TEMPLATES_APPROVED,
 );
 let key;
-const rateBuckets = new Map(),
-  EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function emailFromAddress(value) {
   const match = String(value || "").match(/<([^>]+)>\s*$/);
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
@@ -345,17 +345,8 @@ function clientIp(req) {
     .split(",")[0]
     .trim();
 }
-function allowed(req, key, max, windowMs) {
-  const now = Date.now(),
-    bucket = rateBuckets.get(key) || [];
-  const fresh = bucket.filter((t) => now - t < windowMs);
-  if (fresh.length >= max) return false;
-  fresh.push(now);
-  rateBuckets.set(key, fresh);
-  if (rateBuckets.size > 10000)
-    for (const [k, v] of rateBuckets)
-      if (!v.some((t) => now - t < windowMs)) rateBuckets.delete(k);
-  return true;
+async function allowed(req, key, max, windowMs) {
+  return consumeRateLimit({ key, max, windowMs });
 }
 function validPassword(value, min = 10) {
   return (
@@ -922,7 +913,7 @@ const appServer = http.createServer(async (req, res) => {
     }
     const d = await load();
     if (route === "/api/operator/session" && req.method === "POST") {
-      if (!allowed(req, `operator-login:${ip}`, 5, 3600000))
+      if (!(await allowed(req, `operator-login:${ip}`, 5, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many operator login attempts. Try again later.",
         });
@@ -973,7 +964,7 @@ const appServer = http.createServer(async (req, res) => {
     if (route === "/api/operator/cases" && req.method === "GET") {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
-      if (!allowed(req, `operator-list:${ip}`, 60, 3600000))
+      if (!(await allowed(req, `operator-list:${ip}`, 60, 3600000)).allowed)
         return send(res, 429, { error: "Too many operator requests." });
       return send(res, 200, {
         cases: d.cases
@@ -1014,7 +1005,7 @@ const appServer = http.createServer(async (req, res) => {
     ) {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
-      if (!allowed(req, `operator-prepare:${ip}`, 60, 3600000))
+      if (!(await allowed(req, `operator-prepare:${ip}`, 60, 3600000)).allowed)
         return send(res, 429, { error: "Too many operator requests." });
       const caseId = route.split("/")[4],
         b = await parse(req),
@@ -1073,7 +1064,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 401, { error: "Operator authentication required." });
       if (!TAKEDOWN_DELIVERY_CONFIGURED)
         return send(res, 503, { error: "Delivery is not configured." });
-      if (!allowed(req, `operator-send:${ip}`, 30, 86400000))
+      if (!(await allowed(req, `operator-send:${ip}`, 30, 86400000)).allowed)
         return send(res, 429, { error: "Daily delivery limit reached." });
       const caseId = route.split("/")[4],
         b = await parse(req),
@@ -1168,7 +1159,7 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/auth/register" && req.method === "POST") {
-      if (!allowed(req, `register:${ip}`, 5, 3600000))
+      if (!(await allowed(req, `register:${ip}`, 5, 3600000)).allowed)
         return send(
           res,
           429,
@@ -1234,18 +1225,25 @@ const appServer = http.createServer(async (req, res) => {
       );
     }
     if (route === "/api/auth/login" && req.method === "POST") {
-      if (!allowed(req, `login:${ip}`, 10, 15 * 60000))
+      const b = await parse(req),
+        email = String(b.email || "")
+          .trim()
+          .toLowerCase(),
+        ipLimit = await allowed(req, `login-ip:${ip}`, 50, 15 * 60000),
+        accountLimit = await allowed(
+          req,
+          `login-account:${email}`,
+          10,
+          15 * 60000,
+        );
+      if (!ipLimit.allowed || !accountLimit.allowed)
         return send(
           res,
           429,
           { error: "Too many login attempts. Try again in 15 minutes." },
           { "retry-after": "900" },
         );
-      const b = await parse(req),
-        email = String(b.email || "")
-          .trim()
-          .toLowerCase(),
-        u = d.users.find((x) => x.email === email);
+      const u = d.users.find((x) => x.email === email);
       if (!u || typeof b.password !== "string" || b.password.length > 128)
         return send(res, 401, { error: "Email or password is incorrect." });
       const h = scryptSync(b.password, u.salt, 64);
@@ -1290,7 +1288,7 @@ const appServer = http.createServer(async (req, res) => {
       );
     }
     if (route === "/api/auth/forgot" && req.method === "POST") {
-      if (!allowed(req, `forgot:${ip}`, 5, 3600000))
+      if (!(await allowed(req, `forgot:${ip}`, 5, 3600000)).allowed)
         return send(
           res,
           429,
@@ -1341,7 +1339,7 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/auth/reset" && req.method === "POST") {
-      if (!allowed(req, `reset:${ip}`, 10, 3600000))
+      if (!(await allowed(req, `reset:${ip}`, 10, 3600000)).allowed)
         return send(
           res,
           429,
@@ -1370,7 +1368,7 @@ const appServer = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     }
     if (route === "/api/auth/verify-email" && req.method === "POST") {
-      if (!allowed(req, `verify:${ip}`, 10, 3600000))
+      if (!(await allowed(req, `verify:${ip}`, 10, 3600000)).allowed)
         return send(res, 429, { error: "Too many verification attempts." });
       const b = await parse(req),
         record = d.emailVerifications.find(
@@ -1397,7 +1395,7 @@ const appServer = http.createServer(async (req, res) => {
     if (!u) return send(res, 401, { error: "Authentication required." });
     if (route === "/api/auth/resend-verification" && req.method === "POST") {
       if (u.emailVerifiedAt) return send(res, 200, { ok: true });
-      if (!allowed(req, `verify-send:${u.id}`, 3, 3600000))
+      if (!(await allowed(req, `verify-send:${u.id}`, 3, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many verification emails. Try again later.",
         });
@@ -1675,7 +1673,7 @@ const appServer = http.createServer(async (req, res) => {
       route.match(/^\/api\/assets\/[^/]+\/download$/) &&
       req.method === "POST"
     ) {
-      if (!allowed(req, `asset-download:${u.id}`, 20, 3600000))
+      if (!(await allowed(req, `asset-download:${u.id}`, 20, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many download attempts. Try again later.",
         });
@@ -2034,7 +2032,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 409, {
           error: "Two-step verification is already enabled.",
         });
-      if (!allowed(req, `mfa-setup:${u.id}`, 5, 3600000))
+      if (!(await allowed(req, `mfa-setup:${u.id}`, 5, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many setup attempts. Try again later.",
         });
@@ -2057,7 +2055,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 409, {
           error: "Two-step verification is already enabled.",
         });
-      if (!allowed(req, `mfa-enable:${u.id}`, 10, 3600000))
+      if (!(await allowed(req, `mfa-enable:${u.id}`, 10, 3600000)).allowed)
         return send(res, 429, { error: "Too many verification attempts." });
       const b = await parse(req),
         secret = String(b.secret || "")
@@ -2096,7 +2094,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 409, {
           error: "Two-step verification is not enabled.",
         });
-      if (!allowed(req, `mfa-disable:${u.id}`, 10, 3600000))
+      if (!(await allowed(req, `mfa-disable:${u.id}`, 10, 3600000)).allowed)
         return send(res, 429, { error: "Too many verification attempts." });
       const b = await parse(req);
       if (!passwordMatches(u, b.password))
@@ -2147,7 +2145,7 @@ const appServer = http.createServer(async (req, res) => {
       );
     }
     if (route === "/api/account/export" && req.method === "POST") {
-      if (!allowed(req, `account-export:${u.id}`, 5, 3600000))
+      if (!(await allowed(req, `account-export:${u.id}`, 5, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many export attempts. Try again later.",
         });

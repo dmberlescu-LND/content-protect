@@ -1,4 +1,4 @@
-export const REQUIRED_MIGRATION = "013_takedown_exact_approval.sql";
+export const REQUIRED_MIGRATION = "014_distributed_rate_limits.sql";
 
 const verifiedRestore = (value) => {
   if (!value) return false;
