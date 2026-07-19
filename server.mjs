@@ -38,6 +38,11 @@ import {
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
 import { operationsReadiness } from "./operations-readiness.mjs";
 import { unsafeRequestOriginAllowed } from "./security-policy.mjs";
+import {
+  buildYotiAgeSession,
+  interpretYotiAgeResult,
+  YOTI_SESSION_ID,
+} from "./yoti-age-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -1401,36 +1406,9 @@ const appServer = http.createServer(async (req, res) => {
             "yoti-sdk-id": process.env.YOTI_SDK_ID,
             "user-agent": "Content-Protect/1.0",
           },
-          body: JSON.stringify({
-            type: "OVER",
-            ttl: 900,
-            reference_id: u.id,
-            digital_id: {
-              allowed: true,
-              threshold: 18,
-              age_estimation_allowed: true,
-              age_estimation_threshold: 21,
-              retry_limit: 2,
-            },
-            doc_scan: {
-              allowed: true,
-              threshold: 18,
-              authenticity: "AUTO",
-              level: "PASSIVE",
-              retry_limit: 2,
-            },
-            age_estimation: {
-              allowed: true,
-              threshold: 21,
-              level: "PASSIVE",
-              retry_limit: 2,
-            },
-            callback: { auto: true, url: `${base}/?age_check=return` },
-            cancel_url: `${base}/?age_check=cancelled`,
-            retry_enabled: true,
-            resume_enabled: true,
-            synchronous_checks: true,
-          }),
+          body: JSON.stringify(
+            buildYotiAgeSession({ userId: u.id, baseUrl: base }),
+          ),
         });
       if (!response.ok) {
         console.error("Yoti session creation failed", response.status);
@@ -1470,7 +1448,7 @@ const appServer = http.createServer(async (req, res) => {
         });
       const b = await parse(req),
         sessionId = String(b.sessionId || "");
-      if (!/^[0-9a-f-]{36}$/i.test(sessionId))
+      if (!YOTI_SESSION_ID.test(sessionId))
         return send(res, 400, { error: "Invalid verification session." });
       const record = d.verifications.find(
         (item) =>
@@ -1495,21 +1473,20 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 502, {
           error: "The verification result is not available yet.",
         });
-      const result = await response.json();
-      if (result.id !== sessionId || result.reference_id !== u.id)
+      const result = await response.json(),
+        interpreted = interpretYotiAgeResult(result, {
+          sessionId,
+          userId: u.id,
+          sdkId: process.env.YOTI_SDK_ID,
+        });
+      if (interpreted.status === "mismatch")
         return send(res, 403, { error: "Verification result mismatch." });
-      const complete = result.status === "COMPLETE" && result.age >= 18;
-      record.status = complete
-        ? "verified"
-        : result.status === "EXPIRED"
-          ? "expired"
-          : result.status === "PENDING" || result.status === "IN_PROGRESS"
-            ? "pending"
-            : "failed";
+      const complete = interpreted.accepted;
+      record.status = interpreted.status;
       record.updatedAt = new Date().toISOString();
       record.evidence = {
-        method: result.method || "unknown",
-        status: result.status,
+        method: interpreted.method,
+        status: interpreted.providerStatus,
         evidenceId: result.evidence_id || null,
       };
       if (complete) {
@@ -1520,11 +1497,15 @@ const appServer = http.createServer(async (req, res) => {
         });
       }
       await save(d);
-      return send(res, complete ? 200 : 409, {
+      return send(res, complete ? 200 : record.status === "pending" ? 202 : 409, {
         verified: complete,
         status: record.status,
         user: safe(u, d),
-        error: complete ? undefined : "Age verification was not completed.",
+        error: complete
+          ? undefined
+          : record.status === "pending"
+            ? "Age verification is still processing."
+            : "Age verification was not completed.",
       });
     }
     if (route === "/api/dashboard") {

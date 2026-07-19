@@ -2175,16 +2175,26 @@ function App() {
             sessionId = q.get("session_id");
           const ageSessionId = q.get("sessionId");
           if (q.get("age_check") === "return" && ageSessionId) {
-            const r = await fetch("/api/verification/age/complete", {
+            let r, d;
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+              r = await fetch("/api/verification/age/complete", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ sessionId: ageSessionId }),
-              }),
+              });
               d = await r.json();
+              if (r.status !== 202 || attempt === 2) break;
+              await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
             history.replaceState({}, "", location.pathname);
             if (r.ok) {
-              u = d.user;
-              alert("Your 18+ age check was verified successfully.");
+              if (d.verified) {
+                u = d.user;
+                alert("Your 18+ age check was verified successfully.");
+              } else
+                alert(
+                  "Your age check is still processing. Please try again shortly.",
+                );
             } else alert(d.error || "Age verification was not completed.");
           } else if (q.get("age_check") === "cancelled") {
             history.replaceState({}, "", location.pathname);
