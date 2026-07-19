@@ -31,25 +31,52 @@ expect(live.ok === true && live.status === "alive", "liveness body is invalid");
 const readyResponse = await request("/api/health/ready");
 expect(readyResponse.ok, `readiness returned HTTP ${readyResponse.status}`);
 const ready = readyResponse.ok ? await readyResponse.json() : {};
-expect(ready.ok === true && ready.status === "ready", "readiness body is invalid");
+expect(
+  ready.ok === true && ready.status === "ready",
+  "readiness body is invalid",
+);
 expect(ready.database === "postgresql", "PostgreSQL is not active");
 expect(
   ready.checks?.database?.latestMigration === "012_retention_legal_holds.sql",
   "latest required database migration is not recorded",
 );
 if (requireProductionReady) {
-  expect(ready.productionReady === true, "production release gate is not green");
-  expect(ready.emailDelivery === "resend", "Resend email delivery is not active");
+  expect(
+    ready.productionReady === true,
+    "production release gate is not green",
+  );
+  expect(
+    ready.emailDelivery === "resend",
+    "Resend email delivery is not active",
+  );
   expect(
     ready.emailWebhook === "resend-signed",
     "signed Resend webhook is not active",
   );
-  expect(ready.operatorAccess === "configured", "operator access is not configured");
+  expect(
+    ready.operatorAccess === "configured",
+    "operator access is not configured",
+  );
   expect(
     ready.legalTemplates?.startsWith("approved-"),
     "takedown templates do not have recorded counsel approval",
   );
-  expect(ready.ageVerification === "yoti", "Yoti age verification is not active");
+  expect(
+    ready.ageVerification === "yoti",
+    "Yoti age verification is not active",
+  );
+  expect(
+    ready.retentionAutomation === "configured",
+    "approved retention automation is not active",
+  );
+  expect(
+    ready.monitoring === "configured",
+    "external monitoring is not active",
+  );
+  expect(
+    ready.backupRestore === "verified-recently",
+    "database restore evidence is missing or older than 100 days",
+  );
 }
 
 for (const page of [
@@ -70,7 +97,10 @@ for (const page of [
     response.headers.get("x-content-type-options") === "nosniff",
     `${page} is missing nosniff`,
   );
-  expect(Boolean(response.headers.get("content-security-policy")), `${page} is missing CSP`);
+  expect(
+    Boolean(response.headers.get("content-security-policy")),
+    `${page} is missing CSP`,
+  );
   await response.arrayBuffer();
 }
 

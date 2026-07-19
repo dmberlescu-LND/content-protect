@@ -10,7 +10,9 @@ Status: operational baseline. External alert destinations and a verified databas
 - Alert when readiness fails twice consecutively, the 5xx rate exceeds 2% for five minutes, or p95 response time exceeds two seconds for ten minutes.
 - SEV-1 acknowledgement target: 15 minutes. SEV-2: 60 minutes. SEV-3: next business day.
 
-The readiness endpoint checks PostgreSQL and the configured private storage without writing customer data. `productionReady` is deliberately false until PostgreSQL, private object storage, scanning, age verification, operator-reviewed delivery and Stripe are all configured.
+The readiness endpoint checks PostgreSQL, the latest required migration, private storage and external key configuration without writing customer data. It returns HTTP 503 and `status: degraded` when any of those infrastructure checks fails; local JSON or local disk can never pass the production readiness probe. `productionReady` is deliberately false until scanning, age verification, operator-reviewed delivery, Stripe, approved retention automation, external monitoring and recent restore evidence are also configured.
+
+Set `MONITORING_CONFIGURED=true` only after the alert destination receives a real test alert. Set `BACKUP_RESTORE_VERIFIED_AT` to the UTC completion timestamp only after an isolated restore has passed the checks below; readiness expires that evidence after 100 days. Set `RETENTION_EXECUTION_ENABLED=true` only when the approved scheduled job is installed and its reviewed preview matches expectations. These flags record completed evidence; they are not substitutes for completing the work.
 
 Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-18`. Never advance this value merely to make the readiness check green; a template change requires a new review and version.
 
@@ -27,7 +29,7 @@ Keep application/security logs for 12 months, with access restricted to authoris
 3. Review failed Stripe, Resend, scanner and age-provider webhooks.
 4. Review the operator case queue and overdue actions without opening private media unnecessarily.
 5. Run `pnpm retention:preview` and investigate unexpected volumes. The destructive command remains disabled unless the approved scheduler supplies `RETENTION_EXECUTION_ENABLED=true`; never enable it before migrations and a reviewed preview.
-5. Confirm no provider credentials or customer data appeared in logs.
+6. Confirm no provider credentials or customer data appeared in logs.
 
 ## Database backup and restore gate
 

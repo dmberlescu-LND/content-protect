@@ -9,7 +9,7 @@ This configuration publishes the current application as a private-data-free stag
 - Region: Frankfurt, Germany
 - Instance: Starter
 - Persistent disk: 1 GB mounted at `/app/.traceguard-data`
-- Health check: `/api/health`
+- Health check: `/api/health/ready`
 - Automatic deploys: enabled for new commits
 - Payments, takedowns and biometrics: sandbox/disabled
 
