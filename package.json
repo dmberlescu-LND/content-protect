@@ -2,6 +2,10 @@
   "name": "content-protect",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "type": "module",
   "scripts": {
     "dev": "node dev.mjs",
@@ -27,6 +31,7 @@
     "test:stripe-policy": "node scripts/test-stripe-subscription-policy.mjs",
     "test:storage": "node scripts/test-storage.mjs",
     "test:storage-config": "node scripts/test-storage-config.mjs",
+    "test": "node scripts/test-all.mjs",
     "storage:migrate": "node scripts/migrate-storage.mjs",
     "retention:preview": "node scripts/retention.mjs",
     "retention:execute": "node scripts/retention.mjs --execute",
@@ -44,19 +49,19 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1090.0",
-    "@vitejs/plugin-react": "latest",
-    "lucide-react": "latest",
     "pg": "^8.22.0",
-    "react": "latest",
-    "react-dom": "latest",
     "sharp": "^0.35.3",
     "stripe": "^22.3.2",
     "svix": "^1.98.0",
-    "typescript": "latest",
-    "vite": "latest",
     "yoti": "4.13.2"
   },
   "devDependencies": {
-    "prettier": "^3.9.5"
+    "@vitejs/plugin-react": "6.0.3",
+    "lucide-react": "1.25.0",
+    "prettier": "^3.9.5",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "typescript": "7.0.2",
+    "vite": "8.1.5"
   }
 }

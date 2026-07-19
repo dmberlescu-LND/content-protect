@@ -76,7 +76,7 @@ Cloudflare capability reference: https://developers.cloudflare.com/r2/api/s3/api
 
 ## Deployment and rollback
 
-1. Deploy only a committed main-branch revision after syntax and production build checks.
+1. Deploy only a committed main-branch revision after the `Build and policy checks` workflow has passed. It installs the frozen lockfile, runs the offline policy/unit suite, builds the production assets and validates the final Docker image. Dependabot proposes grouped weekly dependency and GitHub Actions updates for review; updates are never deployed solely because they are available.
 2. Run migrations through the Blueprint pre-deploy command. `schema_migrations` checksums must match the committed files, and `/api/health/ready` must report the latest required migration before traffic is declared healthy.
 3. Run the production verifier and one creator sandbox journey.
 4. Roll back the application revision if errors increase. Do not roll back a destructive schema change; use a reviewed forward fix.
