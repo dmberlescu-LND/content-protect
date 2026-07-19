@@ -75,10 +75,14 @@ const RESEND_EMAIL_CONFIGURED = Boolean(
 const RESEND_WEBHOOK_CONFIGURED = Boolean(
   process.env.RESEND_WEBHOOK_SECRET?.startsWith("whsec_"),
 );
+const TAKEDOWN_TEMPLATE_VERSION = "2026-07-18";
+const TAKEDOWN_LEGAL_TEMPLATES_APPROVED =
+  process.env.TAKEDOWN_LEGAL_APPROVED_VERSION === TAKEDOWN_TEMPLATE_VERSION;
 const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
   RESEND_EMAIL_CONFIGURED &&
     RESEND_WEBHOOK_CONFIGURED &&
-    process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32,
+    process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32 &&
+    TAKEDOWN_LEGAL_TEMPLATES_APPROVED,
 );
 let key;
 const rateBuckets = new Map(),
@@ -483,9 +487,23 @@ function audit(d, u, action, details = {}) {
 function evidenceDigest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
+function textDigest(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
+}
+function safeHttpsReference(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    if (url.protocol !== "https:" || url.username || url.password || !url.hostname)
+      return null;
+    url.hash = "";
+    return url.href;
+  } catch {
+    return null;
+  }
+}
 function buildCopyrightNotice(user, match, caseId, capturedAt) {
   return {
-    version: "2026-07-18",
+    version: TAKEDOWN_TEMPLATE_VERSION,
     type: "copyright-removal-request",
     caseReference: caseId,
     claimant: {
@@ -883,6 +901,9 @@ const appServer = http.createServer(async (req, res) => {
           takedownDelivery: TAKEDOWN_DELIVERY_CONFIGURED
             ? "operator-reviewed"
             : "unconfigured",
+          legalTemplates: TAKEDOWN_LEGAL_TEMPLATES_APPROVED
+            ? `approved-${TAKEDOWN_TEMPLATE_VERSION}`
+            : "awaiting-counsel-approval",
           billing: STRIPE_CONFIGURED
             ? `stripe-${PAYMENTS_MODE}`
             : "unconfigured",
@@ -948,12 +969,16 @@ const appServer = http.createServer(async (req, res) => {
             .filter((item) => item.status === "Approved — delivery pending")
             .map((item) => {
               const creator = d.users.find((user) => user.id === item.userId);
+              const renderedNotice = creator ? noticeText(item, creator) : null;
               return {
                 id: item.id,
                 targetUrl: item.targetUrl,
                 targetHost: item.targetHost,
                 noticeType: item.noticeType,
                 evidenceHash: item.evidenceHash,
+                noticeText: renderedNotice,
+                noticeHash: renderedNotice ? textDigest(renderedNotice) : null,
+                templateVersion: item.noticeDraft?.version || null,
                 approvedAt: item.approvedAt,
                 claimant: creator
                   ? { name: creator.name, stageName: creator.stageName || null }
@@ -977,25 +1002,37 @@ const appServer = http.createServer(async (req, res) => {
           recipientEmail = String(b.recipientEmail || "")
             .trim()
             .toLowerCase(),
-          recipientSource = String(b.recipientSource || "").trim(),
+          recipientSource = safeHttpsReference(b.recipientSource),
           caseRecord = d.cases.find((item) => item.id === caseId);
         if (!caseRecord) return send(res, 404, { error: "Case not found." });
         if (caseRecord.status !== "Approved — delivery pending")
           return send(res, 409, { error: "Case is not ready for delivery." });
         if (
           !EMAIL.test(recipientEmail) ||
-          !/^https:\/\//i.test(recipientSource) ||
-          b.confirmRecipientReviewed !== true
+          !recipientSource ||
+          b.confirmRecipientReviewed !== true ||
+          b.confirmJurisdictionReviewed !== true ||
+          b.confirmNoticeReviewed !== true
         )
           return send(res, 400, {
             error:
-              "A reviewed recipient email, HTTPS source and confirmation are required.",
+              "Recipient, jurisdiction, notice text and HTTPS source must be reviewed before delivery.",
           });
         const creator = d.users.find(
           (user) => user.id === caseRecord.userId,
         );
         if (!creator)
           return send(res, 409, { error: "Case claimant no longer exists." });
+        const renderedNotice = noticeText(caseRecord, creator),
+          renderedNoticeHash = textDigest(renderedNotice);
+        if (
+          b.noticeHash !== renderedNoticeHash ||
+          caseRecord.declarations?.approvedNoticeHash !== renderedNoticeHash
+        )
+          return send(res, 409, {
+            error:
+              "The approved notice text has changed. Return it to the creator for approval.",
+          });
         caseRecord.deliveryAttempts = (caseRecord.deliveryAttempts || 0) + 1;
         caseRecord.recipientEmail = recipientEmail;
         caseRecord.recipientSource = recipientSource;
@@ -1023,8 +1060,9 @@ const appServer = http.createServer(async (req, res) => {
             error: "The delivery provider rejected the request.",
           });
         }
-        caseRecord.status = "Notice sent";
+        caseRecord.status = "Submitted — awaiting delivery confirmation";
         caseRecord.mode = "live";
+        caseRecord.deliveryStatus = "accepted";
         caseRecord.submittedAt = new Date().toISOString();
         caseRecord.nextActionAt = new Date(
           Date.now() + 7 * 86400000,
@@ -1032,10 +1070,11 @@ const appServer = http.createServer(async (req, res) => {
         caseRecord.lastDeliveryError = null;
         caseRecord.updatedAt = caseRecord.submittedAt;
         caseRecord.timeline.push({
-          event: "Notice delivered",
+          event: "Notice accepted by email provider",
           details: {
             provider: "resend",
             recipientSource,
+            noticeHash: renderedNoticeHash,
             nextReviewAt: caseRecord.nextActionAt,
           },
           at: caseRecord.submittedAt,
@@ -2067,6 +2106,11 @@ const appServer = http.createServer(async (req, res) => {
         );
       }
       if (route === "/api/cases" && req.method === "POST") {
+        if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
+          return send(res, 403, {
+            error:
+              "Verify your email, age and eligibility before opening a takedown case.",
+          });
         const b = await parse(req),
           m = d.matches.find((x) => x.id === b.matchId && x.userId === u.id);
         if (!m) return send(res, 404, { error: "Match not found." });
@@ -2159,11 +2203,15 @@ const appServer = http.createServer(async (req, res) => {
           accurate: true,
           authoriseDelivery: true,
           acceptedAt: c.approvedAt,
-          policyVersion: "2026-07-18",
+          policyVersion: TAKEDOWN_TEMPLATE_VERSION,
+          approvedNoticeHash: textDigest(noticeText(c, u)),
         };
         c.timeline.push({
           event: "Creator declarations accepted",
-          details: { policyVersion: "2026-07-18" },
+          details: {
+            policyVersion: TAKEDOWN_TEMPLATE_VERSION,
+            approvedNoticeHash: c.declarations.approvedNoticeHash,
+          },
           at: c.approvedAt,
         });
         audit(d, u, "case.approved", {

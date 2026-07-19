@@ -12,6 +12,8 @@ Status: operational baseline. External alert destinations and a verified databas
 
 The readiness endpoint checks PostgreSQL and the configured private storage without writing customer data. `productionReady` is deliberately false until PostgreSQL, private object storage, scanning, age verification, operator-reviewed delivery and Stripe are all configured.
 
+Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-18`. Never advance this value merely to make the readiness check green; a template change requires a new review and version.
+
 ## Logs and correlation
 
 The service emits one JSON event per request with UTC platform timestamp, request ID, method, path, status and duration. Error events contain the same request ID. Query Render logs using `requestId`; do not log request bodies, cookies, tokens, email addresses or private media.

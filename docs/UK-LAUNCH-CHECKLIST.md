@@ -33,6 +33,8 @@ Status: implementation checklist, not legal advice. Company details and counsel 
 
 ## Copyright and takedowns
 
+- Obtain specialist counsel approval for notice template `2026-07-18` and record the same version in `TAKEDOWN_LEGAL_APPROVED_VERSION`; do not enable live delivery before this evidence exists.
+
 - Verify ownership/authority before acting.
 - Preserve URL, timestamp, page capture and content-match evidence.
 - Route notices by the recipient's jurisdiction: UK copyright complaint, US DMCA, platform-specific report, host/CDN/registrar escalation.

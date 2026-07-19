@@ -2020,6 +2020,10 @@ function OperatorConsole() {
       setError("Recipient email and its verified HTTPS source are required.");
       return;
     }
+    if (!form.noticeReviewed || !form.jurisdictionReviewed) {
+      setError("Review the exact notice and recipient jurisdiction before sending.");
+      return;
+    }
     if (
       !confirm(
         `Send this legal notice to ${form.recipientEmail}? This external action cannot be undone.`,
@@ -2032,6 +2036,9 @@ function OperatorConsole() {
       body: JSON.stringify({
         ...form,
         confirmRecipientReviewed: true,
+        confirmNoticeReviewed: form.noticeReviewed === true,
+        confirmJurisdictionReviewed: form.jurisdictionReviewed === true,
+        noticeHash: cases.find((item) => item.id === caseId)?.noticeHash,
       }),
     });
     const result = await response.json();
@@ -2099,9 +2106,17 @@ function OperatorConsole() {
               <div><dt>Target</dt><dd><a href={item.targetUrl} target="_blank" rel="noreferrer">Review URL</a></dd></div>
               <div><dt>Evidence hash</dt><dd className="operator-hash">{item.evidenceHash}</dd></div>
             </dl>
+            <div className="operator-notice">
+              <div><b>Exact notice to be sent</b><span>Template {item.templateVersion} · SHA-256 {item.noticeHash}</span></div>
+              <pre>{item.noticeText}</pre>
+            </div>
             <div className="operator-fields">
               <label>Verified recipient email<input type="email" value={forms[item.id]?.recipientEmail || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientEmail:event.target.value}})} /></label>
               <label>HTTPS source proving recipient<input type="url" placeholder="https://…" value={forms[item.id]?.recipientSource || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientSource:event.target.value}})} /></label>
+            </div>
+            <div className="operator-checks">
+              <label><input type="checkbox" checked={forms[item.id]?.noticeReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],noticeReviewed:event.target.checked}})} />I reviewed the exact notice text and evidence hash.</label>
+              <label><input type="checkbox" checked={forms[item.id]?.jurisdictionReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],jurisdictionReviewed:event.target.checked}})} />I verified the recipient and appropriate jurisdiction/channel.</label>
             </div>
             <button className="btn btn-primary" onClick={() => dispatch(item.id)}>Review confirmation & send</button>
           </article>

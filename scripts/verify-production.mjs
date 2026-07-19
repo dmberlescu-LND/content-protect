@@ -41,6 +41,10 @@ if (requireProductionReady) {
     "signed Resend webhook is not active",
   );
   expect(ready.operatorAccess === "configured", "operator access is not configured");
+  expect(
+    ready.legalTemplates?.startsWith("approved-"),
+    "takedown templates do not have recorded counsel approval",
+  );
   expect(ready.ageVerification === "yoti", "Yoti age verification is not active");
 }
 
