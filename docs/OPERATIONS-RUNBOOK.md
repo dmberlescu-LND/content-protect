@@ -1,6 +1,6 @@
 # Content Protect production operations runbook
 
-Status: operational baseline. The first encrypted database backup and isolated restore have been verified; external provider approvals, live-mode tests, retention approval, independent audit-export configuration and the alert destination test remain release gates.
+Status: operational baseline. The first encrypted database backup, isolated restore and production-monitor alert destination have been verified; external provider approvals, live-mode tests, retention approval and independent audit-export configuration remain release gates.
 
 ## Service-level targets
 
@@ -25,6 +25,10 @@ Monitoring, retention and backup-restore readiness are derived from fresh Postgr
 The repository workflow `.github/workflows/production-monitor.yml` checks the public domain from infrastructure independent of Render every five minutes and after every push to `main`. Push-triggered runs first wait up to six minutes for the matching 12-character release identifier to become live, preventing a successful check of the previous deployment from being recorded for a new revision. It validates liveness, PostgreSQL readiness, private object storage, the required migration, TLS-facing security headers, legal pages and SEO. A single failed run is retried after 60 seconds so an alert represents two consecutive failures.
 
 To commission the alert route, store the same random `MONITORING_HEARTBEAT_TOKEN` as a Render secret and a GitHub Actions repository secret. Open **GitHub → Actions → Production monitor → Run workflow**, enable **Fail after the checks to test alert delivery**, and run it. Confirm that the named on-call recipient receives the failed-workflow notification, then run it again without the failure option and confirm a green result. Only the successful run writes fresh monitoring evidence; GitHub notification settings must keep Actions failure notifications enabled for the on-call account.
+
+### Production-monitor alert delivery evidence
+
+The alert route was acceptance-tested on 19 July 2026. GitHub Actions **Production monitor #27**, run ID `29704210377`, was deliberately failed at 22:21 BST using the workflow's test-failure option. The director on-call mailbox received GitHub's failure notification from `notifications@github.com` at 22:22 BST with subject metadata binding it to `Production monitor`, branch `main` and commit `5783aaf`. The mailbox search result was checked in the authenticated account; no personal mailbox address or message body is retained in this repository. Manual recovery **Production monitor #28**, run ID `29704238669`, completed successfully at 22:22 BST. This proves both failure delivery and recovery. Re-test after changing the on-call mailbox, GitHub notification settings or workflow ownership.
 
 Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-19-v3`. Keep `TAKEDOWNS_MODE=sandbox` during preparation and testing; the dispatch endpoint refuses all external delivery until a separately approved change sets `TAKEDOWNS_MODE=live`. Never advance either value merely to make the readiness check green; a template change requires a new review and version.
 

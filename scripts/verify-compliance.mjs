@@ -294,6 +294,9 @@ rejectText(
 );
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 rejectText("Render", render, "MONITORING_CONFIGURED");
+requireText("operations runbook", runbook, "29704210377");
+requireText("operations runbook", runbook, "29704238669");
+requireText("UK launch checklist", checklist, "director on-call mailbox");
 requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_TOKEN");
 requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_URL");
 rejectText("Render", render, "BACKUP_RESTORE_VERIFIED_AT");

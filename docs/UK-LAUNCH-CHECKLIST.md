@@ -26,7 +26,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 - Before video-frame scanning, obtain written confirmation covering derived video frames, approve the DPIA and the maximum three paid queries per video, publish counsel-approved Privacy Notice and Service Terms versions describing the flow, and only then set `TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE`. Stored videos must remain unsearched while this value is absent.
 - Commission penetration testing and create a 72-hour personal-data-breach response procedure.
 - The encrypted, signed, non-overwriting audit-export job is implemented and fail-closed. Before launch, select a separately administered S3-compatible destination, approve its DPA/transfer and custody record, configure a 400-day lifecycle and isolated read/write-without-delete credentials, run `pnpm audit:export`, and confirm fresh verified evidence opens the `auditExport` readiness gate.
-- Confirm the named on-call recipient actually received the deliberately failed GitHub production-monitor notification from run #27; the successful recovery run alone does not prove alert delivery.
+- Production-monitor alert delivery was acceptance-tested on 19 July 2026: deliberately failed GitHub run #27 (`29704210377`) generated a notification received by the director on-call mailbox at 22:22 BST, and recovery run #28 (`29704238669`) succeeded. Re-test after any recipient, notification-setting or workflow-ownership change.
 
 ## Creator safety
 
