@@ -20,7 +20,7 @@ Monitoring, retention and backup-restore readiness are derived from fresh Postgr
 
 ### External production monitor
 
-The repository workflow `.github/workflows/production-monitor.yml` checks the public domain from infrastructure independent of Render every five minutes. It validates liveness, PostgreSQL readiness, private object storage, the required migration, TLS-facing security headers, legal pages and SEO. A single failed run is retried after 60 seconds so an alert represents two consecutive failures.
+The repository workflow `.github/workflows/production-monitor.yml` checks the public domain from infrastructure independent of Render every five minutes and after every push to `main`. Push-triggered runs first wait up to six minutes for the matching 12-character release identifier to become live, preventing a successful check of the previous deployment from being recorded for a new revision. It validates liveness, PostgreSQL readiness, private object storage, the required migration, TLS-facing security headers, legal pages and SEO. A single failed run is retried after 60 seconds so an alert represents two consecutive failures.
 
 To commission the alert route, store the same random `MONITORING_HEARTBEAT_TOKEN` as a Render secret and a GitHub Actions repository secret. Open **GitHub → Actions → Production monitor → Run workflow**, enable **Fail after the checks to test alert delivery**, and run it. Confirm that the named on-call recipient receives the failed-workflow notification, then run it again without the failure option and confirm a green result. Only the successful run writes fresh monitoring evidence; GitHub notification settings must keep Actions failure notifications enabled for the on-call account.
 
