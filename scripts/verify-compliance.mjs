@@ -47,6 +47,8 @@ const [
   takedownPolicy,
   retentionPolicy,
   database,
+  auditExportPolicy,
+  auditExportJob,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -73,6 +75,8 @@ const [
   read("takedown-policy.mjs"),
   read("retention-policy.mjs"),
   read("database.mjs"),
+  read("audit-export-policy.mjs"),
+  read("scripts/export-audit-log.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -123,7 +127,7 @@ for (const provider of [
   "Yoti",
   "TinEye",
   "Video frame processing",
-  "Monitoring provider",
+  "Monitoring/audit provider",
 ]) {
   requireText("processor register", processors, provider);
 }
@@ -181,6 +185,23 @@ requireText("server", server, "case.page_capture_accessed");
 requireText("server", server, "pageCaptureChecksum");
 requireText("retention policy", retentionPolicy, "pageCapture?.assetId");
 requireText("retention database", database, "orphanEvidenceCaptures");
+requireText("audit export policy", auditExportPolicy, "CPAEX001");
+requireText("audit export policy", auditExportPolicy, "AUDIT_EXPORT_PREFIX");
+requireText("audit export policy", auditExportPolicy, "400");
+requireText("audit export job", auditExportJob, 'IfNoneMatch: "*"');
+requireText("audit export job", auditExportJob, "serializeAuditRecords");
+requireText("audit export job", auditExportJob, "verifyAuditExportManifest");
+requireText(
+  "audit export job",
+  auditExportJob,
+  "GetBucketLifecycleConfigurationCommand",
+);
+requireText("audit export job", auditExportJob, 'type: "audit_export"');
+requireText("operations readiness", readiness, "auditExportEvidence");
+requireText("operations runbook", runbook, "pnpm audit:export");
+requireText("operations runbook", runbook, "no delete permission");
+requireText("UK launch checklist", checklist, "auditExport");
+requireText("DPIA", dpia, "Independently retained audit exports");
 requireText("operations runbook", runbook, "creator-supplied JPEG");
 requireText("takedown procedure", takedowns, "evidence snapshot version 3");
 requireText("DPIA", dpia, "current page capture");

@@ -1018,6 +1018,7 @@ const appServer = http.createServer(async (req, res) => {
           retentionEvidence: operationalEvidence.retention,
           monitoringEvidence: operationalEvidence.monitoring,
           backupRestoreEvidence: operationalEvidence.backup_restore,
+          auditExportEvidence: operationalEvidence.audit_export,
         });
       return send(res, readiness.infrastructureReady ? 200 : 503, {
         ok: readiness.infrastructureReady,
@@ -1060,6 +1061,9 @@ const appServer = http.createServer(async (req, res) => {
         backupRestore: readiness.operationalGates.backupRestore
           ? "verified-recently"
           : "unverified-or-expired",
+        auditExport: readiness.operationalGates.auditExport
+          ? "verified-recently"
+          : "unconfigured-or-expired",
       });
     }
     const d = await load();

@@ -33,6 +33,11 @@ const complete = {
     requiredMigration: REQUIRED_MIGRATION,
     occurredAt: new Date().toISOString(),
   },
+  auditExportEvidence: {
+    status: "succeeded",
+    requiredMigration: REQUIRED_MIGRATION,
+    occurredAt: new Date().toISOString(),
+  },
 };
 
 assert.deepEqual(operationsReadiness(complete), {
@@ -46,6 +51,7 @@ assert.deepEqual(operationsReadiness(complete), {
     retentionAutomation: true,
     monitoring: true,
     backupRestore: true,
+    auditExport: true,
   },
 });
 
@@ -118,6 +124,28 @@ for (const missingGate of [
       occurredAt: new Date().toISOString(),
     },
   },
+  { auditExportEvidence: undefined },
+  {
+    auditExportEvidence: {
+      status: "failed",
+      requiredMigration: REQUIRED_MIGRATION,
+      occurredAt: new Date().toISOString(),
+    },
+  },
+  {
+    auditExportEvidence: {
+      status: "succeeded",
+      requiredMigration: REQUIRED_MIGRATION,
+      occurredAt: new Date(Date.now() - 37 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    auditExportEvidence: {
+      status: "succeeded",
+      requiredMigration: "017_audit_integrity.sql",
+      occurredAt: new Date().toISOString(),
+    },
+  },
 ]) {
   const result = operationsReadiness({ ...complete, ...missingGate });
   assert.equal(result.infrastructureReady, true);
@@ -130,5 +158,6 @@ console.log(
     failClosedInfrastructure: true,
     completeCommercialGate: true,
     restoreEvidenceExpiry: true,
+    auditExportEvidenceRequired: true,
   }),
 );

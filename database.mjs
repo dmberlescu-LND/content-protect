@@ -115,6 +115,14 @@ export async function auditIntegrityProbe() {
   return { ...verified, mode: "hmac-sha256-chain-v1" };
 }
 
+export async function auditExportSnapshot() {
+  if (!pool) throw new Error("PostgreSQL is required for audit export.");
+  const rows = await auditRows(pool),
+    records = rows.map(auditRecord),
+    integrity = verifyAuditChain(records, auditMasterSecret());
+  return { records, integrity };
+}
+
 export async function databaseProbe() {
   if (!pool) return { ok: true, mode: "local-json" };
   const startedAt = Date.now();
@@ -141,6 +149,7 @@ const OPERATIONAL_EVIDENCE_TYPES = new Set([
   "monitoring",
   "retention",
   "backup_restore",
+  "audit_export",
 ]);
 
 export async function recordOperationalEvidence({

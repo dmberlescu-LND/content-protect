@@ -96,6 +96,10 @@ if (requireProductionReady) {
     ready.backupRestore === "verified-recently",
     "database restore evidence is missing or older than 100 days",
   );
+  expect(
+    ready.auditExport === "verified-recently",
+    "independent retained audit export evidence is missing or older than 36 hours",
+  );
   expect(ready.scanner !== "unconfigured", "scanner is not configured");
   expect(
     ready.takedownDelivery === "operator-reviewed-live",

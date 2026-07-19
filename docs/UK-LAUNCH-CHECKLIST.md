@@ -25,7 +25,8 @@ Status: implementation checklist, not legal advice. Company identity is verified
 - Before TinEye activation, complete `docs/vendor-due-diligence/TINEYE-ACTIVATION.md`; record the approved privacy/transfer review and the provider's written lawful-adult-content confirmation in the two fail-closed Render variables. An API key alone must never activate scanning.
 - Before video-frame scanning, obtain written confirmation covering derived video frames, approve the DPIA and the maximum three paid queries per video, publish counsel-approved Privacy Notice and Service Terms versions describing the flow, and only then set `TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE`. Stored videos must remain unsearched while this value is absent.
 - Commission penetration testing and create a 72-hour personal-data-breach response procedure.
-- Configure the independent retained audit/log export and test the alert raised by an audit-integrity readiness failure.
+- The encrypted, signed, non-overwriting audit-export job is implemented and fail-closed. Before launch, select a separately administered S3-compatible destination, approve its DPA/transfer and custody record, configure a 400-day lifecycle and isolated read/write-without-delete credentials, run `pnpm audit:export`, and confirm fresh verified evidence opens the `auditExport` readiness gate.
+- Confirm the named on-call recipient actually received the deliberately failed GitHub production-monitor notification from run #27; the successful recovery run alone does not prove alert delivery.
 
 ## Creator safety
 
