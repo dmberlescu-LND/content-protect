@@ -14,6 +14,12 @@ The readiness endpoint checks PostgreSQL, the latest required migration, private
 
 Set `MONITORING_CONFIGURED=true` only after the alert destination receives a real test alert. Set `BACKUP_RESTORE_VERIFIED_AT` to the UTC completion timestamp only after an isolated restore has passed the checks below; readiness expires that evidence after 100 days. Set `RETENTION_EXECUTION_ENABLED=true` only when the approved scheduled job is installed and its reviewed preview matches expectations. These flags record completed evidence; they are not substitutes for completing the work.
 
+### External production monitor
+
+The repository workflow `.github/workflows/production-monitor.yml` checks the public domain from infrastructure independent of Render every five minutes. It validates liveness, PostgreSQL readiness, private object storage, the required migration, TLS-facing security headers, legal pages and SEO. A single failed run is retried after 60 seconds so an alert represents two consecutive failures.
+
+To commission the alert route, open **GitHub → Actions → Production monitor → Run workflow**, enable **Fail after the checks to test alert delivery**, and run it. Confirm that the named on-call recipient receives the failed-workflow notification, then run it again without the failure option and confirm a green result. Only after both results are recorded may `MONITORING_CONFIGURED=true` be set in Render. GitHub notification settings must keep Actions failure notifications enabled for the on-call account.
+
 Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-19-v2`. Never advance this value merely to make the readiness check green; a template change requires a new review and version.
 
 ## Logs and correlation
