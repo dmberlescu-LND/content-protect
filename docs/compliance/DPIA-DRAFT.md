@@ -24,7 +24,7 @@ Help verified adult rights holders identify suspected unauthorised copies of con
 - Transfer only a resized, metadata-stripped provider copy where the enabled scan provider requires an image; never send the encrypted stored object or unrelated vault files.
 - No public profiles, advertising use, model training or sale of creator data.
 - Human review and creator approval before every external notice.
-- Confidence scores are leads, not proof of infringement.
+- Provider match scores are ranking signals and leads, not confidence values or proof of infringement.
 - User deletion, access and correction paths with documented retention.
 - Biometric processing remains technically disabled until Article 6 basis, Article 9 condition, explicit scope and counsel approval are recorded.
 

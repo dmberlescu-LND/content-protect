@@ -40,7 +40,7 @@ const matches = [
     id: 1,
     site: "mirror-stream.net",
     type: "Video",
-    confidence: 98,
+    matchScore: 98,
     status: "Action needed",
     age: "12 min ago",
     color: "violet",
@@ -49,7 +49,7 @@ const matches = [
     id: 2,
     site: "social-repost.co",
     type: "Photo set",
-    confidence: 94,
+    matchScore: 94,
     status: "Monitoring",
     age: "2 hrs ago",
     color: "blue",
@@ -58,7 +58,7 @@ const matches = [
     id: 3,
     site: "forumvault.io",
     type: "Image",
-    confidence: 91,
+    matchScore: 91,
     status: "Takedown sent",
     age: "Yesterday",
     color: "peach",
@@ -67,7 +67,7 @@ const matches = [
     id: 4,
     site: "cliparchive.tv",
     type: "Video",
-    confidence: 87,
+    matchScore: 87,
     status: "Removed",
     age: "Jul 14",
     color: "mint",
@@ -212,7 +212,7 @@ function Landing({ onStart, onLogin }) {
               <CircleCheck size={25} />
               <div>
                 <b>Match verified</b>
-                <span>97% confidence</span>
+                <span>Similarity lead — review required</span>
               </div>
             </div>
             <div className="floating-card private">
@@ -1390,7 +1390,7 @@ function Dashboard({ onLogout, user }) {
               <div className="table-head">
                 <span>FOUND CONTENT</span>
                 <span>SOURCE</span>
-                <span>CONFIDENCE</span>
+                <span>MATCH SCORE</span>
                 <span>STATUS</span>
                 <span></span>
               </div>
@@ -1413,9 +1413,9 @@ function Dashboard({ onLogout, user }) {
                     </span>
                   </div>
                   <div className="confidence">
-                    <b>{m.confidence}%</b>
+                    <b>{m.matchScore}%</b>
                     <div>
-                      <i style={{ width: m.confidence + "%" }}></i>
+                      <i style={{ width: m.matchScore + "%" }}></i>
                     </div>
                   </div>
                   <div>

@@ -38,6 +38,13 @@ const result = await searchImage(image, {
                 { backlink: "javascript:alert(1)" },
               ],
             },
+            {
+              score: 99,
+              query_match_percent: 4.9,
+              backlinks: [
+                { backlink: "https://irrelevant-logo.example/post" },
+              ],
+            },
           ],
         },
       }),
@@ -50,10 +57,16 @@ assert.equal(request.url.href, "https://api.tineye.com/rest/search/");
 assert.equal(request.options.headers["x-api-key"], "test-key");
 assert.equal(result.matches.length, 1);
 assert.equal(result.matches[0].sourceUrl, "https://stolen.example/post");
-assert.equal(result.matches[0].confidence, 72.4);
+assert.equal(result.matches[0].matchScore, 72.4);
 assert.equal(result.matches[0].evidence.queryMatchPercent, 8.2);
 assert.deepEqual(result.matches[0].evidence.tags, ["stock"]);
 assert.equal(result.providerStats.total_backlinks, 4);
+assert.equal(
+  result.matches.some((match) =>
+    match.sourceUrl.includes("irrelevant-logo.example"),
+  ),
+  false,
+);
 
 await assert.rejects(
   searchImage(image, {
@@ -96,6 +109,8 @@ console.log(
     ok: true,
     provider: "tineye-commercial",
     ownedDomainFiltering: true,
+    smallAreaFiltering: true,
+    scoreNotMislabelledAsConfidence: true,
     metadataPreserved: true,
     errorMapping: true,
   }),

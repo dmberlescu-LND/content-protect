@@ -105,6 +105,7 @@ export async function searchImage(
   );
   form.append("offset", "0");
   form.append("limit", "100");
+  form.append("backlink_limit", "100");
   form.append("sort", "score");
   form.append("order", "desc");
   let response;
@@ -155,6 +156,8 @@ export async function searchImage(
     .filter(Boolean);
   const found = new Map();
   for (const match of payload.results?.matches || []) {
+    const queryMatchPercent = Number(match.query_match_percent);
+    if (Number.isFinite(queryMatchPercent) && queryMatchPercent < 5) continue;
     for (const backlink of match.backlinks || []) {
       const page = safeWebUrl(backlink.backlink);
       if (!page || hostIsOwned(page.hostname, excluded)) continue;
@@ -164,22 +167,22 @@ export async function searchImage(
         sourceUrl: page.href,
         sourceHost: page.hostname.toLowerCase(),
         mediaType: "Image",
-        confidence: Math.max(0, Math.min(100, Number(match.score) || 0)),
+        matchScore: Math.max(0, Math.min(100, Number(match.score) || 0)),
         evidence: {
           provider: "tineye",
           imageUrl: safeWebUrl(backlink.url)?.href || null,
           crawlDate: backlink.crawl_date || null,
           providerDomain: match.domain || null,
           queryHash: match.query_hash || null,
-          queryMatchPercent: Number.isFinite(Number(match.query_match_percent))
-            ? Math.max(0, Math.min(100, Number(match.query_match_percent)))
+          queryMatchPercent: Number.isFinite(queryMatchPercent)
+            ? Math.max(0, Math.min(100, queryMatchPercent))
             : null,
           tags: Array.isArray(match.tags)
             ? match.tags.filter((tag) => typeof tag === "string").slice(0, 10)
             : [],
         },
       };
-      if (!found.has(key) || found.get(key).confidence < candidate.confidence)
+      if (!found.has(key) || found.get(key).matchScore < candidate.matchScore)
         found.set(key, candidate);
     }
   }

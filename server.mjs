@@ -1515,8 +1515,9 @@ const appServer = http.createServer(async (req, res) => {
         subscription = activeSubscription(d, u.id),
         matches = d.matches
           .filter((m) => m.userId === u.id)
-          .map((m) => ({
+          .map(({ confidence, ...m }) => ({
             ...m,
+            matchScore: confidence,
             status: cases.some((c) => c.matchId === m.id)
               ? "Takedown sent"
               : m.status,
@@ -1754,7 +1755,7 @@ const appServer = http.createServer(async (req, res) => {
           if (existing) {
             existing.confidence = Math.max(
               existing.confidence || 0,
-              found.confidence,
+              found.matchScore,
             );
             existing.evidence = found.evidence;
             continue;
@@ -1767,7 +1768,7 @@ const appServer = http.createServer(async (req, res) => {
             site: found.sourceHost,
             sourceUrl: found.sourceUrl,
             type: found.mediaType,
-            confidence: found.confidence,
+            confidence: found.matchScore,
             status: "Action needed",
             age: new Date().toISOString(),
             evidence: found.evidence,
@@ -2233,14 +2234,14 @@ const appServer = http.createServer(async (req, res) => {
         });
       const capturedAt = new Date().toISOString(),
         evidenceSnapshot = {
-          version: 1,
+          version: 2,
           matchId: m.id,
           scanId: m.scanId,
           referenceAssetId: m.assetId,
           sourceUrl: m.sourceUrl,
           sourceHost: m.site,
           mediaType: m.type,
-          providerConfidence: m.confidence,
+          providerMatchScore: m.confidence,
           discoveredAt: m.age,
           providerEvidence: m.evidence || {},
           capturedAt,
