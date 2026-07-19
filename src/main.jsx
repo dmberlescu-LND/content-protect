@@ -29,6 +29,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { PLAN_ENTITLEMENTS } from "../billing-policy.mjs";
 import "./styles.css";
 import "./auth.css";
 import "./onboarding.css";
@@ -460,10 +461,11 @@ function Landing({ onStart, onLogin }) {
               </div>
               <ul>
                 <li>
-                  <Check /> Private reference vault
+                  <Check /> Up to {PLAN_ENTITLEMENTS.Monitor.assetLimit} private
+                  reference files
                 </li>
                 <li>
-                  <Check /> On-demand supported image scans
+                  <Check /> One supported-image scan every 30 days
                 </li>
                 <li>
                   <Check /> Match alerts & evidence
@@ -483,16 +485,14 @@ function Landing({ onStart, onLogin }) {
               </div>
               <ul>
                 <li>
-                  <Check /> Everything in Monitor
+                  <Check /> Up to {PLAN_ENTITLEMENTS.Protect.assetLimit} private
+                  reference files
                 </li>
                 <li>
-                  <Check /> Evidence preservation
+                  <Check /> One supported-image scan every 24 hours
                 </li>
                 <li>
-                  <Check /> Guided takedown notices
-                </li>
-                <li>
-                  <Check /> Case status tracking
+                  <Check /> Evidence and guided takedown cases
                 </li>
               </ul>
               <button className="btn btn-primary" onClick={onStart}>
@@ -508,10 +508,11 @@ function Landing({ onStart, onLogin }) {
               </div>
               <ul>
                 <li>
-                  <Check /> Higher operational allowance
+                  <Check /> Up to {PLAN_ENTITLEMENTS.Pro.assetLimit} private
+                  reference files
                 </li>
                 <li>
-                  <Check /> Priority case queue
+                  <Check /> One supported-image scan every 24 hours
                 </li>
                 <li>
                   <Check /> Priority specialist review
@@ -913,7 +914,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     entitlements: {
       plan: "Unsubscribed",
       canScan: false,
+      canUpload: false,
       canCreateCases: false,
+      assetLimit: 0,
+      assetSlotsRemaining: 0,
       scanFrequency: "unavailable",
     },
     stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
@@ -933,6 +937,9 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     refresh();
   }, []);
   const liveMatches = data.matches;
+  const imageAssetCount = data.assets.filter((asset) =>
+    asset.mime?.startsWith("image/"),
+  ).length;
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -1003,8 +1010,14 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     alert(result.notice || "Live image scan completed.");
   };
   const selectPlan = async (plan) => {
+    const entitlement = PLAN_ENTITLEMENTS[plan];
+    const planLimit = {
+      Monitor: `up to ${entitlement.assetLimit} reference files and one image scan every 30 days`,
+      Protect: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and takedown cases`,
+      Pro: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and priority support`,
+    }[plan];
     const accepted = confirm(
-      `Continue with the ${plan} monthly subscription?\n\nBy selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
+      `Continue with the ${plan} monthly subscription: ${planLimit}?\n\nVideos use a file slot but are not scanned until a separate video provider is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
     );
     if (!accepted) return;
     const r = await fetch("/api/billing/checkout", {
@@ -1249,8 +1262,26 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   : "Review and manage your protection workspace."}
               </span>
             </div>
-            <button className="btn btn-primary" onClick={() => setModal(true)}>
-              <Plus size={18} /> Add content
+            <button
+              className="btn btn-primary"
+              disabled={
+                data.entitlements.canUpload &&
+                data.entitlements.assetSlotsRemaining === 0
+              }
+              onClick={() => {
+                if (!data.entitlements.canUpload) {
+                  setTab("Billing");
+                  return;
+                }
+                setModal(true);
+              }}
+            >
+              <Plus size={18} />
+              {data.entitlements.canUpload
+                ? data.entitlements.assetSlotsRemaining
+                  ? "Add content"
+                  : "File limit reached"
+                : "Choose a plan"}
             </button>
           </div>
           {tab === "Overview" && (
@@ -1293,7 +1324,15 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <small>Verified outcomes only</small>
                 </div>
               </div>
-              <button className="scan-status scan-button" onClick={runScan}>
+              <button
+                className="scan-status scan-button"
+                disabled={
+                  !data.entitlements.canScan ||
+                  !imageAssetCount ||
+                  data.scannerMode !== "tineye-commercial"
+                }
+                onClick={runScan}
+              >
                 <div className="scanner">
                   <Search size={19} />
                   <i></i>
@@ -1301,11 +1340,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 <div>
                   <b>Run protected image scan</b>
                   <span>
-                    {data.assets.length
-                      ? data.scannerMode === "tineye-commercial"
-                        ? "Search the commercial provider using encrypted references"
-                        : "Commercial scanning awaits provider activation"
-                      : "Add a reference asset before starting a scan"}
+                    {!data.entitlements.canScan
+                      ? "Choose an active plan before scanning"
+                      : !imageAssetCount
+                        ? "Add a supported reference image before scanning"
+                        : data.scannerMode === "tineye-commercial"
+                          ? "Search the commercial provider using private reference copies"
+                          : "Commercial scanning awaits provider activation"}
                   </span>
                 </div>
                 <span className="live">
@@ -1322,7 +1363,12 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <div className="matches-head">
                 <div>
                   <h2>Private reference vault</h2>
-                  <p>Encrypted files owned by this account</p>
+                  <p>
+                    Encrypted files owned by this account
+                    {data.entitlements.assetLimit
+                      ? ` · ${data.assets.length} of ${data.entitlements.assetLimit} used`
+                      : " · choose a plan to add files"}
+                  </p>
                 </div>
               </div>
               {data.assets.length ? (
@@ -1444,9 +1490,21 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               </div>
               <div className="mini-plans">
                 {[
-                  ["Monitor", "£19", "Monthly scans"],
-                  ["Protect", "£49", "Daily scans + cases"],
-                  ["Pro", "£99", "Priority protection"],
+                  [
+                    "Monitor",
+                    "£19",
+                    `${PLAN_ENTITLEMENTS.Monitor.assetLimit} files · scan every 30 days`,
+                  ],
+                  [
+                    "Protect",
+                    "£49",
+                    `${PLAN_ENTITLEMENTS.Protect.assetLimit} files · daily scan + cases`,
+                  ],
+                  [
+                    "Pro",
+                    "£99",
+                    `${PLAN_ENTITLEMENTS.Pro.assetLimit} files · daily scan + priority`,
+                  ],
                 ].map(([name, price, desc]) => (
                   <div
                     className={`mini-plan ${name === "Protect" ? "recommended" : ""}`}
@@ -1566,6 +1624,11 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <p>
               Upload content you own so Content Protect can look for likely
               copies. Nothing is published.
+            </p>
+            <p>
+              {data.assets.length} of {data.entitlements.assetLimit} plan files
+              are currently used. Videos use a file slot but are not scanned
+              until a separate video provider is activated.
             </p>
             <div className="consent consent-checkbox">
               <input

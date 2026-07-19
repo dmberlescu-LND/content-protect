@@ -33,7 +33,7 @@ Official sources reviewed:
 3. Obtain written confirmation that TinEye's processing of this customer data is subject to PIPEDA. Privacy counsel must record whether UK partial adequacy can be relied on; otherwise execute an appropriate UK safeguard and assessment.
 4. Record retention, deletion, incident-notification, subprocessor/onward-transfer and support commitments. Reconcile the privacy statement's maximum 24-hour upload retention with any account-specific terms.
 5. Approve the Article 6 basis, Article 9 condition, DPIA, privacy wording and explicit upload consent for adult/intimate reference media.
-6. Approve plan asset limits and scan frequency against the current per-search cost. Each asset searched consumes one paid search; a scan over multiple assets consumes multiple searches.
+6. Revalidate the approved launch limits (Monitor 10 files/30 days, Protect 25 files/day, Pro 50 files/day) against the current per-search price before every pricing or provider change. Each image searched consumes one paid search; stored videos consume a file slot but are not sent to TinEye.
 7. Purchase the smallest approved commercial bundle with automatic top-up disabled initially. Record the invoice, contract version, API account owner and renewal/expiry date in the restricted vendor file.
 8. Store only opaque evidence references in Render. Never paste the legal correspondence itself into an environment variable.
 

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import { COMPLIANCE_VERSIONS } from "../compliance-versions.mjs";
+import { PLAN_ENTITLEMENTS } from "../billing-policy.mjs";
 import { REQUIRED_MIGRATION } from "../operations-readiness.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -62,13 +63,21 @@ for (const [name, page] of [
   ["privacy notice", privacy],
   ["service terms", terms],
 ]) {
-  requireText(name, page, "18 July 2026");
-  requireText(name, page, "Version 1.0");
   requireText(name, page, "White Eagles Digital Marketing LTD");
   requireText(name, page, "14978662");
   requireText(name, page, "E1 1AG");
   requireText(name, page, "white.eagles.dm@gmail.com");
 }
+requireText("privacy notice", privacy, "18 July 2026");
+requireText("privacy notice", privacy, "Version 1.0");
+requireText("service terms", terms, "19 July 2026");
+requireText("service terms", terms, "Version 1.1");
+for (const [plan, entitlement] of Object.entries(PLAN_ENTITLEMENTS))
+  requireText(
+    "service terms",
+    terms,
+    `${plan} includes up to ${entitlement.assetLimit}`,
+  );
 requireText("service terms", terms, "cancellation-form.html");
 requireText("service terms", terms, "Stripe");
 

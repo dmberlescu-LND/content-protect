@@ -41,7 +41,13 @@ import {
   ScanProviderError,
   searchImage,
 } from "./scanner.mjs";
-import { findActiveSubscription, scanIntervalMs } from "./billing-policy.mjs";
+import {
+  assetAllowance,
+  assetLimitForPlan,
+  findActiveSubscription,
+  planEntitlements,
+  scanIntervalMs,
+} from "./billing-policy.mjs";
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
 import {
   operationsReadiness,
@@ -1751,6 +1757,8 @@ const appServer = http.createServer(async (req, res) => {
         cases = d.cases.filter((x) => x.userId === u.id),
         scans = d.scans.filter((x) => x.userId === u.id),
         subscription = activeSubscription(d, u.id),
+        planPolicy = planEntitlements(subscription?.plan),
+        planAssetAllowance = assetAllowance(subscription?.plan, assets.length),
         matches = d.matches
           .filter((m) => m.userId === u.id)
           .map(({ confidence, ...m }) => ({
@@ -1779,7 +1787,10 @@ const appServer = http.createServer(async (req, res) => {
         entitlements: {
           plan: subscription?.plan || "Unsubscribed",
           canScan: Boolean(subscription),
-          canCreateCases: ["Protect", "Pro"].includes(subscription?.plan),
+          canUpload: Boolean(subscription),
+          canCreateCases: Boolean(planPolicy?.canCreateCases),
+          assetLimit: planAssetAllowance.limit,
+          assetSlotsRemaining: planAssetAllowance.remaining,
           scanFrequency:
             subscription?.plan === "Monitor"
               ? "monthly"
@@ -1823,6 +1834,22 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 403, {
           error:
             "Verify your email, age and eligibility before uploading content.",
+        });
+      const subscription = activeSubscription(d, u.id);
+      if (!subscription)
+        return send(res, 402, {
+          error:
+            "An active Content Protect subscription is required before adding reference files.",
+        });
+      const currentAssetCount = d.assets.filter(
+          (item) => item.userId === u.id,
+        ).length,
+        allowance = assetAllowance(subscription.plan, currentAssetCount);
+      if (!allowance.canAdd)
+        return send(res, 409, {
+          error: `${subscription.plan} includes up to ${allowance.limit} reference files. Delete a file or change plan before uploading another.`,
+          assetLimit: allowance.limit,
+          currentAssetCount,
         });
       const b = await parse(req),
         raw = Buffer.from(b.data || "", "base64");
@@ -1972,6 +1999,13 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 400, {
           error:
             "Add at least one reference image. Video matching requires a separate provider.",
+        });
+      const imageAssetLimit = assetLimitForPlan(subscription.plan);
+      if (!imageAssetLimit || assets.length > imageAssetLimit)
+        return send(res, 409, {
+          error: `${subscription.plan} can scan up to ${imageAssetLimit} reference images. Remove excess files or change plan before scanning.`,
+          assetLimit: imageAssetLimit,
+          currentImageCount: assets.length,
         });
       const scannerActivation = scannerReadiness();
       if (!scannerActivation.ready)
@@ -2533,7 +2567,7 @@ const appServer = http.createServer(async (req, res) => {
             "Verify your email, age and eligibility before opening a takedown case.",
         });
       const subscription = activeSubscription(d, u.id);
-      if (!subscription || !["Protect", "Pro"].includes(subscription.plan))
+      if (!subscription || !planEntitlements(subscription.plan)?.canCreateCases)
         return send(res, 402, {
           error:
             "An active Protect or Pro subscription is required to open takedown cases.",

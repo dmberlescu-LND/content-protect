@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import {
+  assetAllowance,
+  assetLimitForPlan,
   findActiveSubscription,
+  planEntitlements,
   planForPrice,
   scanIntervalMs,
 } from "../billing-policy.mjs";
@@ -47,6 +50,27 @@ assert.equal(planForPrice(prices, "price_other"), undefined);
 assert.equal(scanIntervalMs("Monitor"), 30 * 86400000);
 assert.equal(scanIntervalMs("Protect"), 86400000);
 assert.equal(scanIntervalMs("Pro"), 86400000);
+assert.equal(scanIntervalMs("Unknown"), 0);
+assert.equal(assetLimitForPlan("Monitor"), 10);
+assert.equal(assetLimitForPlan("Protect"), 25);
+assert.equal(assetLimitForPlan("Pro"), 50);
+assert.equal(assetLimitForPlan("Unknown"), 0);
+assert.equal(planEntitlements("Monitor").canCreateCases, false);
+assert.equal(planEntitlements("Protect").canCreateCases, true);
+assert.deepEqual(assetAllowance("Monitor", 9), {
+  limit: 10,
+  used: 9,
+  remaining: 1,
+  canAdd: true,
+});
+assert.deepEqual(assetAllowance("Monitor", 10), {
+  limit: 10,
+  used: 10,
+  remaining: 0,
+  canAdd: false,
+});
+assert.equal(assetAllowance("Unknown", 0).canAdd, false);
+assert.equal(assetAllowance("Pro", -1).canAdd, false);
 
 console.log(
   JSON.stringify({
@@ -55,5 +79,7 @@ console.log(
     testLiveIsolation: true,
     pricePlanBinding: true,
     scanIntervals: true,
+    enforcedAssetLimits: true,
+    caseEntitlements: true,
   }),
 );
