@@ -332,6 +332,25 @@ rejectText(
   render,
   "dockerCommand: node scripts/retention.mjs --execute",
 );
+requireText(
+  "operations runbook",
+  runbook,
+  "866888dfdfbe6a8f685d8058c718ce17ce4de799",
+);
+requireText("operations runbook", runbook, "2026-07-19T23:12:04.025Z");
+requireText("operations runbook", runbook, "closed security incidents");
+requireText("operations runbook", runbook, "29 expired rate-limit entries");
+requireText(
+  "operations runbook",
+  runbook,
+  "no database row or storage object was deleted",
+);
+requireText(
+  "UK launch checklist",
+  checklist,
+  "migration `019_incident_register.sql`",
+);
+requireText("UK launch checklist", checklist, "29 expired rate-limit entries");
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 rejectText("Render", render, "MONITORING_CONFIGURED");
 requireText("operations runbook", runbook, "29704210377");
