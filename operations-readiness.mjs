@@ -16,8 +16,11 @@ export function operationsReadiness({
   hasExternalMasterKey,
   scanner,
   takedownDeliveryConfigured,
+  takedownsMode,
   stripeConfigured,
+  stripeMode,
   yotiConfigured,
+  yotiMode,
   retentionEvidence,
   monitoringEvidence,
   backupRestoreEvidence,
@@ -32,9 +35,11 @@ export function operationsReadiness({
   );
   const operationalGates = {
     scanner: scanner !== "unconfigured",
-    takedownDelivery: Boolean(takedownDeliveryConfigured),
-    billing: Boolean(stripeConfigured),
-    ageVerification: Boolean(yotiConfigured),
+    takedownDelivery: Boolean(
+      takedownDeliveryConfigured && takedownsMode === "live",
+    ),
+    billing: Boolean(stripeConfigured && stripeMode === "live"),
+    ageVerification: Boolean(yotiConfigured && yotiMode === "live"),
     retentionAutomation: freshEvidence(retentionEvidence, 36 * 60 * 60 * 1000),
     monitoring: freshEvidence(monitoringEvidence, 15 * 60 * 1000),
     backupRestore: freshEvidence(

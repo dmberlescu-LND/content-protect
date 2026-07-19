@@ -16,7 +16,7 @@ The application must remain in sandbox mode until this runbook is completed and 
 3. Create a private object-storage bucket. Do not enable a public development URL or custom public domain.
 4. Create credentials restricted to that single bucket and object read/write/delete operations.
 5. Add `DATABASE_URL` and the five `OBJECT_STORAGE_*` variables in Render without exposing values in Git.
-6. Deploy with `PAYMENTS_MODE=sandbox`, `TAKEDOWNS_MODE=sandbox`, and `BIOMETRICS_ENABLED=false`.
+6. Deploy with `PAYMENTS_MODE=test`, `TAKEDOWNS_MODE=sandbox`, `YOTI_MODE=sandbox`, and `BIOMETRICS_ENABLED=false`.
 7. Export the existing JSON database and encrypted vault disk before migration.
 8. Run `pnpm run storage:migrate` from a private Render Shell. It copies every encrypted vault object, reads it back and compares its encrypted SHA-256 checksum. The command fails if any local source is missing or any remote checksum differs. It deliberately preserves every local original.
 9. Save the JSON migration report as deployment evidence and confirm that `assetsDiscovered`, `assetsCopied` and `encryptedChecksumsVerified` are equal with an empty `failures` array.

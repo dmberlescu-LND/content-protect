@@ -1,6 +1,6 @@
 # Content Protect production operations runbook
 
-Status: operational baseline. External alert destinations and a verified database restore remain release gates.
+Status: operational baseline. The first encrypted database backup and isolated restore have been verified; external provider approvals, live-mode tests, retention approval and the alert destination test remain release gates.
 
 ## Service-level targets
 
@@ -10,9 +10,9 @@ Status: operational baseline. External alert destinations and a verified databas
 - Alert when readiness fails twice consecutively, the 5xx rate exceeds 2% for five minutes, or p95 response time exceeds two seconds for ten minutes.
 - SEV-1 acknowledgement target: 15 minutes. SEV-2: 60 minutes. SEV-3: next business day.
 
-The readiness endpoint checks PostgreSQL, the latest required migration, private storage and external key configuration without writing customer data. It returns HTTP 503 and `status: degraded` when any of those infrastructure checks fails; local JSON or local disk can never pass the production readiness probe. `productionReady` is deliberately false until scanning, age verification, operator-reviewed delivery, Stripe, successful recent retention evidence, successful recent external-monitor evidence and recent restore evidence are present. Manual boolean switches do not satisfy these operational gates.
+The readiness endpoint checks PostgreSQL, the latest required migration, private storage and external key configuration without writing customer data. It returns HTTP 503 and `status: degraded` when any of those infrastructure checks fails; local JSON or local disk can never pass the production readiness probe. `productionReady` is deliberately false until scanning, live Yoti age verification, live operator-reviewed delivery, live Stripe billing, successful recent retention evidence, successful recent external-monitor evidence and recent restore evidence are present. Test or sandbox credentials do not satisfy a live operational gate, and manual boolean switches do not satisfy evidence-based gates.
 
-Yoti age assurance uses the official signed Digital Identity SDK. Configure both `YOTI_SDK_ID` and the PEM private key in `YOTI_PRIVATE_KEY`; an API key is not a substitute. The policy requests only the derived `age_over:18` attribute and rejects self-asserted evidence. Missing or invalid credentials disable the age-check flow without making the application unavailable. Keep the production readiness gate closed until Yoti approves the organisation/application and a real end-to-end receipt test passes.
+Yoti age assurance uses the official signed Digital Identity SDK. Configure both `YOTI_SDK_ID` and the PEM private key in `YOTI_PRIVATE_KEY`; an API key is not a substitute. The policy requests only the derived `age_over:18` attribute and rejects self-asserted evidence. Missing or invalid credentials disable the age-check flow without making the application unavailable. Keep `YOTI_MODE=sandbox` until Yoti approves the organisation/application and a real end-to-end receipt test passes; only the separately approved `YOTI_MODE=live` can satisfy the production gate.
 
 Authentication, password reset, verification, MFA, sensitive downloads, exports and operator actions use database-backed rate limits in production. Limit keys are HMAC-SHA-256 pseudonyms derived with the external master key, shared by every application instance and expired by the retention job. Login protection applies both an account limit and a broader IP limit, so distributed password attacks and shared networks are handled independently. An application restart must never clear an attacker's accumulated attempts.
 
@@ -24,7 +24,7 @@ The repository workflow `.github/workflows/production-monitor.yml` checks the pu
 
 To commission the alert route, store the same random `MONITORING_HEARTBEAT_TOKEN` as a Render secret and a GitHub Actions repository secret. Open **GitHub → Actions → Production monitor → Run workflow**, enable **Fail after the checks to test alert delivery**, and run it. Confirm that the named on-call recipient receives the failed-workflow notification, then run it again without the failure option and confirm a green result. Only the successful run writes fresh monitoring evidence; GitHub notification settings must keep Actions failure notifications enabled for the on-call account.
 
-Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-19-v2`. Never advance this value merely to make the readiness check green; a template change requires a new review and version.
+Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-19-v2`. Keep `TAKEDOWNS_MODE=sandbox` during preparation and testing; the dispatch endpoint refuses all external delivery until a separately approved change sets `TAKEDOWNS_MODE=live`. Never advance either value merely to make the readiness check green; a template change requires a new review and version.
 
 ## Logs and correlation
 
@@ -46,6 +46,8 @@ Keep application/security logs for 12 months, with access restricted to authoris
 The GitHub production monitor runs public production and SEO checks every five minutes. After both checks succeed, it calls the machine-only heartbeat endpoint with `MONITORING_HEARTBEAT_TOKEN`; the same random value must be stored as a Render environment secret and a GitHub Actions repository secret. The endpoint applies constant-time credential comparison, rate limiting and server-side timestamps. Readiness accepts only successful evidence less than 15 minutes old. Never place the token in source code or workflow logs. 6. Confirm no provider credentials or customer data appeared in logs.
 
 Stripe access is reconciled from the current Subscription object for checkout, subscription and invoice events; an invoice event alone must never grant or revoke access from its historical snapshot. The webhook destination must subscribe to checkout completion, subscription created/updated/deleted/paused/resumed, invoice paid, payment failed and payment action required. Checkout creation uses a 30-minute per-user/plan idempotency window to prevent duplicate subscriptions during retries.
+
+Keep `PAYMENTS_MODE=test` through checkout, webhook, cancellation, failed-payment and customer-portal acceptance tests. Only production keys, production price IDs and a separately approved `PAYMENTS_MODE=live` change can satisfy the billing release gate.
 
 ## Database backup and restore gate
 

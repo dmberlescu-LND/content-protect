@@ -70,6 +70,12 @@ const PORT = Number(process.env.PORT || 8787),
 const PAYMENTS_MODE = ["test", "live"].includes(process.env.PAYMENTS_MODE)
     ? process.env.PAYMENTS_MODE
     : "unconfigured",
+  TAKEDOWNS_MODE = ["sandbox", "live"].includes(process.env.TAKEDOWNS_MODE)
+    ? process.env.TAKEDOWNS_MODE
+    : "unconfigured",
+  YOTI_MODE = ["sandbox", "live"].includes(process.env.YOTI_MODE)
+    ? process.env.YOTI_MODE
+    : "unconfigured",
   STRIPE_KEY =
     (PAYMENTS_MODE === "test" &&
       process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) ||
@@ -116,6 +122,9 @@ const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
   RESEND_WEBHOOK_CONFIGURED &&
   process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32 &&
   TAKEDOWN_LEGAL_TEMPLATES_APPROVED,
+);
+const TAKEDOWN_DELIVERY_LIVE = Boolean(
+  TAKEDOWN_DELIVERY_CONFIGURED && TAKEDOWNS_MODE === "live",
 );
 let key;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -978,8 +987,11 @@ const appServer = http.createServer(async (req, res) => {
           hasExternalMasterKey: Boolean(process.env.CONTENT_PROTECT_MASTER_KEY),
           scanner,
           takedownDeliveryConfigured: TAKEDOWN_DELIVERY_CONFIGURED,
+          takedownsMode: TAKEDOWNS_MODE,
           stripeConfigured: STRIPE_CONFIGURED,
+          stripeMode: PAYMENTS_MODE,
           yotiConfigured: YOTI_CONFIGURED,
+          yotiMode: YOTI_MODE,
           retentionEvidence: operationalEvidence.retention,
           monitoringEvidence: operationalEvidence.monitoring,
           backupRestoreEvidence: operationalEvidence.backup_restore,
@@ -998,7 +1010,7 @@ const appServer = http.createServer(async (req, res) => {
         productionReady: readiness.productionReady,
         operationalGates: readiness.operationalGates,
         scanner,
-        ageVerification: YOTI_CONFIGURED ? "yoti" : "unconfigured",
+        ageVerification: YOTI_CONFIGURED ? `yoti-${YOTI_MODE}` : "unconfigured",
         emailDelivery: RESEND_EMAIL_CONFIGURED ? "resend" : "unconfigured",
         emailWebhook: RESEND_WEBHOOK_CONFIGURED
           ? "resend-signed"
@@ -1007,9 +1019,11 @@ const appServer = http.createServer(async (req, res) => {
           process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32
             ? "configured"
             : "unconfigured",
-        takedownDelivery: TAKEDOWN_DELIVERY_CONFIGURED
-          ? "operator-reviewed"
-          : "unconfigured",
+        takedownDelivery: TAKEDOWN_DELIVERY_LIVE
+          ? "operator-reviewed-live"
+          : TAKEDOWN_DELIVERY_CONFIGURED
+            ? "sandbox-locked"
+            : "unconfigured",
         legalTemplates: TAKEDOWN_LEGAL_TEMPLATES_APPROVED
           ? `approved-${TAKEDOWN_TEMPLATE_VERSION}`
           : "awaiting-counsel-approval",
@@ -1176,8 +1190,11 @@ const appServer = http.createServer(async (req, res) => {
     ) {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
-      if (!TAKEDOWN_DELIVERY_CONFIGURED)
-        return send(res, 503, { error: "Delivery is not configured." });
+      if (!TAKEDOWN_DELIVERY_LIVE)
+        return send(res, 503, {
+          error:
+            "Live delivery is locked until the approved production mode is enabled.",
+        });
       if (!(await allowed(req, `operator-send:${ip}`, 30, 86400000)).allowed)
         return send(res, 429, { error: "Daily delivery limit reached." });
       const caseId = route.split("/")[4],

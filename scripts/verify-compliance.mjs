@@ -135,6 +135,9 @@ rejectText("Render", render, "preDeployCommand:");
 requireText("Render", render, "value: test");
 requireText("Render", render, "TAKEDOWNS_MODE");
 requireText("Render", render, "value: sandbox");
+requireText("Render", render, "YOTI_MODE");
+requireText("server", server, "TAKEDOWN_DELIVERY_LIVE");
+requireText("server", server, 'TAKEDOWNS_MODE === "live"');
 requireText("Render", render, "TAKEDOWN_LEGAL_APPROVED_VERSION");
 const legalVersionBlock = render.match(
   /- key: TAKEDOWN_LEGAL_APPROVED_VERSION\n\s+([^\n]+)/,

@@ -81,8 +81,8 @@ if (requireProductionReady) {
     "takedown templates do not have recorded counsel approval",
   );
   expect(
-    ready.ageVerification === "yoti",
-    "Yoti age verification is not active",
+    ready.ageVerification === "yoti-live",
+    "live Yoti age verification is not active",
   );
   expect(
     ready.retentionAutomation === "configured",
@@ -97,7 +97,11 @@ if (requireProductionReady) {
     "database restore evidence is missing or older than 100 days",
   );
   expect(ready.scanner !== "unconfigured", "scanner is not configured");
-  expect(ready.billing?.startsWith("stripe-"), "Stripe is not configured");
+  expect(
+    ready.takedownDelivery === "operator-reviewed-live",
+    "live takedown delivery is not active",
+  );
+  expect(ready.billing === "stripe-live", "live Stripe is not configured");
 }
 
 for (const page of [

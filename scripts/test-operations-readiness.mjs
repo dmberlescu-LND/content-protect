@@ -14,8 +14,11 @@ const complete = {
   hasExternalMasterKey: true,
   scanner: "tineye-commercial",
   takedownDeliveryConfigured: true,
+  takedownsMode: "live",
   stripeConfigured: true,
+  stripeMode: "live",
   yotiConfigured: true,
+  yotiMode: "live",
   retentionEvidence: {
     status: "succeeded",
     occurredAt: new Date().toISOString(),
@@ -65,8 +68,11 @@ for (const unsafe of [
 for (const missingGate of [
   { scanner: "unconfigured" },
   { takedownDeliveryConfigured: false },
+  { takedownsMode: "sandbox" },
   { stripeConfigured: false },
+  { stripeMode: "test" },
   { yotiConfigured: false },
+  { yotiMode: "sandbox" },
   { retentionEvidence: undefined },
   { monitoringEvidence: undefined },
   {

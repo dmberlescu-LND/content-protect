@@ -20,10 +20,11 @@ The container is suitable for staging and product demonstrations. It is not appr
 1. Create a private GitHub repository under the company account.
 2. Push the reviewed source without `.env` or `.traceguard-data`.
 3. Create staging infrastructure in a UK region.
-4. Deploy with `PAYMENTS_MODE=sandbox`, `TAKEDOWNS_MODE=sandbox` and `BIOMETRICS_ENABLED=false`.
+4. Deploy with `PAYMENTS_MODE=test`, `TAKEDOWNS_MODE=sandbox`, `YOTI_MODE=sandbox` and `BIOMETRICS_ENABLED=false`.
 5. Run authentication, upload, deletion, backup-restore and incident-response tests.
 6. Connect a temporary staging hostname.
-7. Only after approval, add the production DNS records in Porkbun.
+7. Only after the corresponding provider, legal and operational approvals, change each integration independently to its explicit `live` mode. Credentials alone do not open a production gate.
+8. Only after approval, add the production DNS records in Porkbun.
 
 ## Porkbun DNS later
 
