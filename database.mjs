@@ -529,6 +529,7 @@ export async function runRetention({
       unverified: new Date(evaluatedAt.getTime() - 30 * 86400000),
       verification: new Date(evaluatedAt.getTime() - 90 * 86400000),
       operational: new Date(evaluatedAt.getTime() - 365 * 86400000),
+      support: new Date(evaluatedAt.getTime() - 2 * 365.25 * 86400000),
       legal: new Date(evaluatedAt.getTime() - 6 * 365.25 * 86400000),
     },
     rules = [
@@ -618,12 +619,21 @@ export async function runRetention({
         "closed_at < $1",
         cutoffs.legal,
       ],
+      [
+        "closedConsumerCases",
+        "consumer_cases",
+        "closed_at < $1",
+        cutoffs.support,
+      ],
     ];
   let counts = {};
   try {
     await client.query("BEGIN");
     await client.query("SET LOCAL content_protect.audit_retention = 'on'");
     await client.query("SET LOCAL content_protect.incident_retention = 'on'");
+    await client.query(
+      "SET LOCAL content_protect.consumer_case_retention = 'on'",
+    );
     await client.query("SELECT pg_advisory_xact_lock(824672)");
     const candidates = await client.query(
       `SELECT count(*)::int AS count FROM (${RETENTION_OBJECT_CANDIDATES_SQL}) candidates`,
@@ -730,6 +740,8 @@ export async function loadPostgresState() {
       "audit_events",
       "security_incidents",
       "security_incident_events",
+      "consumer_cases",
+      "consumer_case_events",
     ];
     const results = [];
     for (const name of names)
@@ -752,6 +764,8 @@ export async function loadPostgresState() {
       audit,
       incidents,
       incidentEvents,
+      consumerCases,
+      consumerCaseEvents,
     ] = results.map((result) => result.rows);
     const profile = new Map(profiles.map((row) => [row.user_id, row]));
     return {
@@ -974,6 +988,37 @@ export async function loadPostgresState() {
             })),
         };
       }),
+      consumerCases: consumerCases.map((row) => ({
+        id: row.id,
+        reference: row.reference,
+        userId: row.user_id,
+        subjectHash: row.subject_hash,
+        category: row.category,
+        priority: row.priority,
+        status: row.status,
+        refundDecision: row.refund_decision,
+        refundAmountPence: row.refund_amount_pence,
+        refundCompletedAt: iso(row.refund_completed_at),
+        responseDueAt: iso(row.response_due_at),
+        resolutionDueAt: iso(row.resolution_due_at),
+        restrictedDetailsCiphertext: row.restricted_details_ciphertext,
+        resolvedAt: iso(row.resolved_at),
+        closedAt: iso(row.closed_at),
+        createdAt: iso(row.created_at),
+        updatedAt: iso(row.updated_at),
+        events: consumerCaseEvents
+          .filter((event) => event.consumer_case_id === row.id)
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          .map((event) => ({
+            id: event.event_uuid,
+            type: event.event_type,
+            actorType: event.actor_type,
+            actorReference: event.actor_reference,
+            restrictedDetailsCiphertext:
+              event.restricted_details_ciphertext,
+            at: iso(event.created_at),
+          })),
+      })),
     };
   } finally {
     client.release();
@@ -1343,6 +1388,60 @@ async function upsertBusinessData(
           event.type,
           encryptIncidentDetails({ note: event.note }),
           event.actorReference,
+          event.at,
+        ],
+      );
+  }
+  for (const item of state.consumerCases || []) {
+    await client.query(
+      `INSERT INTO consumer_cases
+         (id,reference,user_id,subject_hash,category,priority,status,
+          refund_decision,refund_amount_pence,refund_completed_at,
+          response_due_at,resolution_due_at,restricted_details_ciphertext,
+          resolved_at,closed_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+       ON CONFLICT (id) DO UPDATE SET
+         user_id=EXCLUDED.user_id,priority=EXCLUDED.priority,
+         status=EXCLUDED.status,refund_decision=EXCLUDED.refund_decision,
+         refund_amount_pence=EXCLUDED.refund_amount_pence,
+         refund_completed_at=EXCLUDED.refund_completed_at,
+         restricted_details_ciphertext=EXCLUDED.restricted_details_ciphertext,
+         resolved_at=EXCLUDED.resolved_at,closed_at=EXCLUDED.closed_at,
+         updated_at=EXCLUDED.updated_at`,
+      [
+        item.id,
+        item.reference,
+        item.userId || null,
+        item.subjectHash,
+        item.category,
+        item.priority,
+        item.status,
+        item.refundDecision,
+        item.refundAmountPence ?? null,
+        item.refundCompletedAt || null,
+        item.responseDueAt,
+        item.resolutionDueAt,
+        item.restrictedDetailsCiphertext,
+        item.resolvedAt || null,
+        item.closedAt || null,
+        item.createdAt,
+        item.updatedAt,
+      ],
+    );
+    for (const event of item.events || [])
+      await client.query(
+        `INSERT INTO consumer_case_events
+           (event_uuid,consumer_case_id,event_type,actor_type,actor_reference,
+            restricted_details_ciphertext,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (event_uuid) DO NOTHING`,
+        [
+          event.id,
+          item.id,
+          event.type,
+          event.actorType,
+          event.actorReference,
+          event.restrictedDetailsCiphertext,
           event.at,
         ],
       );

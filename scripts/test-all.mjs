@@ -28,6 +28,8 @@ const checks = [
   "test-operator-auth-integration.mjs",
   "test-incident-policy.mjs",
   "test-incident-integration.mjs",
+  "test-consumer-case-policy.mjs",
+  "test-consumer-case-integration.mjs",
   "test-takedown-policy.mjs",
   "test-stripe-subscription-policy.mjs",
   "test-storage-config.mjs",

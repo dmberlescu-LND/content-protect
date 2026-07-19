@@ -41,11 +41,21 @@
   gap: 7px;
 }
 .operator-login-card input,
-.operator-fields input {
+.operator-fields input,
+.operator-fields select,
+.operator-fields textarea {
   height: 44px;
   border: 1px solid #dcd9e2;
   border-radius: 9px;
   padding: 0 12px;
+  background: #fff;
+  font: inherit;
+}
+.operator-fields textarea {
+  min-height: 84px;
+  height: auto;
+  padding: 10px 12px;
+  resize: vertical;
 }
 .operator-error {
   background: #fff0ed;
@@ -255,6 +265,55 @@
 .operator-global-error {
   max-width: 992px;
   margin: 18px auto 0;
+}
+.consumer-operator-detail {
+  border-top: 1px solid #e8e5eb;
+  margin-top: 18px;
+  padding-top: 18px;
+}
+.consumer-operator-detail h3 {
+  font: 700 16px "Manrope";
+  margin: 0 0 10px;
+}
+.consumer-operator-detail > p {
+  color: #5e5964;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.consumer-operator-detail details {
+  border: 1px solid #e5e2e8;
+  border-radius: 9px;
+  padding: 12px;
+  margin: 16px 0;
+}
+.consumer-operator-detail summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.consumer-timeline-event {
+  border-top: 1px solid #ece9ef;
+  margin-top: 11px;
+  padding-top: 11px;
+}
+.consumer-timeline-event b,
+.consumer-timeline-event span {
+  display: block;
+  font-size: 10px;
+}
+.consumer-timeline-event span {
+  color: #8b8591;
+  margin-top: 3px;
+}
+.consumer-timeline-event p {
+  color: #625c68;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+.consumer-action-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
 }
 .incident-guidance {
   display: flex;

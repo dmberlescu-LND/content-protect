@@ -122,6 +122,13 @@ import {
   recordNotificationDecision,
 } from "./incident-policy.mjs";
 import { launchGovernanceStatus } from "./launch-governance.mjs";
+import {
+  addConsumerMessage,
+  applyConsumerCaseAction,
+  consumerCaseSummary,
+  ConsumerCasePolicyError,
+  createConsumerCase,
+} from "./consumer-case-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -236,6 +243,7 @@ async function load() {
       legacyState.processedWebhooks ||= [];
       legacyState.operatorSessions ||= [];
       legacyState.incidents ||= [];
+      legacyState.consumerCases ||= [];
       for (const asset of legacyState.assets) {
         asset.objectKey ||= `${asset.id}.vault`;
         if (!asset.checksum) {
@@ -282,6 +290,7 @@ async function load() {
       processedWebhooks: [],
       operatorSessions: [],
       incidents: [],
+      consumerCases: [],
     };
     await save(d);
     return d;
@@ -300,6 +309,7 @@ async function load() {
   d.processedWebhooks ||= [];
   d.operatorSessions ||= [];
   d.incidents ||= [];
+  d.consumerCases ||= [];
   d.sessions = d.sessions.filter((x) => new Date(x.expiresAt) > new Date());
   d.passwordResets = d.passwordResets.filter(
     (x) => new Date(x.expiresAt) > new Date(),
@@ -609,6 +619,91 @@ function openDisputePayload(caseRecord, dispute) {
       409,
     );
   }
+}
+function consumerCaseSubjectHash(userId) {
+  return createHmac("sha256", key)
+    .update(`consumer-case-subject:${userId}`)
+    .digest("hex");
+}
+function consumerCaseCiphertext(value) {
+  return vault(Buffer.from(JSON.stringify(value))).toString("base64");
+}
+function openConsumerCaseDetails(caseRecord) {
+  try {
+    const details = JSON.parse(
+      unvault(
+        Buffer.from(caseRecord.restrictedDetailsCiphertext, "base64"),
+      ).toString("utf8"),
+    );
+    if (
+      details.id !== caseRecord.id ||
+      details.category !== caseRecord.category ||
+      consumerCaseSubjectHash(details.userId) !== caseRecord.subjectHash
+    )
+      throw new Error("Consumer case binding failed.");
+    return details;
+  } catch {
+    throw new ConsumerCasePolicyError(
+      "The encrypted consumer case is unavailable or invalid.",
+      409,
+    );
+  }
+}
+function protectConsumerCaseEvent(caseId, event) {
+  const { restricted, ...metadata } = event;
+  return {
+    ...metadata,
+    restrictedDetailsCiphertext: consumerCaseCiphertext({
+      caseId,
+      eventId: event.id,
+      type: event.type,
+      actorType: event.actorType,
+      actorReference: event.actorReference,
+      restricted,
+    }),
+  };
+}
+function openConsumerCaseEvent(caseRecord, event) {
+  try {
+    const payload = JSON.parse(
+      unvault(
+        Buffer.from(event.restrictedDetailsCiphertext, "base64"),
+      ).toString("utf8"),
+    );
+    if (
+      payload.caseId !== caseRecord.id ||
+      payload.eventId !== event.id ||
+      payload.type !== event.type ||
+      payload.actorType !== event.actorType ||
+      payload.actorReference !== event.actorReference ||
+      !payload.restricted ||
+      Array.isArray(payload.restricted) ||
+      typeof payload.restricted !== "object"
+    )
+      throw new Error("Consumer case event binding failed.");
+    return payload.restricted;
+  } catch {
+    throw new ConsumerCasePolicyError(
+      "The encrypted consumer case timeline is unavailable or invalid.",
+      409,
+    );
+  }
+}
+function customerConsumerCase(caseRecord) {
+  const details = openConsumerCaseDetails(caseRecord);
+  return {
+    ...consumerCaseSummary(caseRecord),
+    subject: details.subject,
+    statement: details.statement,
+    desiredResolution: details.desiredResolution,
+    orderReference: details.orderReference,
+    timeline: (caseRecord.events || []).map((event) => ({
+      id: event.id,
+      type: event.type,
+      actorType: event.actorType,
+      at: event.at,
+    })),
+  };
 }
 function audit(d, u, action, details = {}, { actorSubject = null } = {}) {
   d.audit.unshift({
@@ -1609,6 +1704,141 @@ const appServer = http.createServer(async (req, res) => {
         throw error;
       }
     }
+    if (route === "/api/operator/consumer-cases" && req.method === "GET") {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-consumer-cases:${ip}`, 60, 3600000))
+          .allowed
+      )
+        return send(res, 429, {
+          error: "Too many consumer-case requests.",
+        });
+      const now = Date.now();
+      return send(res, 200, {
+        cases: [...(d.consumerCases || [])]
+          .sort((a, b) => {
+            if ((a.status === "closed") !== (b.status === "closed"))
+              return a.status === "closed" ? 1 : -1;
+            if ((a.priority === "urgent") !== (b.priority === "urgent"))
+              return a.priority === "urgent" ? -1 : 1;
+            return new Date(a.responseDueAt) - new Date(b.responseDueAt);
+          })
+          .map((item) => ({
+            ...consumerCaseSummary(item),
+            responseOverdue:
+              item.status === "open" && Date.parse(item.responseDueAt) < now,
+            resolutionOverdue:
+              !["resolved", "closed"].includes(item.status) &&
+              Date.parse(item.resolutionDueAt) < now,
+          })),
+      });
+    }
+    if (
+      route.match(/^\/api\/operator\/consumer-cases\/[^/]+\/access$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-consumer-access:${ip}`, 30, 3600000))
+          .allowed
+      )
+        return send(res, 429, {
+          error: "Too many consumer-case access attempts.",
+        });
+      const caseId = route.split("/")[4],
+        caseRecord = (d.consumerCases || []).find(
+          (item) => item.id === caseId,
+        ),
+        b = await parse(req);
+      if (!caseRecord)
+        return send(res, 404, { error: "Consumer case not found." });
+      if (b.confirmNeedToReview !== true)
+        return send(res, 400, {
+          error: "Confirm that restricted access is required for this review.",
+        });
+      try {
+        await operatorStepUp(req, b.mfaCode, "consumer-case-access");
+        const details = openConsumerCaseDetails(caseRecord),
+          timeline = (caseRecord.events || []).map((event) => ({
+            id: event.id,
+            type: event.type,
+            actorType: event.actorType,
+            at: event.at,
+            restricted: openConsumerCaseEvent(caseRecord, event),
+          }));
+        audit(
+          d,
+          null,
+          "consumer_case.accessed",
+          { caseId, category: caseRecord.category },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 200, {
+          case: { ...consumerCaseSummary(caseRecord), ...details, timeline },
+        });
+      } catch (error) {
+        if (
+          error instanceof ConsumerCasePolicyError ||
+          error instanceof IncidentPolicyError
+        )
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/operator\/consumer-cases\/[^/]+\/actions$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-consumer-action:${ip}`, 60, 3600000))
+          .allowed
+      )
+        return send(res, 429, {
+          error: "Too many consumer-case actions.",
+        });
+      const caseId = route.split("/")[4],
+        caseRecord = (d.consumerCases || []).find(
+          (item) => item.id === caseId,
+        ),
+        b = await parse(req);
+      if (!caseRecord)
+        return send(res, 404, { error: "Consumer case not found." });
+      try {
+        await operatorStepUp(req, b.mfaCode, "consumer-case-action");
+        const event = applyConsumerCaseAction(caseRecord, b, {
+          operatorReference: OPERATOR_CONFIGURATION.id,
+        });
+        caseRecord.events ||= [];
+        caseRecord.events.push(protectConsumerCaseEvent(caseRecord.id, event));
+        audit(
+          d,
+          null,
+          `consumer_case.${event.type.replace(/-/g, "_")}`,
+          {
+            caseId,
+            eventId: event.id,
+            category: caseRecord.category,
+            status: caseRecord.status,
+            refundDecision: caseRecord.refundDecision,
+          },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 200, { case: consumerCaseSummary(caseRecord) });
+      } catch (error) {
+        if (
+          error instanceof ConsumerCasePolicyError ||
+          error instanceof IncidentPolicyError
+        )
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
     if (route === "/api/operator/cases" && req.method === "GET") {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
@@ -2460,6 +2690,91 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/me") return send(res, 200, { user: safe(u, d) });
+    if (route === "/api/support/cases" && req.method === "GET") {
+      if (!(await allowed(req, `consumer-cases-list:${u.id}`, 60, 3600000))
+        .allowed)
+        return send(res, 429, { error: "Too many support requests." });
+      return send(res, 200, {
+        cases: (d.consumerCases || [])
+          .filter((item) => item.userId === u.id)
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+          .map(customerConsumerCase),
+      });
+    }
+    if (route === "/api/support/cases" && req.method === "POST") {
+      if (!(await allowed(req, `consumer-case-create:${u.id}`, 5, 86400000))
+        .allowed)
+        return send(res, 429, {
+          error: "Too many new support cases. Add a message to an open case instead.",
+        });
+      const b = await parse(req),
+        id = randomUUID(),
+        reference = `CP-${id.replace(/-/g, "").slice(0, 12).toUpperCase()}`,
+        subjectHash = consumerCaseSubjectHash(u.id);
+      try {
+        const created = createConsumerCase(b, {
+            id,
+            reference,
+            userId: u.id,
+            subjectHash,
+            contactEmail: u.email,
+          }),
+          caseRecord = {
+            ...created.record,
+            restrictedDetailsCiphertext: consumerCaseCiphertext(
+              created.restricted,
+            ),
+            events: [protectConsumerCaseEvent(id, created.receivedEvent)],
+          };
+        d.consumerCases ||= [];
+        d.consumerCases.push(caseRecord);
+        audit(d, u, "consumer_case.created", {
+          caseId: id,
+          reference,
+          category: caseRecord.category,
+          priority: caseRecord.priority,
+          responseDueAt: caseRecord.responseDueAt,
+        });
+        await save(d);
+        return send(res, 201, { case: customerConsumerCase(caseRecord) });
+      } catch (error) {
+        if (error instanceof ConsumerCasePolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/support\/cases\/[^/]+\/messages$/) &&
+      req.method === "POST"
+    ) {
+      if (!(await allowed(req, `consumer-case-message:${u.id}`, 20, 86400000))
+        .allowed)
+        return send(res, 429, { error: "Too many support messages." });
+      const caseId = route.split("/")[4],
+        caseRecord = (d.consumerCases || []).find(
+          (item) => item.id === caseId && item.userId === u.id,
+        ),
+        b = await parse(req);
+      if (!caseRecord)
+        return send(res, 404, { error: "Support case not found." });
+      try {
+        const event = addConsumerMessage(caseRecord, b, {
+          subjectHash: consumerCaseSubjectHash(u.id),
+        });
+        caseRecord.events ||= [];
+        caseRecord.events.push(protectConsumerCaseEvent(caseId, event));
+        audit(d, u, "consumer_case.customer_message", {
+          caseId,
+          eventId: event.id,
+        });
+        await save(d);
+        return send(res, 201, { case: customerConsumerCase(caseRecord) });
+      } catch (error) {
+        if (error instanceof ConsumerCasePolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
     if (route === "/api/verification/age/config" && req.method === "GET") {
       if (YOTI_MODE === "sandbox") {
         if (
@@ -3785,6 +4100,9 @@ const appServer = http.createServer(async (req, res) => {
         billingConsents: (d.billingConsents || [])
           .filter((item) => item.userId === u.id)
           .map(({ userId, ...item }) => item),
+        supportCases: (d.consumerCases || [])
+          .filter((item) => item.userId === u.id)
+          .map(customerConsumerCase),
         auditEvents: d.audit
           .filter((item) => item.userId === u.id)
           .map(({ userId, ...item }) => item),

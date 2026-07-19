@@ -1,4 +1,4 @@
-export const REQUIRED_MIGRATION = "019_incident_register.sql";
+export const REQUIRED_MIGRATION = "020_consumer_cases.sql";
 
 const freshEvidence = (value, maxAgeMs) => {
   const timestamp = Date.parse(value?.occurredAt || "");

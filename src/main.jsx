@@ -885,27 +885,260 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
 }
 
 function HelpSafety() {
+  const [cases, setCases] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [messageDrafts, setMessageDrafts] = useState({});
+  const [form, setForm] = useState({
+    category: "service",
+    subject: "",
+    statement: "",
+    desiredResolution: "",
+    orderReference: "",
+    confirmAccuracy: false,
+    confirmNoSecretsOrMedia: false,
+    privacyAccepted: false,
+  });
+  const loadCases = async () => {
+    const response = await fetch("/api/support/cases"),
+      result = await response.json();
+    if (!response.ok)
+      throw new Error(result.error || "Support cases could not be loaded.");
+    setCases(result.cases || []);
+  };
+  useEffect(() => {
+    loadCases().catch((nextError) => setError(nextError.message));
+  }, []);
+  const submitCase = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/support/cases", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(form),
+        }),
+        result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "The request could not be submitted.");
+      setForm({
+        category: "service",
+        subject: "",
+        statement: "",
+        desiredResolution: "",
+        orderReference: "",
+        confirmAccuracy: false,
+        confirmNoSecretsOrMedia: false,
+        privacyAccepted: false,
+      });
+      await loadCases();
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const addMessage = async (caseId) => {
+    const message = String(messageDrafts[caseId] || "").trim();
+    if (message.length < 10) {
+      setError("A follow-up message must contain at least 10 characters.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/support/cases/${caseId}/messages`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ message, confirmNoSecretsOrMedia: true }),
+        }),
+        result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "The message could not be submitted.");
+      setMessageDrafts({ ...messageDrafts, [caseId]: "" });
+      await loadCases();
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="account-grid help-grid">
-      <section className="account-card">
+      <section className="account-card support-case-centre">
         <div className="support-icon">
           <HelpCircle />
         </div>
-        <h2>Customer support</h2>
+        <h2>Private support and complaints</h2>
         <p>
-          Questions about your account, billing, evidence or using the protected
-          workspace.
+          Open a tracked request about billing, cancellation, refunds, privacy,
+          accessibility, safety or the service. Sensitive details are encrypted
+          and reviewed only by an authorised operator.
         </p>
-        <a
-          className="btn btn-primary"
-          href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20support"
-        >
-          Email support
-        </a>
-        <small>
-          Include your account email, but never send passwords or sensitive
-          media by email.
-        </small>
+        {error && <div className="operator-error">{error}</div>}
+        <form className="support-case-form" onSubmit={submitCase}>
+          <div className="support-case-fields">
+            <label>
+              Category
+              <select
+                value={form.category}
+                onChange={(event) =>
+                  setForm({ ...form, category: event.target.value })
+                }
+              >
+                <option value="billing">Billing</option>
+                <option value="cancellation">Cancellation</option>
+                <option value="cooling-off">14-day cooling-off</option>
+                <option value="refund">Refund</option>
+                <option value="service">Service</option>
+                <option value="privacy">Privacy</option>
+                <option value="accessibility">Accessibility</option>
+                <option value="safety">Urgent creator safety</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label>
+              Order reference (optional)
+              <input
+                maxLength="160"
+                placeholder="Opaque Stripe or account reference"
+                value={form.orderReference}
+                onChange={(event) =>
+                  setForm({ ...form, orderReference: event.target.value })
+                }
+              />
+            </label>
+          </div>
+          <label>
+            Subject
+            <input
+              required
+              minLength="8"
+              maxLength="120"
+              value={form.subject}
+              onChange={(event) =>
+                setForm({ ...form, subject: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            What happened?
+            <textarea
+              required
+              minLength="30"
+              maxLength="4000"
+              rows="5"
+              value={form.statement}
+              onChange={(event) =>
+                setForm({ ...form, statement: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Requested resolution (optional)
+            <textarea
+              maxLength="1000"
+              rows="3"
+              value={form.desiredResolution}
+              onChange={(event) =>
+                setForm({ ...form, desiredResolution: event.target.value })
+              }
+            />
+          </label>
+          <div className="support-confirmations">
+            <label>
+              <input
+                type="checkbox"
+                checked={form.confirmAccuracy}
+                onChange={(event) =>
+                  setForm({ ...form, confirmAccuracy: event.target.checked })
+                }
+              />
+              I confirm this request is accurate.
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.confirmNoSecretsOrMedia}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    confirmNoSecretsOrMedia: event.target.checked,
+                  })
+                }
+              />
+              I have not included passwords, identity documents or private
+              media.
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.privacyAccepted}
+                onChange={(event) =>
+                  setForm({ ...form, privacyAccepted: event.target.checked })
+                }
+              />
+              I understand this request is processed under the Privacy Notice.
+            </label>
+          </div>
+          <button
+            className="btn btn-primary"
+            disabled={
+              busy ||
+              !form.confirmAccuracy ||
+              !form.confirmNoSecretsOrMedia ||
+              !form.privacyAccepted
+            }
+          >
+            {busy ? "Submitting…" : "Open tracked request"}
+          </button>
+        </form>
+        <div className="support-case-list">
+          <h3>Your requests</h3>
+          {cases.length ? (
+            cases.map((item) => (
+              <article key={item.id}>
+                <div>
+                  <b>{item.reference}</b>
+                  <span>{item.status.replace(/-/g, " ")}</span>
+                </div>
+                <strong>{item.subject}</strong>
+                <small>
+                  Response target: {new Date(item.responseDueAt).toLocaleDateString()} ·
+                  Resolution target: {new Date(item.resolutionDueAt).toLocaleDateString()}
+                </small>
+                <p>{item.statement}</p>
+                {!["resolved", "closed"].includes(item.status) && (
+                  <div className="support-follow-up">
+                    <textarea
+                      rows="2"
+                      maxLength="3000"
+                      placeholder="Add a safe follow-up message (no passwords or private media)"
+                      value={messageDrafts[item.id] || ""}
+                      onChange={(event) =>
+                        setMessageDrafts({
+                          ...messageDrafts,
+                          [item.id]: event.target.value,
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      disabled={busy}
+                      onClick={() => addMessage(item.id)}
+                    >
+                      Add message
+                    </button>
+                  </div>
+                )}
+              </article>
+            ))
+          ) : (
+            <small>No tracked requests yet.</small>
+          )}
+        </div>
       </section>
       <section className="account-card">
         <div className="support-icon urgent">
@@ -3336,6 +3569,9 @@ function OperatorConsole() {
   const [forms, setForms] = useState({});
   const [disputeDetails, setDisputeDetails] = useState({});
   const [disputeForms, setDisputeForms] = useState({});
+  const [consumerCases, setConsumerCases] = useState([]);
+  const [consumerDetails, setConsumerDetails] = useState({});
+  const [consumerForms, setConsumerForms] = useState({});
   const loadCases = async () => {
     const response = await fetch("/api/operator/cases");
     if (!response.ok) {
@@ -3345,12 +3581,21 @@ function OperatorConsole() {
     setCases((await response.json()).cases || []);
     setReady(true);
   };
+  const loadConsumerCases = async () => {
+    const response = await fetch("/api/operator/consumer-cases");
+    if (!response.ok) {
+      setReady(false);
+      return;
+    }
+    setConsumerCases((await response.json()).cases || []);
+    setReady(true);
+  };
   useEffect(() => {
     fetch("/api/operator/me").then(async (response) => {
       if (response.ok) {
         const result = await response.json();
         setOperatorId(result.operatorId || "operator");
-        await loadCases();
+        await Promise.all([loadCases(), loadConsumerCases()]);
       } else setReady(false);
     });
   }, []);
@@ -3370,7 +3615,82 @@ function OperatorConsole() {
     setToken("");
     setMfaCode("");
     setOperatorId(result.operatorId || "operator");
-    await loadCases();
+    await Promise.all([loadCases(), loadConsumerCases()]);
+  };
+  const accessConsumerCase = async (item) => {
+    if (
+      !confirm(
+        "Open this encrypted customer request only if necessary for the current review?",
+      )
+    )
+      return;
+    const code = prompt(
+      "Enter a current authenticator code. Use a new code for any decision.",
+    );
+    if (!/^\d{6}$/.test(String(code || "").replace(/\s/g, ""))) {
+      setError("A current six-digit authenticator code is required.");
+      return;
+    }
+    const response = await fetch(
+        `/api/operator/consumer-cases/${item.id}/access`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            confirmNeedToReview: true,
+            mfaCode: String(code).replace(/\s/g, ""),
+          }),
+        },
+      ),
+      result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "The customer request could not be opened.");
+      return;
+    }
+    setError("");
+    setConsumerDetails({ ...consumerDetails, [item.id]: result.case });
+  };
+  const applyConsumerAction = async (item) => {
+    const form = consumerForms[item.id] || {};
+    if (
+      !form.action ||
+      String(form.note || "").trim().length < 10 ||
+      !/^\d{6}$/.test(String(form.mfaCode || "").replace(/\s/g, ""))
+    ) {
+      setError(
+        "Choose an action, add a meaningful note and enter a new authenticator code.",
+      );
+      return;
+    }
+    if (
+      !confirm(
+        "Record this customer-case action? Refund completion must match the Stripe record.",
+      )
+    )
+      return;
+    const response = await fetch(
+        `/api/operator/consumer-cases/${item.id}/actions`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ...form,
+            refundAmountPence: form.refundAmountPence
+              ? Number(form.refundAmountPence)
+              : undefined,
+            mfaCode: String(form.mfaCode).replace(/\s/g, ""),
+          }),
+        },
+      ),
+      result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "The customer-case action failed.");
+      return;
+    }
+    setError("");
+    setConsumerForms({ ...consumerForms, [item.id]: {} });
+    setConsumerDetails({ ...consumerDetails, [item.id]: undefined });
+    await loadConsumerCases();
   };
   const prepare = async (caseId) => {
     const form = forms[caseId] || {};
@@ -3573,6 +3893,9 @@ function OperatorConsole() {
     setCases([]);
     setDisputeDetails({});
     setDisputeForms({});
+    setConsumerCases([]);
+    setConsumerDetails({});
+    setConsumerForms({});
     setOperatorView("cases");
   };
   if (!ready)
@@ -3637,6 +3960,12 @@ function OperatorConsole() {
           >
             Incident register
           </button>
+          <button
+            className={operatorView === "consumer" ? "active" : ""}
+            onClick={() => setOperatorView("consumer")}
+          >
+            Customer requests
+          </button>
           <button className="btn btn-outline" onClick={logout}>
             Sign out
           </button>
@@ -3649,6 +3978,231 @@ function OperatorConsole() {
         active={operatorView === "incidents"}
         setGlobalError={setError}
       />
+      <section hidden={operatorView !== "consumer"}>
+        <div className="operator-heading">
+          <div>
+            <p>ENCRYPTED SUPPORT WORKFLOW</p>
+            <h1>Customer requests and refunds</h1>
+          </div>
+          <strong>
+            {consumerCases.filter((item) => item.status !== "closed").length} open
+          </strong>
+        </div>
+        {consumerCases.length ? (
+          consumerCases.map((item) => {
+            const detail = consumerDetails[item.id],
+              form = consumerForms[item.id] || {},
+              setForm = (next) =>
+                setConsumerForms({
+                  ...consumerForms,
+                  [item.id]: { ...form, ...next },
+                });
+            return (
+              <article className="operator-case" key={item.id}>
+                <div className="operator-case-title">
+                  <div>
+                    <small>{item.reference}</small>
+                    <h2>{item.category.replace(/-/g, " ")}</h2>
+                  </div>
+                  <span>
+                    {item.priority} · {item.status.replace(/-/g, " ")}
+                  </span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Response target</dt>
+                    <dd>{new Date(item.responseDueAt).toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt>Resolution target</dt>
+                    <dd>{new Date(item.resolutionDueAt).toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt>Refund status</dt>
+                    <dd>{item.refundDecision}</dd>
+                  </div>
+                </dl>
+                {(item.responseOverdue || item.resolutionOverdue) && (
+                  <div className="operator-error">
+                    Internal service target overdue — prioritise human review.
+                  </div>
+                )}
+                {!detail ? (
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => accessConsumerCase(item)}
+                  >
+                    Open encrypted request
+                  </button>
+                ) : (
+                  <div className="consumer-operator-detail">
+                    <h3>{detail.subject}</h3>
+                    <p>{detail.statement}</p>
+                    {detail.desiredResolution && (
+                      <p>
+                        <b>Requested resolution:</b> {detail.desiredResolution}
+                      </p>
+                    )}
+                    {detail.orderReference && (
+                      <p>
+                        <b>Order reference:</b> {detail.orderReference}
+                      </p>
+                    )}
+                    <details>
+                      <summary>Restricted timeline ({detail.timeline.length})</summary>
+                      {detail.timeline.map((event) => (
+                        <div className="consumer-timeline-event" key={event.id}>
+                          <b>{event.type.replace(/-/g, " ")}</b>
+                          <span>{new Date(event.at).toLocaleString()}</span>
+                          <p>
+                            {event.restricted.message ||
+                              event.restricted.note ||
+                              event.restricted.outcome ||
+                              "Protected workflow event"}
+                          </p>
+                        </div>
+                      ))}
+                    </details>
+                    {item.status !== "closed" && (
+                      <div className="operator-fields consumer-action-fields">
+                        <label>
+                          Action
+                          <select
+                            value={form.action || ""}
+                            onChange={(event) =>
+                              setForm({ action: event.target.value })
+                            }
+                          >
+                            <option value="">Choose…</option>
+                            <option value="acknowledge">Acknowledge</option>
+                            <option value="request-information">
+                              Request information
+                            </option>
+                            <option value="refund-decision">
+                              Record refund decision
+                            </option>
+                            <option value="refund-completed">
+                              Record completed Stripe refund
+                            </option>
+                            <option value="resolve">Resolve</option>
+                            <option value="close">Close</option>
+                          </select>
+                        </label>
+                        <label>
+                          Restricted operator note
+                          <textarea
+                            rows="3"
+                            value={form.note || ""}
+                            onChange={(event) =>
+                              setForm({ note: event.target.value })
+                            }
+                          />
+                        </label>
+                        {form.action === "refund-decision" && (
+                          <>
+                            <label>
+                              Decision
+                              <select
+                                value={form.refundDecision || ""}
+                                onChange={(event) =>
+                                  setForm({ refundDecision: event.target.value })
+                                }
+                              >
+                                <option value="">Choose…</option>
+                                <option value="approved">Approved</option>
+                                <option value="partial">Partial</option>
+                                <option value="declined">Declined</option>
+                              </select>
+                            </label>
+                            <label>
+                              Amount in pence
+                              <input
+                                type="number"
+                                min="1"
+                                value={form.refundAmountPence || ""}
+                                onChange={(event) =>
+                                  setForm({ refundAmountPence: event.target.value })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Decision reference
+                              <input
+                                value={form.decisionReference || ""}
+                                onChange={(event) =>
+                                  setForm({ decisionReference: event.target.value })
+                                }
+                              />
+                            </label>
+                          </>
+                        )}
+                        {form.action === "refund-completed" && (
+                          <label>
+                            Stripe refund reference
+                            <input
+                              placeholder="re_…"
+                              value={form.providerReference || ""}
+                              onChange={(event) =>
+                                setForm({ providerReference: event.target.value })
+                              }
+                            />
+                          </label>
+                        )}
+                        {form.action === "resolve" && (
+                          <>
+                            <label>
+                              Outcome
+                              <textarea
+                                rows="3"
+                                value={form.outcome || ""}
+                                onChange={(event) =>
+                                  setForm({ outcome: event.target.value })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Remedy
+                              <input
+                                value={form.remedy || ""}
+                                onChange={(event) =>
+                                  setForm({ remedy: event.target.value })
+                                }
+                              />
+                            </label>
+                          </>
+                        )}
+                        <label>
+                          New authenticator code
+                          <input
+                            inputMode="numeric"
+                            pattern="[0-9]{6}"
+                            value={form.mfaCode || ""}
+                            onChange={(event) =>
+                              setForm({ mfaCode: event.target.value })
+                            }
+                          />
+                        </label>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => applyConsumerAction(item)}
+                        >
+                          Record action
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })
+        ) : (
+          <div className="operator-empty">
+            <CircleCheck />
+            <h2>No customer requests</h2>
+            <p>The encrypted queue is ready.</p>
+          </div>
+        )}
+      </section>
       <section hidden={operatorView !== "cases"}>
         <div className="operator-heading">
           <div>

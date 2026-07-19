@@ -76,6 +76,8 @@ for (const requiredTable of [
   "object_deletion_queue",
   "security_incidents",
   "security_incident_events",
+  "consumer_cases",
+  "consumer_case_events",
 ])
   assert.ok(
     BACKUP_TABLES.some((table) => table.name === requiredTable),
