@@ -26,6 +26,7 @@ jobs:
     env:
       APP_URL: https://content-protect.com
       REQUIRE_PRODUCTION_READY: "false"
+      MONITORING_HEARTBEAT_TOKEN: ${{ secrets.MONITORING_HEARTBEAT_TOKEN }}
     steps:
       - name: Check out the monitored release
         uses: actions/checkout@v6
@@ -57,3 +58,15 @@ jobs:
         run: |
           echo "Intentional failure used to verify the external alert route."
           exit 1
+
+      - name: Record verified monitoring evidence
+        if: ${{ env.MONITORING_HEARTBEAT_TOKEN != '' }}
+        shell: bash
+        run: |
+          monitored_release="$(curl --fail --silent --show-error "$APP_URL/api/health" | node -e 'let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>process.stdout.write(JSON.parse(s).release))')"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $MONITORING_HEARTBEAT_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"release\":\"$monitored_release\",\"production\":true,\"seo\":true}" \
+            "$APP_URL/api/operations/monitor-heartbeat"
