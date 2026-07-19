@@ -9,7 +9,9 @@ RUN pnpm prune --prod
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apk add --no-cache postgresql-client postgresql postgresql-contrib \
+RUN apk add --no-cache ffmpeg postgresql-client postgresql postgresql-contrib \
+  && command -v ffmpeg \
+  && command -v ffprobe \
   && command -v initdb \
   && command -v pg_ctl \
   && command -v createdb \
@@ -22,6 +24,7 @@ COPY --from=build --chown=contentprotect:contentprotect /app/scripts ./scripts
 COPY --from=build --chown=contentprotect:contentprotect /app/db ./db
 COPY --from=build --chown=contentprotect:contentprotect /app/package.json ./package.json
 COPY --from=build --chown=contentprotect:contentprotect /app/node_modules ./node_modules
+RUN node scripts/test-video-frames-runtime.mjs
 RUN mkdir -p /app/.traceguard-data && chown -R contentprotect:contentprotect /app/.traceguard-data
 USER contentprotect
 EXPOSE 8787

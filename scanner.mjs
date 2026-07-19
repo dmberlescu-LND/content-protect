@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { extractVideoFrames, VideoFrameError } from "./video-frames.mjs";
 
 const TINEYE_ENDPOINT =
   process.env.TINEYE_API_URL || "https://api.tineye.com/rest/search/";
@@ -33,6 +34,33 @@ export function scannerReadiness(environment = process.env) {
 
 export function scannerMode(environment = process.env) {
   return scannerReadiness(environment).mode;
+}
+
+export function videoScannerReadiness(environment = process.env) {
+  const imageScanner = scannerReadiness(environment),
+    hasVideoFrameApproval = Boolean(
+      environment.TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE?.trim(),
+    );
+  return {
+    ready: imageScanner.ready && hasVideoFrameApproval,
+    mode: !imageScanner.ready
+      ? imageScanner.mode
+      : hasVideoFrameApproval
+        ? "tineye-keyframes"
+        : "privacy-blocked",
+    hasVideoFrameApproval,
+    imageScannerMode: imageScanner.mode,
+    missingApprovals: [
+      ...imageScanner.missingApprovals,
+      ...(!hasVideoFrameApproval
+        ? ["video-frame-vendor-and-privacy-approval"]
+        : []),
+    ],
+  };
+}
+
+export function videoScannerMode(environment = process.env) {
+  return videoScannerReadiness(environment).mode;
 }
 
 export class ScanProviderError extends Error {
@@ -223,4 +251,93 @@ export async function searchImage(
     matches: [...found.values()],
     providerStats: payload.stats || {},
   };
+}
+
+export async function searchVideo(
+  video,
+  {
+    assetId,
+    allowedHosts = [],
+    fetchImpl = fetch,
+    apiKey = process.env.TINEYE_API_KEY,
+    endpoint = TINEYE_ENDPOINT,
+    extractFramesImpl = extractVideoFrames,
+    videoFrameApprovalReference = process.env
+      .TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE,
+  },
+) {
+  if (!videoFrameApprovalReference?.trim())
+    throw new ScanProviderError(
+      "Video frame scanning is awaiting documented vendor and privacy approval.",
+      503,
+    );
+  let extracted;
+  try {
+    extracted = await extractFramesImpl(video);
+  } catch (error) {
+    if (error instanceof VideoFrameError)
+      throw new ScanProviderError(error.message, error.status);
+    throw error;
+  }
+  const found = new Map();
+  let totalBacklinks = 0;
+  for (const frame of extracted.frames) {
+    const result = await searchImage(frame.buffer, {
+      assetId,
+      allowedHosts,
+      fetchImpl,
+      apiKey,
+      endpoint,
+    });
+    totalBacklinks += Number(result.providerStats?.total_backlinks) || 0;
+    for (const match of result.matches) {
+      const frameEvidence = {
+          frameIndex: frame.index,
+          timestampSeconds: frame.timestampSeconds,
+          matchScore: match.matchScore,
+          queryHash: match.evidence.queryHash,
+          queryMatchPercent: match.evidence.queryMatchPercent,
+        },
+        existing = found.get(match.sourceUrl);
+      if (!existing) {
+        found.set(match.sourceUrl, {
+          ...match,
+          mediaType: "Video",
+          evidence: {
+            ...match.evidence,
+            matchMethod: "video-keyframe",
+            videoDurationSeconds: extracted.durationSeconds,
+            framesSearched: extracted.frames.length,
+            videoFrameMatches: [frameEvidence],
+          },
+        });
+        continue;
+      }
+      existing.evidence.videoFrameMatches.push(frameEvidence);
+      if (match.matchScore > existing.matchScore) {
+        existing.matchScore = match.matchScore;
+        existing.evidence.imageUrl = match.evidence.imageUrl;
+        existing.evidence.crawlDate = match.evidence.crawlDate;
+        existing.evidence.providerDomain = match.evidence.providerDomain;
+        existing.evidence.queryHash = match.evidence.queryHash;
+        existing.evidence.queryMatchPercent = match.evidence.queryMatchPercent;
+        existing.evidence.tags = match.evidence.tags;
+      }
+    }
+  }
+  return {
+    matches: [...found.values()],
+    providerStats: {
+      total_backlinks: totalBacklinks,
+      frames_searched: extracted.frames.length,
+    },
+  };
+}
+
+export async function searchMedia(media, { mime, ...options }) {
+  if (String(mime || "").startsWith("image/"))
+    return searchImage(media, options);
+  if (String(mime || "").startsWith("video/"))
+    return searchVideo(media, options);
+  throw new ScanProviderError("The reference media type is unsupported.", 415);
 }

@@ -23,6 +23,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 - A non-destructive production retention preview completed successfully on 19 July 2026 against revision `95edfbd`: it found no customer/content deletion candidates and only 12 expired rate-limit entries. The Render command remains preview-only, and execution is still disabled pending policy, legal and operational approval.
 - Execute data-processing agreements and international-transfer safeguards with every provider.
 - Before TinEye activation, complete `docs/vendor-due-diligence/TINEYE-ACTIVATION.md`; record the approved privacy/transfer review and the provider's written lawful-adult-content confirmation in the two fail-closed Render variables. An API key alone must never activate scanning.
+- Before video-frame scanning, obtain written confirmation covering derived video frames, approve the DPIA and the maximum three paid queries per video, publish counsel-approved Privacy Notice and Service Terms versions describing the flow, and only then set `TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE`. Stored videos must remain unsearched while this value is absent.
 - Commission penetration testing and create a 72-hour personal-data-breach response procedure.
 - Configure the independent retained audit/log export and test the alert raised by an audit-integrity readiness failure.
 

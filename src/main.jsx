@@ -920,6 +920,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       assetSlotsRemaining: 0,
       scanFrequency: "unavailable",
     },
+    scannerMode: "unconfigured",
+    videoScannerMode: "unconfigured",
     stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
   });
   const [loading, setLoading] = useState(true);
@@ -938,8 +940,14 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
   }, []);
   const liveMatches = data.matches;
   const imageAssetCount = data.assets.filter((asset) =>
-    asset.mime?.startsWith("image/"),
-  ).length;
+      asset.mime?.startsWith("image/"),
+    ).length,
+    videoAssetCount = data.assets.filter((asset) =>
+      asset.mime?.startsWith("video/"),
+    ).length,
+    videoScanningActive = data.videoScannerMode === "tineye-keyframes",
+    scannableAssetCount =
+      imageAssetCount + (videoScanningActive ? videoAssetCount : 0);
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -1017,7 +1025,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       Pro: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and priority support`,
     }[plan];
     const accepted = confirm(
-      `Continue with the ${plan} monthly subscription: ${planLimit}?\n\nVideos use a file slot but are not scanned until a separate video provider is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
+      `Continue with the ${plan} monthly subscription: ${planLimit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
     );
     if (!accepted) return;
     const r = await fetch("/api/billing/checkout", {
@@ -1328,7 +1336,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 className="scan-status scan-button"
                 disabled={
                   !data.entitlements.canScan ||
-                  !imageAssetCount ||
+                  !scannableAssetCount ||
                   data.scannerMode !== "tineye-commercial"
                 }
                 onClick={runScan}
@@ -1338,12 +1346,16 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <i></i>
                 </div>
                 <div>
-                  <b>Run protected image scan</b>
+                  <b>
+                    Run protected {videoScanningActive ? "media" : "image"} scan
+                  </b>
                   <span>
                     {!data.entitlements.canScan
                       ? "Choose an active plan before scanning"
-                      : !imageAssetCount
-                        ? "Add a supported reference image before scanning"
+                      : !scannableAssetCount
+                        ? videoAssetCount
+                          ? "Video scanning awaits privacy and provider approval"
+                          : "Add a supported reference image before scanning"
                         : data.scannerMode === "tineye-commercial"
                           ? "Search the commercial provider using private reference copies"
                           : "Commercial scanning awaits provider activation"}
@@ -1627,8 +1639,9 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             </p>
             <p>
               {data.assets.length} of {data.entitlements.assetLimit} plan files
-              are currently used. Videos use a file slot but are not scanned
-              until a separate video provider is activated.
+              are currently used. Videos use a file slot and are not scanned
+              until privacy and provider approval for minimized video frames is
+              activated.
             </p>
             <div className="consent consent-checkbox">
               <input
@@ -1648,7 +1661,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <Upload />
               <b>Choose a supported photo or short video</b>
               <span>
-                JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB
+                JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB ·
+                videos up to 10 minutes
               </span>
               <input
                 type="file"

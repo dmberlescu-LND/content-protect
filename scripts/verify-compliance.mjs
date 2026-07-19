@@ -39,6 +39,9 @@ const [
   backupRunner,
   isolatedRestoreRunner,
   tineyeActivation,
+  videoFrames,
+  dpia,
+  videoRuntimeTest,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -57,6 +60,9 @@ const [
   read("scripts/run-backups.mjs"),
   read("scripts/run-isolated-restore-drill.mjs"),
   read("docs/vendor-due-diligence/TINEYE-ACTIVATION.md"),
+  read("video-frames.mjs"),
+  read("docs/compliance/DPIA-DRAFT.md"),
+  read("scripts/test-video-frames-runtime.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -102,18 +108,23 @@ for (const [name, document] of [
 for (const provider of [
   "Yoti",
   "TinEye",
-  "Video matching provider",
+  "Video frame processing",
   "Monitoring provider",
 ]) {
   requireText("processor register", processors, provider);
 }
 requireText("processor register", processors, "Production blocked");
-requireText("processor register", processors, "Fail-closed until the API key");
 requireText(
   "processor register",
   processors,
-  "product must not claim video scanning",
+  "Still images fail closed until the API key",
 );
+requireText(
+  "processor register",
+  processors,
+  "TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE",
+);
+requireText("processor register", processors, "no audio or full video");
 
 requireText("ROPA", ropa, "age-assurance outcome");
 rejectText(
@@ -139,6 +150,27 @@ for (const key of [
   requireText("Render", render, key);
   requireText("scanner", scanner, key);
 }
+requireText("Render", render, "TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE");
+requireText("scanner", scanner, "TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE");
+requireText("scanner", scanner, "videoScannerReadiness");
+requireText("server", server, "videoScannerMode");
+requireText("server", server, "videoScannerActivation.ready");
+requireText(
+  "video frame processor",
+  videoFrames,
+  "MAX_VIDEO_SECONDS = 10 * 60",
+);
+requireText("video frame processor", videoFrames, "MAX_FRAMES = 3");
+requireText("video frame processor", videoFrames, '"-protocol_whitelist"');
+requireText("video frame processor", videoFrames, '"-map_metadata"');
+requireText("video frame processor", videoFrames, '"-an"');
+requireText("video frame processor", videoFrames, '"-sn"');
+requireText("video frame processor", videoFrames, '"-dn"');
+requireText("video runtime test", videoRuntimeTest, "testsrc2");
+requireText("Docker runtime", dockerfile, "test-video-frames-runtime.mjs");
+requireText("DPIA", dpia, "TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE");
+requireText("TinEye activation", tineyeActivation, "up to three paid searches");
+requireText("TinEye activation", tineyeActivation, "full video or audio");
 requireText("TinEye activation", tineyeActivation, "PIPEDA");
 requireText("TinEye activation", tineyeActivation, "compliance-blocked");
 requireText("TinEye activation", tineyeActivation, "automatic top-up disabled");
@@ -211,6 +243,8 @@ requireText(
   'CMD ["/bin/sh", "-c", "node scripts/migrate.mjs && exec node server.mjs"]',
 );
 requireText("Docker runtime", dockerfile, "postgresql-contrib");
+requireText("Docker runtime", dockerfile, "ffmpeg");
+requireText("Docker runtime", dockerfile, "ffprobe");
 requireText("backup runner", backupRunner, "backupRestoreDrillDue");
 requireText("backup runner", backupRunner, "run-isolated-restore-drill.mjs");
 requireText(

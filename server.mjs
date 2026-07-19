@@ -38,7 +38,9 @@ import {
   scannerMode,
   scannerReadiness,
   ScanProviderError,
-  searchImage,
+  searchMedia,
+  videoScannerMode,
+  videoScannerReadiness,
 } from "./scanner.mjs";
 import {
   assetAllowance,
@@ -996,6 +998,7 @@ const appServer = http.createServer(async (req, res) => {
         productionReady: readiness.productionReady,
         operationalGates: readiness.operationalGates,
         scanner,
+        videoScanning: videoScannerMode(),
         ageVerification: YOTI_CONFIGURED ? `yoti-${YOTI_MODE}` : "unconfigured",
         emailDelivery: RESEND_EMAIL_CONFIGURED ? "resend" : "unconfigured",
         emailWebhook: RESEND_WEBHOOK_CONFIGURED
@@ -1843,6 +1846,7 @@ const appServer = http.createServer(async (req, res) => {
           ? `stripe_${PAYMENTS_MODE}`
           : "unconfigured",
         scannerMode: scannerMode(),
+        videoScannerMode: videoScannerMode(),
         audit: d.audit.filter((x) => x.userId === u.id).slice(0, 20),
         stats: {
           matches: matches.length,
@@ -2033,20 +2037,28 @@ const appServer = http.createServer(async (req, res) => {
           error: `${subscription.plan} scanning is available again at ${nextScanAt.toISOString()}.`,
           nextScanAt: nextScanAt.toISOString(),
         });
-      const assets = d.assets.filter(
-        (x) => x.userId === u.id && x.mime.startsWith("image/"),
-      );
+      const allAssets = d.assets.filter((x) => x.userId === u.id),
+        videoScannerActivation = videoScannerReadiness(),
+        assets = allAssets.filter(
+          (asset) =>
+            asset.mime.startsWith("image/") ||
+            (asset.mime.startsWith("video/") && videoScannerActivation.ready),
+        ),
+        skippedVideoAssets =
+          allAssets.filter((asset) => asset.mime.startsWith("video/")).length -
+          assets.filter((asset) => asset.mime.startsWith("video/")).length;
       if (!assets.length)
         return send(res, 400, {
-          error:
-            "Add at least one reference image. Video matching requires a separate provider.",
+          error: skippedVideoAssets
+            ? "Video frame scanning is awaiting documented vendor and privacy approval. Add a supported reference image or wait for activation."
+            : "Add at least one supported reference image.",
         });
-      const imageAssetLimit = assetLimitForPlan(subscription.plan);
-      if (!imageAssetLimit || assets.length > imageAssetLimit)
+      const planAssetLimit = assetLimitForPlan(subscription.plan);
+      if (!planAssetLimit || allAssets.length > planAssetLimit)
         return send(res, 409, {
-          error: `${subscription.plan} can scan up to ${imageAssetLimit} reference images. Remove excess files or change plan before scanning.`,
-          assetLimit: imageAssetLimit,
-          currentImageCount: assets.length,
+          error: `${subscription.plan} can scan up to ${planAssetLimit} reference files. Remove excess files or change plan before scanning.`,
+          assetLimit: planAssetLimit,
+          currentAssetCount: allAssets.length,
         });
       const scannerActivation = scannerReadiness();
       if (!scannerActivation.ready)
@@ -2087,8 +2099,9 @@ const appServer = http.createServer(async (req, res) => {
               asset.objectKey || `${asset.id}.vault`,
               VAULT,
             ),
-            result = await searchImage(unvault(encrypted), {
+            result = await searchMedia(unvault(encrypted), {
               assetId: asset.id,
+              mime: asset.mime,
               allowedHosts: ownedHosts,
             });
           discovered.push(...result.matches);
@@ -2132,13 +2145,17 @@ const appServer = http.createServer(async (req, res) => {
           mode: "live",
           provider: "tineye",
           assets: assets.length,
+          imageAssets: assets.filter((asset) => asset.mime.startsWith("image/"))
+            .length,
+          videoAssets: assets.filter((asset) => asset.mime.startsWith("video/"))
+            .length,
           matches: discovered.length,
         });
         await save(d);
         return send(res, 201, {
           scan,
           matches: d.matches.filter((item) => item.userId === u.id),
-          notice: `Live image scan complete. ${discovered.length} public occurrences were returned for review.`,
+          notice: `Live ${assets.some((asset) => asset.mime.startsWith("video/")) ? "media" : "image"} scan complete. ${discovered.length} public occurrences were returned for review.${skippedVideoAssets ? ` ${skippedVideoAssets} stored video file${skippedVideoAssets === 1 ? " was" : "s were"} not searched because video-frame processing is not yet approved.` : ""}`,
         });
       } catch (error) {
         scan.status = "Failed";

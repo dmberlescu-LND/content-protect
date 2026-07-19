@@ -5,6 +5,9 @@ import {
   scannerReadiness,
   ScanProviderError,
   searchImage,
+  searchMedia,
+  videoScannerMode,
+  videoScannerReadiness,
 } from "../scanner.mjs";
 
 const image = await sharp({
@@ -26,6 +29,31 @@ assert.equal(
     TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
   }),
   "tineye-commercial",
+);
+assert.equal(
+  videoScannerMode({
+    TINEYE_API_KEY: "key",
+    TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "privacy-review-1",
+    TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
+  }),
+  "privacy-blocked",
+);
+assert.deepEqual(
+  videoScannerReadiness({
+    TINEYE_API_KEY: "key",
+    TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "privacy-review-1",
+    TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
+  }).missingApprovals,
+  ["video-frame-vendor-and-privacy-approval"],
+);
+assert.equal(
+  videoScannerMode({
+    TINEYE_API_KEY: "key",
+    TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "privacy-review-1",
+    TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
+    TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE: "video-privacy-review-1",
+  }),
+  "tineye-keyframes",
 );
 
 let request;
@@ -131,6 +159,69 @@ await assert.rejects(
     error.message.includes("allowance"),
 );
 
+let videoFrameRequest = 0;
+const videoResult = await searchMedia(Buffer.from("video"), {
+  mime: "video/mp4",
+  assetId: "video-asset-1",
+  apiKey: "test-key",
+  extractFramesImpl: async () => ({
+    durationSeconds: 45,
+    frames: [
+      { buffer: image, index: 0, timestampSeconds: 0 },
+      { buffer: image, index: 1, timestampSeconds: 15 },
+    ],
+  }),
+  videoFrameApprovalReference: "video-privacy-review-1",
+  fetchImpl: async () => {
+    videoFrameRequest += 1;
+    return new Response(
+      JSON.stringify({
+        code: 200,
+        stats: { total_backlinks: 2 },
+        results: {
+          matches: [
+            {
+              score: videoFrameRequest === 1 ? 50 : 80,
+              query_hash: `frame-${videoFrameRequest}`,
+              query_match_percent: 30,
+              backlinks: [
+                {
+                  backlink: "https://copied-video.example/post",
+                  url: `https://cdn.example/frame-${videoFrameRequest}.jpg`,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  },
+});
+assert.equal(videoFrameRequest, 2);
+assert.equal(videoResult.matches.length, 1);
+assert.equal(videoResult.matches[0].mediaType, "Video");
+assert.equal(videoResult.matches[0].matchScore, 80);
+assert.equal(videoResult.matches[0].evidence.matchMethod, "video-keyframe");
+assert.equal(videoResult.matches[0].evidence.videoFrameMatches.length, 2);
+assert.equal(videoResult.providerStats.frames_searched, 2);
+assert.equal(videoResult.providerStats.total_backlinks, 4);
+await assert.rejects(
+  () =>
+    searchMedia(Buffer.from("video"), {
+      mime: "video/mp4",
+      assetId: "video-asset-blocked",
+      apiKey: "test-key",
+      extractFramesImpl: async () => {
+        throw new Error("must not be called");
+      },
+    }),
+  (error) =>
+    error instanceof ScanProviderError &&
+    error.status === 503 &&
+    error.message.includes("vendor and privacy approval"),
+);
+
 console.log(
   JSON.stringify({
     ok: true,
@@ -142,5 +233,7 @@ console.log(
     errorMapping: true,
     complianceActivationGate: true,
     providerEndpointPinned: true,
+    privacyMinimisedVideoFrames: true,
+    videoBacklinkDeduplication: true,
   }),
 );

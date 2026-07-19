@@ -22,6 +22,7 @@
     "test:database-backup-policy": "node scripts/test-database-backup-policy.mjs",
     "test:backup-schedule": "node scripts/test-backup-schedule.mjs",
     "test:media": "node scripts/test-media-validation.mjs",
+    "test:video-runtime": "node scripts/test-video-frames-runtime.mjs",
     "test:media-backup-policy": "node scripts/test-media-backup-policy.mjs",
     "test:scanner": "node scripts/test-scanner.mjs",
     "test:operations": "node scripts/test-operations-readiness.mjs",
