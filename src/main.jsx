@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowRight,
@@ -86,6 +86,121 @@ async function saveDownload(response, fallbackName) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+let yotiShareClientPromise;
+function loadYotiShareClient() {
+  if (window.Yoti) return Promise.resolve(window.Yoti);
+  if (!yotiShareClientPromise)
+    yotiShareClientPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://www.yoti.com/share/client/v2";
+      script.async = true;
+      script.onload = () =>
+        window.Yoti
+          ? resolve(window.Yoti)
+          : reject(new Error("Yoti client did not initialise."));
+      script.onerror = () => reject(new Error("Yoti client could not load."));
+      document.head.appendChild(script);
+    });
+  return yotiShareClientPromise;
+}
+
+function YotiAgeButton({ onVerified }) {
+  const container = useRef(null),
+    currentSessionId = useRef(null),
+    completing = useRef(false),
+    onVerifiedRef = useRef(onVerified),
+    [status, setStatus] = useState("loading");
+  onVerifiedRef.current = onVerified;
+  useEffect(() => {
+    let active = true,
+      widget;
+    const initialise = async () => {
+      const configResponse = await fetch("/api/verification/age/config"),
+        config = await configResponse.json();
+      if (!configResponse.ok) {
+        if (active) setStatus("unavailable");
+        return;
+      }
+      const Yoti = await loadYotiShareClient();
+      await Yoti.ready();
+      if (!active) return;
+      widget = await Yoti.createWebShare({
+        name: "Content Protect private 18+ check",
+        domId: "yoti-age-share-button",
+        sdkId: config.sdkId,
+        hooks: {
+          sessionIdResolver: async () => {
+            const response = await fetch("/api/verification/age/start", {
+                method: "POST",
+              }),
+              result = await response.json();
+            if (!response.ok)
+              throw new Error(
+                result.error || "Could not start age verification.",
+              );
+            currentSessionId.current = result.sessionId;
+            return result.sessionId;
+          },
+          completionHandler: async (receiptId) => {
+            if (completing.current || !currentSessionId.current) return;
+            completing.current = true;
+            try {
+              const response = await fetch("/api/verification/age/complete", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    sessionId: currentSessionId.current,
+                    receiptId,
+                  }),
+                }),
+                result = await response.json();
+              if (!response.ok || !result.verified)
+                throw new Error(
+                  result.error || "Age verification was not completed.",
+                );
+              onVerifiedRef.current(result.user);
+              alert("Your private 18+ check was verified successfully.");
+            } catch (error) {
+              alert(error.message || "Age verification was not completed.");
+            } finally {
+              completing.current = false;
+            }
+          },
+          errorListener: () => {
+            if (active)
+              alert("The age check was cancelled or could not be completed.");
+          },
+        },
+      });
+      if (active) setStatus("ready");
+    };
+    initialise().catch(() => {
+      if (active) setStatus("unavailable");
+    });
+    return () => {
+      active = false;
+      widget?.destroy?.();
+      if (container.current) container.current.replaceChildren();
+    };
+  }, []);
+  if (status === "unavailable")
+    return (
+      <button className="btn btn-outline" disabled>
+        Provider activation pending
+      </button>
+    );
+  return (
+    <div
+      ref={container}
+      id="yoti-age-share-button"
+      aria-busy={status === "loading"}
+      aria-label="Start private Yoti age verification"
+    >
+      {status === "loading" && <span>Loading secure age check…</span>}
+    </div>
+  );
 }
 
 function Logo({ dark = false }) {
@@ -410,8 +525,8 @@ function Landing({ onStart, onLogin }) {
           <p className="disclaimer">
             Checkout remains unavailable until provider, verification and
             billing controls are active. Features and recurring price are
-            confirmed again before purchase. Outcomes are not guaranteed;
-            court orders and legal representation are not included.
+            confirmed again before purchase. Outcomes are not guaranteed; court
+            orders and legal representation are not included.
           </p>
         </section>
 
@@ -451,9 +566,9 @@ function Landing({ onStart, onLogin }) {
             <article>
               <h3>Can you guarantee removal?</h3>
               <p>
-                No service can guarantee an outcome. Platforms, hosts and
-                search engines make their own decisions, and contested cases
-                may require specialist legal advice.
+                No service can guarantee an outcome. Platforms, hosts and search
+                engines make their own decisions, and contested cases may
+                require specialist legal advice.
               </p>
             </article>
             <article>
@@ -682,7 +797,9 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
           onClick={user.mfaEnabled ? disableMfa : enableMfa}
         >
           <ShieldCheck size={16} />
-          {user.mfaEnabled ? "Disable two-step verification" : "Enable two-step verification"}
+          {user.mfaEnabled
+            ? "Disable two-step verification"
+            : "Enable two-step verification"}
         </button>
         <small>
           Enabling or disabling this control signs out every other session.
@@ -728,8 +845,8 @@ function HelpSafety() {
         </div>
         <h2>Customer support</h2>
         <p>
-          Questions about your account, billing, evidence or using the
-          protected workspace.
+          Questions about your account, billing, evidence or using the protected
+          workspace.
         </p>
         <a
           className="btn btn-primary"
@@ -782,7 +899,7 @@ function HelpSafety() {
   );
 }
 
-function Dashboard({ onLogout, user }) {
+function Dashboard({ onLogout, onUserUpdate, user }) {
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -985,17 +1102,6 @@ function Dashboard({ onLogout, user }) {
         : d.error || "Could not send verification email.",
     );
   };
-  const startAgeVerification = async () => {
-    const response = await fetch("/api/verification/age/start", {
-      method: "POST",
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      alert(result.error || "Could not start age verification.");
-      return;
-    }
-    if (result.verificationUrl) location.assign(result.verificationUrl);
-  };
   return (
     <div className="app-shell">
       <aside className={navOpen ? "mobile-open" : ""}>
@@ -1056,7 +1162,9 @@ function Dashboard({ onLogout, user }) {
         </button>
         <div className="upgrade">
           <Sparkles />
-          <b>{data.entitlements.canScan ? "Protection active" : "Choose a plan"}</b>
+          <b>
+            {data.entitlements.canScan ? "Protection active" : "Choose a plan"}
+          </b>
           <span>
             {data.entitlements.canScan
               ? `${data.entitlements.scanFrequency} scans enabled`
@@ -1124,12 +1232,7 @@ function Dashboard({ onLogout, user }) {
                   not store your document or face image.
                 </span>
               </div>
-              <button
-                className="btn btn-outline"
-                onClick={startAgeVerification}
-              >
-                Verify 18+
-              </button>
+              <YotiAgeButton onVerified={onUserUpdate} />
             </div>
           )}
           <div className="dash-title">
@@ -1207,7 +1310,9 @@ function Dashboard({ onLogout, user }) {
                 </div>
                 <span className="live">
                   <i></i>{" "}
-                  {data.scannerMode === "tineye-commercial" ? "LIVE" : "WAITING"}
+                  {data.scannerMode === "tineye-commercial"
+                    ? "LIVE"
+                    : "WAITING"}
                 </span>
               </button>
             </>
@@ -1479,7 +1584,9 @@ function Dashboard({ onLogout, user }) {
             <label className={`dropzone ${mediaConsent ? "" : "disabled"}`}>
               <Upload />
               <b>Choose a supported photo or short video</b>
-              <span>JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB</span>
+              <span>
+                JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB
+              </span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,image/avif,image/heic,video/mp4,video/quicktime,video/webm"
@@ -1491,8 +1598,8 @@ function Dashboard({ onLogout, user }) {
               <ShieldCheck />
               <span>
                 <b>Your privacy comes first</b>Files are validated and encrypted
-                before storage. Provider scan copies are resized and stripped
-                of EXIF/GPS metadata.
+                before storage. Provider scan copies are resized and stripped of
+                EXIF/GPS metadata.
               </span>
             </div>
           </div>
@@ -2070,7 +2177,9 @@ function OperatorConsole() {
   const dispatch = async (caseId) => {
     const form = forms[caseId] || {};
     if (!form.noticeReviewed || !form.jurisdictionReviewed) {
-      setError("Review the exact notice and recipient jurisdiction before sending.");
+      setError(
+        "Review the exact notice and recipient jurisdiction before sending.",
+      );
       return;
     }
     if (
@@ -2108,7 +2217,10 @@ function OperatorConsole() {
           <Logo />
           <p>PRIVATE OPERATIONS</p>
           <h1>Operator access</h1>
-          <span>Enter the dedicated takedown token. It is exchanged for a four-hour secure session and is not stored in the browser.</span>
+          <span>
+            Enter the dedicated takedown token. It is exchanged for a four-hour
+            secure session and is not stored in the browser.
+          </span>
           <label>
             Access token
             <input
@@ -2134,42 +2246,189 @@ function OperatorConsole() {
           <Logo />
           <span>Private takedown operations</span>
         </div>
-        <button className="btn btn-outline" onClick={logout}>Sign out</button>
+        <button className="btn btn-outline" onClick={logout}>
+          Sign out
+        </button>
       </header>
       <section>
         <div className="operator-heading">
-          <div><p>HUMAN REVIEW REQUIRED</p><h1>Notice preparation and delivery queue</h1></div>
+          <div>
+            <p>HUMAN REVIEW REQUIRED</p>
+            <h1>Notice preparation and delivery queue</h1>
+          </div>
           <strong>{cases.length} pending</strong>
         </div>
         {error && <div className="operator-error">{error}</div>}
-        {cases.length ? cases.map((item) => (
-          <article className="operator-case" key={item.id}>
-            <div className="operator-case-title">
-              <div><small>CASE {item.id}</small><h2>{item.targetHost}</h2></div>
-              <span>{item.status}</span>
-            </div>
-            <dl>
-              <div><dt>Claimant</dt><dd>{item.claimant?.stageName || item.claimant?.name}</dd></div>
-              <div><dt>Target</dt><dd><a href={item.targetUrl} target="_blank" rel="noreferrer">Review URL</a></dd></div>
-              <div><dt>Evidence hash</dt><dd className="operator-hash">{item.evidenceHash}</dd></div>
-            </dl>
-            {item.noticeText && <div className="operator-notice">
-              <div><b>Exact notice to be sent</b><span>Template {item.templateVersion} · SHA-256 {item.noticeHash}</span></div>
-              <pre>{item.noticeText}</pre>
-            </div>}
-            {item.status === "Awaiting operator preparation" && <div className="operator-fields">
-              <label>Verified recipient email<input type="email" value={forms[item.id]?.recipientEmail || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientEmail:event.target.value}})} /></label>
-              <label>HTTPS source proving recipient<input type="url" placeholder="https://…" value={forms[item.id]?.recipientSource || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientSource:event.target.value}})} /></label>
-              <label>Jurisdiction/channel<input type="text" value={forms[item.id]?.jurisdiction || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],jurisdiction:event.target.value}})} /></label>
-              <label>Legal basis/platform policy<input type="text" value={forms[item.id]?.legalBasis || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],legalBasis:event.target.value}})} /></label>
-            </div>}
-            <div className="operator-checks">
-              {item.status === "Approved — delivery pending" && <label><input type="checkbox" checked={forms[item.id]?.noticeReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],noticeReviewed:event.target.checked}})} />I reviewed the exact creator-approved notice and evidence hash.</label>}
-              <label><input type="checkbox" checked={forms[item.id]?.jurisdictionReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],jurisdictionReviewed:event.target.checked}})} />I verified the recipient and appropriate jurisdiction/channel.</label>
-            </div>
-            {item.status === "Awaiting operator preparation" ? <button className="btn btn-primary" onClick={() => prepare(item.id)}>Prepare for creator approval</button> : <button className="btn btn-primary" onClick={() => dispatch(item.id)}>Review confirmation & send</button>}
-          </article>
-        )) : <div className="operator-empty"><CircleCheck/><h2>Queue clear</h2><p>No creator-approved notices are waiting for review.</p></div>}
+        {cases.length ? (
+          cases.map((item) => (
+            <article className="operator-case" key={item.id}>
+              <div className="operator-case-title">
+                <div>
+                  <small>CASE {item.id}</small>
+                  <h2>{item.targetHost}</h2>
+                </div>
+                <span>{item.status}</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Claimant</dt>
+                  <dd>{item.claimant?.stageName || item.claimant?.name}</dd>
+                </div>
+                <div>
+                  <dt>Target</dt>
+                  <dd>
+                    <a href={item.targetUrl} target="_blank" rel="noreferrer">
+                      Review URL
+                    </a>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Evidence hash</dt>
+                  <dd className="operator-hash">{item.evidenceHash}</dd>
+                </div>
+              </dl>
+              {item.noticeText && (
+                <div className="operator-notice">
+                  <div>
+                    <b>Exact notice to be sent</b>
+                    <span>
+                      Template {item.templateVersion} · SHA-256{" "}
+                      {item.noticeHash}
+                    </span>
+                  </div>
+                  <pre>{item.noticeText}</pre>
+                </div>
+              )}
+              {item.status === "Awaiting operator preparation" && (
+                <div className="operator-fields">
+                  <label>
+                    Verified recipient email
+                    <input
+                      type="email"
+                      value={forms[item.id]?.recipientEmail || ""}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            recipientEmail: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    HTTPS source proving recipient
+                    <input
+                      type="url"
+                      placeholder="https://…"
+                      value={forms[item.id]?.recipientSource || ""}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            recipientSource: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Jurisdiction/channel
+                    <input
+                      type="text"
+                      value={forms[item.id]?.jurisdiction || ""}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            jurisdiction: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Legal basis/platform policy
+                    <input
+                      type="text"
+                      value={forms[item.id]?.legalBasis || ""}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            legalBasis: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+              <div className="operator-checks">
+                {item.status === "Approved — delivery pending" && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={forms[item.id]?.noticeReviewed || false}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            noticeReviewed: event.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    I reviewed the exact creator-approved notice and evidence
+                    hash.
+                  </label>
+                )}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={forms[item.id]?.jurisdictionReviewed || false}
+                    onChange={(event) =>
+                      setForms({
+                        ...forms,
+                        [item.id]: {
+                          ...forms[item.id],
+                          jurisdictionReviewed: event.target.checked,
+                        },
+                      })
+                    }
+                  />
+                  I verified the recipient and appropriate jurisdiction/channel.
+                </label>
+              </div>
+              {item.status === "Awaiting operator preparation" ? (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => prepare(item.id)}
+                >
+                  Prepare for creator approval
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => dispatch(item.id)}
+                >
+                  Review confirmation & send
+                </button>
+              )}
+            </article>
+          ))
+        ) : (
+          <div className="operator-empty">
+            <CircleCheck />
+            <h2>Queue clear</h2>
+            <p>No creator-approved notices are waiting for review.</p>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -2206,7 +2465,7 @@ function App() {
         if (u && !resetToken) {
           const q = new URLSearchParams(location.search),
             sessionId = q.get("session_id");
-          const ageSessionId = q.get("sessionId");
+          const ageSessionId = q.get("sessionId") || q.get("sessionID");
           if (q.get("age_check") === "return" && ageSessionId) {
             let r, d;
             for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -2277,6 +2536,7 @@ function App() {
       {view === "dashboard" ? (
         <Dashboard
           user={user}
+          onUserUpdate={setUser}
           onLogout={() => {
             setUser(null);
             setView("landing");

@@ -44,9 +44,9 @@ services:
         sync: false
       - key: RESEND_WEBHOOK_SECRET
         sync: false
-      - key: YOTI_API_KEY
-        sync: false
       - key: YOTI_SDK_ID
+        sync: false
+      - key: YOTI_PRIVATE_KEY
         sync: false
       - key: TINEYE_API_KEY
         sync: false

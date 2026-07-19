@@ -19,7 +19,7 @@ Help verified adult rights holders identify suspected unauthorised copies of con
 
 ## Necessity and proportionality controls
 
-- Email verification, provider-backed age assurance and authority declarations before real processing. Identity verification must not be claimed unless a separately approved provider flow is active.
+- Email verification, Yoti Digital Identity's derived `age_over:18` result and authority declarations before real processing. Content Protect retains no identity document, face image or date of birth from this flow. Identity verification must not be claimed unless a separately approved provider flow is active.
 - Search only content submitted by the authorised rights holder.
 - Transfer only a resized, metadata-stripped provider copy where the enabled scan provider requires an image; never send the encrypted stored object or unrelated vault files.
 - No public profiles, advertising use, model training or sale of creator data.
@@ -30,15 +30,15 @@ Help verified adult rights holders identify suspected unauthorised copies of con
 
 ## High risks and mitigations
 
-| Risk | Initial risk | Required mitigation | Residual approval |
-|---|---|---|---|
-| Exposure of intimate reference media | Critical | Application-layer AES-256-GCM encryption before private object storage, least privilege, key separation, tested deletion/restore | Security + Privacy |
-| Monitoring a person without authority | Critical | Identity/rights verification, consent record, abuse detection, suspension workflow | Trust & Safety |
-| False match or wrongful takedown | High | Thresholds, human review, evidence quality checks, counter-notice and appeal | Legal + Operations |
-| Special-category/biometric inference | Critical | Disabled by default; separate DPIA and Article 9 approval | DPO/Counsel |
-| Cross-border processor access | High | DPA, transfer assessment and minimum-data configuration | Privacy |
-| Retention beyond need | High | Automated schedule, tombstones, quarterly deletion test | Privacy + Engineering |
-| Account takeover / cross-site request abuse | High | Verification, rate limits, secure cookies, fail-closed origin validation, implemented TOTP/recovery codes and alerting | Security |
+| Risk                                        | Initial risk | Required mitigation                                                                                                              | Residual approval     |
+| ------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Exposure of intimate reference media        | Critical     | Application-layer AES-256-GCM encryption before private object storage, least privilege, key separation, tested deletion/restore | Security + Privacy    |
+| Monitoring a person without authority       | Critical     | Identity/rights verification, consent record, abuse detection, suspension workflow                                               | Trust & Safety        |
+| False match or wrongful takedown            | High         | Thresholds, human review, evidence quality checks, counter-notice and appeal                                                     | Legal + Operations    |
+| Special-category/biometric inference        | Critical     | Disabled by default; separate DPIA and Article 9 approval                                                                        | DPO/Counsel           |
+| Cross-border processor access               | High         | DPA, transfer assessment and minimum-data configuration                                                                          | Privacy               |
+| Retention beyond need                       | High         | Automated schedule, tombstones, quarterly deletion test                                                                          | Privacy + Engineering |
+| Account takeover / cross-site request abuse | High         | Verification, rate limits, secure cookies, fail-closed origin validation, implemented TOTP/recovery codes and alerting           | Security              |
 
 ## Consultation and approval still required
 

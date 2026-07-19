@@ -114,6 +114,11 @@ requireText(
 );
 
 requireText("Render", render, "PAYMENTS_MODE");
+requireText("Render", render, "YOTI_SDK_ID");
+requireText("Render", render, "YOTI_PRIVATE_KEY");
+rejectText("Render", render, "YOTI_API_KEY");
+requireText("server", server, 'from "./yoti-digital-identity.mjs"');
+rejectText("server", server, "https://age.yoti.com/api/v1/sessions");
 rejectText("Render", render, "preDeployCommand:");
 requireText("Render", render, "value: test");
 requireText("Render", render, "TAKEDOWNS_MODE");

@@ -48,7 +48,8 @@
     "stripe": "^22.3.2",
     "svix": "^1.98.0",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "yoti": "4.13.2"
   },
   "devDependencies": {
     "prettier": "^3.9.5"

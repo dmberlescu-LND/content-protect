@@ -1,80 +1,145 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import {
-  buildYotiAgeSession,
-  interpretYotiAgeResult,
-  YOTI_SESSION_ID,
-} from "../yoti-age-policy.mjs";
+  buildYotiAgeShareConfiguration,
+  interpretYotiAgeReceipt,
+  yotiConfiguration,
+  yotiReceiptAlreadyUsed,
+  YOTI_SHARE_ID,
+} from "../yoti-digital-identity.mjs";
 
-const sessionId = "14010f56-3f04-4f1f-84e7-a43ff723ef86";
-const sdkId = "5d3add31-3a3a-4d3b-a6b4-347edb35264c";
-const userId = "creator_opaque_id";
-const configuration = buildYotiAgeSession({
-  userId,
-  baseUrl: "https://content-protect.com",
+const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 }),
+  pem = privateKey.export({ type: "pkcs8", format: "pem" }),
+  configuration = yotiConfiguration({
+    YOTI_SDK_ID: "content_protect_sdk_123",
+    YOTI_PRIVATE_KEY: pem,
+  });
+assert.equal(configuration.configured, true);
+assert.equal(yotiConfiguration({}).configured, false);
+assert.throws(
+  () => yotiConfiguration({ YOTI_SDK_ID: "sdk_without_key" }),
+  /both SDK ID and private key/,
+);
+assert.throws(
+  () =>
+    yotiConfiguration({
+      YOTI_SDK_ID: "content_protect_sdk_123",
+      YOTI_PRIVATE_KEY: "not-a-private-key",
+    }),
+  /valid PEM private key/,
+);
+
+const share = buildYotiAgeShareConfiguration({
+    userId: "creator-opaque-id",
+    redirectUrl: "https://content-protect.com/?age_check=return",
+  }),
+  serializedShare = JSON.parse(JSON.stringify(share)),
+  wanted = serializedShare.policy.wanted;
+assert.deepEqual(serializedShare.subject, {
+  subject_id: "creator-opaque-id",
 });
-
-assert.equal(configuration.type, "OVER");
-assert.equal(configuration.digital_id.threshold, 18);
-assert.equal(configuration.doc_scan.threshold, 18);
-assert.equal(configuration.synchronous_checks, true);
 assert.equal(
-  configuration.privacy_policy,
-  "https://content-protect.com/privacy.html",
+  serializedShare.redirectUri,
+  "https://content-protect.com/?age_check=return",
 );
-assert.equal(YOTI_SESSION_ID.test(sessionId), true);
-assert.equal(YOTI_SESSION_ID.test("not-a-session----------------------"), false);
+assert.equal(wanted.length, 1);
+assert.equal(wanted[0].name, "date_of_birth");
+assert.equal(wanted[0].derivation, "age_over:18");
+assert.equal(wanted[0].accept_self_asserted, false);
 
-const complete = {
-  id: sessionId,
-  sdk_id: sdkId,
-  reference_id: userId,
-  type: "OVER",
-  status: "COMPLETE",
-  method: "DIGITAL_ID",
-  age: 18,
-};
-assert.deepEqual(
-  interpretYotiAgeResult(complete, { sessionId, sdkId, userId }),
-  {
-    accepted: true,
-    status: "verified",
-    method: "DIGITAL_ID",
-    providerStatus: "COMPLETE",
+const sessionId = "share_session_1234567890",
+  receiptId = "share_receipt_12345678",
+  createdAt = "2026-07-19T12:00:00.000Z",
+  expiresAt = "2026-07-19T12:15:00.000Z",
+  timestamp = new Date("2026-07-19T12:05:00.000Z"),
+  ageValue = {
+    getCheckType: () => "age_over",
+    getAge: () => 18,
+    getResult: () => true,
   },
-);
+  attribute = {
+    getValue: () => ageValue,
+    getSources: () => [{ type: "YOTI_ADMIN" }],
+    getVerifiers: () => [],
+  },
+  receipt = {
+    getSessionId: () => sessionId,
+    getReceiptId: () => receiptId,
+    getTimestamp: () => timestamp,
+    getError: () => null,
+    getProfile: () => ({ findAgeOverVerification: () => attribute }),
+  },
+  expectations = {
+    sessionId,
+    receiptId,
+    createdAt,
+    expiresAt,
+    now: new Date("2026-07-19T12:06:00.000Z"),
+  };
 
-for (const unsafe of [
-  { reference_id: "another-user" },
-  { sdk_id: "another-sdk" },
-  { type: "AGE" },
-  { status: "FAIL" },
-  { method: "UNKNOWN_FUTURE_METHOD" },
-  { age: 17 },
-  { age: "18" },
-]) {
-  assert.equal(
-    interpretYotiAgeResult(
-      { ...complete, ...unsafe },
-      { sessionId, sdkId, userId },
-    ).accepted,
-    false,
-  );
-}
-
+assert.deepEqual(interpretYotiAgeReceipt(receipt, expectations), {
+  accepted: true,
+  status: "verified",
+  method: "YOTI_DIGITAL_IDENTITY",
+  threshold: 18,
+  receiptTimestamp: timestamp.toISOString(),
+});
 assert.equal(
-  interpretYotiAgeResult(
-    { ...complete, status: "IN_PROGRESS" },
-    { sessionId, sdkId, userId },
+  interpretYotiAgeReceipt(
+    { ...receipt, getSessionId: () => "another_session_123456" },
+    expectations,
   ).status,
-  "pending",
+  "mismatch",
+);
+assert.equal(
+  interpretYotiAgeReceipt(
+    {
+      ...receipt,
+      getProfile: () => ({
+        findAgeOverVerification: () => ({
+          ...attribute,
+          getSources: () => [],
+        }),
+      }),
+    },
+    expectations,
+  ).accepted,
+  false,
+);
+assert.equal(
+  interpretYotiAgeReceipt(receipt, {
+    ...expectations,
+    now: new Date("2026-07-19T12:16:00.000Z"),
+  }).status,
+  "expired",
+);
+assert.equal(YOTI_SHARE_ID.test(sessionId), true);
+assert.equal(YOTI_SHARE_ID.test("short"), false);
+assert.equal(
+  yotiReceiptAlreadyUsed(
+    [{ id: "old", evidence: { receiptId } }],
+    receiptId,
+    "current",
+  ),
+  true,
+);
+assert.equal(
+  yotiReceiptAlreadyUsed(
+    [{ id: "current", evidence: { receiptId } }],
+    receiptId,
+    "current",
+  ),
+  false,
 );
 
 console.log(
   JSON.stringify({
     ok: true,
-    officialSessionContract: true,
-    identityBinding: true,
-    approvedMethodsOnly: true,
-    failClosedResult: true,
+    officialSignedSdk: true,
+    ageOverOnly: true,
+    selfAssertedRejected: true,
+    sessionAndReceiptBound: true,
+    receiptReplayRejected: true,
+    rawIdentityNotRetained: true,
   }),
 );

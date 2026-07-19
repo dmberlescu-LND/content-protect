@@ -36,10 +36,13 @@ import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
 import { operationsReadiness } from "./operations-readiness.mjs";
 import { unsafeRequestOriginAllowed } from "./security-policy.mjs";
 import {
-  buildYotiAgeSession,
-  interpretYotiAgeResult,
-  YOTI_SESSION_ID,
-} from "./yoti-age-policy.mjs";
+  buildYotiAgeShareConfiguration,
+  createYotiDigitalIdentityClient,
+  interpretYotiAgeReceipt,
+  yotiConfiguration,
+  yotiReceiptAlreadyUsed,
+  YOTI_SHARE_ID,
+} from "./yoti-digital-identity.mjs";
 import {
   exactNoticeApproved,
   noticeText,
@@ -83,9 +86,17 @@ const PAYMENTS_MODE = ["test", "live"].includes(process.env.PAYMENTS_MODE)
       /^price_[A-Za-z0-9]+$/.test(value || ""),
     ),
   );
-const YOTI_CONFIGURED = Boolean(
-  process.env.YOTI_API_KEY && process.env.YOTI_SDK_ID,
-);
+let YOTI_CONFIGURATION;
+try {
+  YOTI_CONFIGURATION = yotiConfiguration();
+} catch (error) {
+  console.error(
+    "Yoti configuration is invalid; age checks are disabled",
+    error.message,
+  );
+  YOTI_CONFIGURATION = { configured: false };
+}
+const YOTI_CONFIGURED = YOTI_CONFIGURATION.configured;
 const RESEND_EMAIL_CONFIGURED = Boolean(
   process.env.RESEND_API_KEY?.startsWith("re_") &&
   emailFromAddress(process.env.RESET_FROM_EMAIL) &&
@@ -230,7 +241,7 @@ const securityHeaders = {
   "cross-origin-resource-policy": "same-origin",
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
   "content-security-policy":
-    "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self'; connect-src 'self'",
+    "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.yoti.com; script-src 'self' https://www.yoti.com; connect-src 'self' https://api.yoti.com https://www.yoti.com; frame-src https://www.yoti.com https://api.yoti.com",
 };
 function send(res, status, data, headers = {}) {
   res.writeHead(status, {
@@ -1408,6 +1419,17 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/me") return send(res, 200, { user: safe(u, d) });
+    if (route === "/api/verification/age/config" && req.method === "GET") {
+      if (!YOTI_CONFIGURED)
+        return send(res, 503, {
+          error: "Age verification is awaiting provider activation.",
+        });
+      return send(res, 200, {
+        provider: "yoti-digital-identity",
+        sdkId: YOTI_CONFIGURATION.sdkId,
+        requestedAttribute: "age_over:18",
+      });
+    }
     if (route === "/api/verification/age/start" && req.method === "POST") {
       if (!u.emailVerifiedAt)
         return send(res, 403, {
@@ -1420,38 +1442,44 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "Age verification is awaiting provider activation. No identity data has been collected.",
         });
+      if (!(await allowed(req, `age-start:${u.id}`, 5, 3600000)).allowed)
+        return send(res, 429, {
+          error: "Too many age verification attempts. Try again later.",
+        });
       const base = (
           process.env.APP_URL || "https://content-protect.com"
         ).replace(/\/$/, ""),
-        response = await fetch("https://age.yoti.com/api/v1/sessions", {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${process.env.YOTI_API_KEY}`,
-            "content-type": "application/json",
-            "yoti-sdk-id": process.env.YOTI_SDK_ID,
-            "user-agent": "Content-Protect/1.0",
-          },
-          body: JSON.stringify(
-            buildYotiAgeSession({ userId: u.id, baseUrl: base }),
-          ),
-        });
-      if (!response.ok) {
-        console.error("Yoti session creation failed", response.status);
+        yotiClient = createYotiDigitalIdentityClient(YOTI_CONFIGURATION);
+      let session;
+      try {
+        session = await yotiClient.createShareSession(
+          buildYotiAgeShareConfiguration({
+            userId: u.id,
+            redirectUrl: `${base}/?age_check=return`,
+          }),
+        );
+      } catch (error) {
+        console.error("Yoti share session creation failed", error?.name);
         return send(res, 502, {
           error: "The age verification provider is temporarily unavailable.",
         });
       }
-      const session = await response.json(),
-        now = new Date().toISOString(),
+      const sessionId = session.getId(),
+        expiresAt = session.getExpiry()?.toISOString();
+      if (!YOTI_SHARE_ID.test(sessionId || "") || !expiresAt)
+        return send(res, 502, {
+          error: "The age verification provider returned an invalid session.",
+        });
+      const now = new Date().toISOString(),
         record = {
           id: randomUUID(),
           userId: u.id,
           kind: "age",
-          provider: "yoti",
-          providerReference: session.id,
+          provider: "yoti-digital-identity",
+          providerReference: sessionId,
           status: "pending",
-          evidence: {},
-          expiresAt: session.expires_at,
+          evidence: { threshold: 18, requestedAttribute: "age_over:18" },
+          expiresAt,
           createdAt: now,
           updatedAt: now,
         };
@@ -1459,11 +1487,16 @@ const appServer = http.createServer(async (req, res) => {
         (item) => !(item.userId === u.id && item.kind === "age"),
       );
       d.verifications.push(record);
-      audit(d, u, "verification.age_started", { provider: "yoti" });
+      audit(d, u, "verification.age_started", {
+        provider: "yoti-digital-identity",
+        requestedAttribute: "age_over:18",
+      });
       await save(d);
       return send(res, 201, {
-        verificationUrl: `https://age.yoti.com?sessionId=${encodeURIComponent(session.id)}&sdkId=${encodeURIComponent(process.env.YOTI_SDK_ID)}`,
-        expiresAt: session.expires_at,
+        provider: "yoti-digital-identity",
+        sessionId,
+        sdkId: YOTI_CONFIGURATION.sdkId,
+        expiresAt,
       });
     }
     if (route === "/api/verification/age/complete" && req.method === "POST") {
@@ -1472,38 +1505,72 @@ const appServer = http.createServer(async (req, res) => {
           error: "Age verification is not configured.",
         });
       const b = await parse(req),
-        sessionId = String(b.sessionId || "");
-      if (!YOTI_SESSION_ID.test(sessionId))
+        sessionId = String(b.sessionId || ""),
+        submittedReceiptId = String(b.receiptId || "");
+      if (
+        !YOTI_SHARE_ID.test(sessionId) ||
+        (submittedReceiptId && !YOTI_SHARE_ID.test(submittedReceiptId))
+      )
         return send(res, 400, { error: "Invalid verification session." });
       const record = d.verifications.find(
         (item) =>
           item.userId === u.id &&
           item.kind === "age" &&
-          item.provider === "yoti" &&
+          item.provider === "yoti-digital-identity" &&
           item.providerReference === sessionId,
       );
       if (!record)
         return send(res, 404, { error: "Verification session not found." });
-      const response = await fetch(
-        `https://age.yoti.com/api/v1/sessions/${encodeURIComponent(sessionId)}/result`,
-        {
-          headers: {
-            authorization: `Bearer ${process.env.YOTI_API_KEY}`,
-            "yoti-sdk-id": process.env.YOTI_SDK_ID,
-            "user-agent": "Content-Protect/1.0",
-          },
-        },
-      );
-      if (!response.ok)
+      if (record.status !== "pending")
+        return send(res, 409, {
+          error: "Verification session is already closed.",
+        });
+      if (new Date(record.expiresAt) <= new Date()) {
+        record.status = "expired";
+        record.updatedAt = new Date().toISOString();
+        await save(d);
+        return send(res, 409, { error: "Verification session has expired." });
+      }
+      const yotiClient = createYotiDigitalIdentityClient(YOTI_CONFIGURATION);
+      let receiptId = submittedReceiptId;
+      if (!receiptId) {
+        try {
+          const shareSession = await yotiClient.getShareSession(sessionId);
+          if (shareSession.getId() !== sessionId)
+            return send(res, 403, { error: "Verification result mismatch." });
+          receiptId = shareSession.getReceiptId() || "";
+        } catch (error) {
+          console.error("Yoti share session retrieval failed", error?.name);
+          return send(res, 502, {
+            error: "The verification result is not available yet.",
+          });
+        }
+      }
+      if (!YOTI_SHARE_ID.test(receiptId))
+        return send(res, 202, {
+          verified: false,
+          status: "pending",
+          error: "Age verification is still processing.",
+        });
+      if (yotiReceiptAlreadyUsed(d.verifications, receiptId, record.id))
+        return send(res, 409, {
+          error: "Verification receipt was already used.",
+        });
+      let receipt;
+      try {
+        receipt = await yotiClient.getShareReceipt(receiptId);
+      } catch (error) {
+        console.error("Yoti share receipt retrieval failed", error?.name);
         return send(res, 502, {
           error: "The verification result is not available yet.",
         });
-      const result = await response.json(),
-        interpreted = interpretYotiAgeResult(result, {
-          sessionId,
-          userId: u.id,
-          sdkId: process.env.YOTI_SDK_ID,
-        });
+      }
+      const interpreted = interpretYotiAgeReceipt(receipt, {
+        sessionId,
+        receiptId,
+        createdAt: record.createdAt,
+        expiresAt: record.expiresAt,
+      });
       if (interpreted.status === "mismatch")
         return send(res, 403, { error: "Verification result mismatch." });
       const complete = interpreted.accepted;
@@ -1511,13 +1578,14 @@ const appServer = http.createServer(async (req, res) => {
       record.updatedAt = new Date().toISOString();
       record.evidence = {
         method: interpreted.method,
-        status: interpreted.providerStatus,
-        evidenceId: result.evidence_id || null,
+        threshold: interpreted.threshold,
+        receiptId,
+        receiptTimestamp: interpreted.receiptTimestamp,
       };
       if (complete) {
         u.ageVerifiedAt = record.updatedAt;
         audit(d, u, "verification.age_verified", {
-          provider: "yoti",
+          provider: "yoti-digital-identity",
           method: record.evidence.method,
         });
       }
