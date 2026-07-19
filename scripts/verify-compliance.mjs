@@ -336,6 +336,18 @@ requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 rejectText("Render", render, "MONITORING_CONFIGURED");
 requireText("operations runbook", runbook, "29704210377");
 requireText("operations runbook", runbook, "29704238669");
+requireText(
+  "operations runbook",
+  runbook,
+  "2026-07-19T23-04-14-207Z-f422ac14-c7f5-4cfe-aef8-d8d9ba151a22",
+);
+requireText("operations runbook", runbook, "019_incident_register.sql");
+requireText("operations runbook", runbook, "all 17 durable tables");
+requireText(
+  "UK launch checklist",
+  checklist,
+  "reopened the live `backupRestore` gate",
+);
 requireText("UK launch checklist", checklist, "director on-call mailbox");
 requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_TOKEN");
 requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_URL");
