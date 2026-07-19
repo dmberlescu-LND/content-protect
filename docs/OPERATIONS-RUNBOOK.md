@@ -26,6 +26,7 @@ Keep application/security logs for 12 months, with access restricted to authoris
 2. Review readiness, 5xx count, latency and restart events.
 3. Review failed Stripe, Resend, scanner and age-provider webhooks.
 4. Review the operator case queue and overdue actions without opening private media unnecessarily.
+5. Run `pnpm retention:preview` and investigate unexpected volumes. The destructive command remains disabled unless the approved scheduler supplies `RETENTION_EXECUTION_ENABLED=true`; never enable it before migrations and a reviewed preview.
 5. Confirm no provider credentials or customer data appeared in logs.
 
 ## Database backup and restore gate

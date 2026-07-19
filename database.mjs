@@ -23,6 +23,135 @@ export async function closeDatabase() {
   if (pool) await pool.end();
 }
 
+export async function archiveAccountingRecords(userId, now = new Date()) {
+  if (!pool) return false;
+  const retainedUntil = new Date(now.getTime() + 6 * 365.25 * 86400000);
+  await pool.query(
+    `INSERT INTO accounting_records
+       (source_type,source_id,former_user_hash,record,created_at,retained_until)
+     SELECT 'subscription',s.id,encode(digest(s.user_id::text,'sha256'),'hex'),
+       jsonb_build_object(
+         'plan',s.plan,'status',s.status,'stripeCustomerId',s.stripe_customer_id,
+         'stripeSubscriptionId',s.stripe_subscription_id,'currentPeriodEnd',s.current_period_end
+       ),$2,$3
+     FROM subscriptions s WHERE s.user_id=$1
+     ON CONFLICT (source_type,source_id) DO NOTHING`,
+    [userId, now, retainedUntil],
+  );
+  await pool.query(
+    `INSERT INTO accounting_records
+       (source_type,source_id,former_user_hash,record,created_at,retained_until)
+     SELECT 'billing_consent',b.id,encode(digest(b.user_id::text,'sha256'),'hex'),
+       jsonb_build_object(
+         'plan',b.plan,'termsVersion',b.terms_version,
+         'immediateServiceRequested',b.immediate_service_requested,
+         'coolingOffAcknowledged',b.cooling_off_acknowledged,
+         'stripeCheckoutSessionId',b.stripe_checkout_session_id,'consentedAt',b.created_at
+       ),$2,$3
+     FROM billing_consents b WHERE b.user_id=$1
+     ON CONFLICT (source_type,source_id) DO NOTHING`,
+    [userId, now, retainedUntil],
+  );
+  return true;
+}
+
+export async function runRetention({ execute = false, now = new Date() } = {}) {
+  if (!pool) return { ok: true, mode: "local-json", execute, counts: {} };
+  const client = await pool.connect();
+  const cutoffs = {
+    unverified: new Date(now.getTime() - 30 * 86400000),
+    verification: new Date(now.getTime() - 90 * 86400000),
+    operational: new Date(now.getTime() - 365 * 86400000),
+    legal: new Date(now.getTime() - 6 * 365.25 * 86400000),
+  };
+  const rules = [
+    ["expiredSessions", "sessions", "expires_at < $1", now],
+    ["expiredOperatorSessions", "operator_sessions", "expires_at < $1", now],
+    [
+      "expiredTokens",
+      "one_time_tokens",
+      "expires_at < $1 OR used_at IS NOT NULL",
+      now,
+    ],
+    [
+      "failedVerifications",
+      "verification_records",
+      "status IN ('failed','expired') AND updated_at < $1",
+      cutoffs.verification,
+    ],
+    ["oldAuditEvents", "audit_events", "created_at < $1", cutoffs.operational],
+    [
+      "oldWebhookReceipts",
+      "processed_webhooks",
+      "processed_at < $1",
+      cutoffs.operational,
+    ],
+    [
+      "closedCases",
+      "takedown_cases",
+      "closed_at < $1 AND legal_hold = false",
+      cutoffs.legal,
+    ],
+    [
+      "orphanMatches",
+      "matches",
+      "discovered_at < $1 AND NOT EXISTS (SELECT 1 FROM takedown_cases c WHERE c.match_id = matches.id)",
+      cutoffs.operational,
+    ],
+    [
+      "orphanScans",
+      "scans",
+      "COALESCE(completed_at, started_at) < $1 AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.scan_id = scans.id)",
+      cutoffs.operational,
+    ],
+    [
+      "unverifiedAccounts",
+      "users",
+      "email_verified_at IS NULL AND created_at < $1 AND NOT EXISTS (SELECT 1 FROM billing_consents b WHERE b.user_id = users.id)",
+      cutoffs.unverified,
+    ],
+    [
+      "expiredAccountingRecords",
+      "accounting_records",
+      "retained_until < $1",
+      now,
+    ],
+  ];
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(824672)");
+    const counts = {};
+    for (const [name, table, predicate, cutoff] of rules) {
+      const result = execute
+        ? await client.query(
+            `WITH deleted AS (DELETE FROM ${table} WHERE ${predicate} RETURNING 1) SELECT count(*)::int AS count FROM deleted`,
+            [cutoff],
+          )
+        : await client.query(
+            `SELECT count(*)::int AS count FROM ${table} WHERE ${predicate}`,
+            [cutoff],
+          );
+      counts[name] = result.rows[0].count;
+    }
+    await client.query(execute ? "COMMIT" : "ROLLBACK");
+    return {
+      ok: true,
+      mode: "postgresql",
+      execute,
+      evaluatedAt: now.toISOString(),
+      cutoffs: Object.fromEntries(
+        Object.entries(cutoffs).map(([name, value]) => [name, value.toISOString()]),
+      ),
+      counts,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function loadPostgresState() {
   if (!pool) return null;
   const client = await pool.connect();
@@ -194,6 +323,7 @@ export async function loadPostgresState() {
         deliveryStatus: row.delivery_status,
         deliveredAt: iso(row.delivered_at),
         lastProviderEventAt: iso(row.last_provider_event_at),
+        legalHold: Boolean(row.legal_hold),
         approvedAt: iso(row.approved_at),
         submittedAt: iso(row.submitted_at),
         nextActionAt: iso(row.next_action_at),
@@ -437,9 +567,9 @@ async function upsertBusinessData(client, state) {
     );
   for (const item of state.cases) {
     await client.query(
-      `INSERT INTO takedown_cases (id,user_id,match_id,jurisdiction,status,mode,target_url,target_host,notice_type,evidence_snapshot,evidence_hash,notice_draft,declarations,recipient_email,recipient_source,provider_message_id,reviewed_at,delivery_attempts,last_delivery_error,delivery_status,delivered_at,last_provider_event_at,approved_at,submitted_at,next_action_at,closed_at,created_at,updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
-       ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,mode=EXCLUDED.mode,target_url=EXCLUDED.target_url,target_host=EXCLUDED.target_host,notice_type=EXCLUDED.notice_type,evidence_snapshot=EXCLUDED.evidence_snapshot,evidence_hash=EXCLUDED.evidence_hash,notice_draft=EXCLUDED.notice_draft,declarations=EXCLUDED.declarations,recipient_email=EXCLUDED.recipient_email,recipient_source=EXCLUDED.recipient_source,provider_message_id=EXCLUDED.provider_message_id,reviewed_at=EXCLUDED.reviewed_at,delivery_attempts=EXCLUDED.delivery_attempts,last_delivery_error=EXCLUDED.last_delivery_error,delivery_status=EXCLUDED.delivery_status,delivered_at=EXCLUDED.delivered_at,last_provider_event_at=EXCLUDED.last_provider_event_at,approved_at=EXCLUDED.approved_at,submitted_at=EXCLUDED.submitted_at,next_action_at=EXCLUDED.next_action_at,closed_at=EXCLUDED.closed_at,updated_at=EXCLUDED.updated_at`,
+      `INSERT INTO takedown_cases (id,user_id,match_id,jurisdiction,status,mode,target_url,target_host,notice_type,evidence_snapshot,evidence_hash,notice_draft,declarations,recipient_email,recipient_source,provider_message_id,reviewed_at,delivery_attempts,last_delivery_error,delivery_status,delivered_at,last_provider_event_at,legal_hold,approved_at,submitted_at,next_action_at,closed_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+       ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,mode=EXCLUDED.mode,target_url=EXCLUDED.target_url,target_host=EXCLUDED.target_host,notice_type=EXCLUDED.notice_type,evidence_snapshot=EXCLUDED.evidence_snapshot,evidence_hash=EXCLUDED.evidence_hash,notice_draft=EXCLUDED.notice_draft,declarations=EXCLUDED.declarations,recipient_email=EXCLUDED.recipient_email,recipient_source=EXCLUDED.recipient_source,provider_message_id=EXCLUDED.provider_message_id,reviewed_at=EXCLUDED.reviewed_at,delivery_attempts=EXCLUDED.delivery_attempts,last_delivery_error=EXCLUDED.last_delivery_error,delivery_status=EXCLUDED.delivery_status,delivered_at=EXCLUDED.delivered_at,last_provider_event_at=EXCLUDED.last_provider_event_at,legal_hold=EXCLUDED.legal_hold,approved_at=EXCLUDED.approved_at,submitted_at=EXCLUDED.submitted_at,next_action_at=EXCLUDED.next_action_at,closed_at=EXCLUDED.closed_at,updated_at=EXCLUDED.updated_at`,
       [
         item.id,
         item.userId,
@@ -463,6 +593,7 @@ async function upsertBusinessData(client, state) {
         item.deliveryStatus || null,
         item.deliveredAt || null,
         item.lastProviderEventAt || null,
+        Boolean(item.legalHold),
         item.approvedAt || null,
         item.submittedAt || null,
         item.nextActionAt || null,

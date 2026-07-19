@@ -18,6 +18,8 @@
     "test:storage": "node scripts/test-storage.mjs",
     "test:storage-config": "node scripts/test-storage-config.mjs",
     "storage:migrate": "node scripts/migrate-storage.mjs",
+    "retention:preview": "node scripts/retention.mjs",
+    "retention:execute": "node scripts/retention.mjs --execute",
     "verify:production": "node scripts/verify-production.mjs",
     "verify:seo": "node scripts/verify-seo.mjs",
     "preview": "vite preview"

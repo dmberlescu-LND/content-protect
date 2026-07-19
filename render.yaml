@@ -52,6 +52,8 @@ services:
         sync: false
       - key: TINEYE_API_URL
         value: https://api.tineye.com/rest/search/
+      - key: RETENTION_EXECUTION_ENABLED
+        value: "false"
       - key: DATABASE_URL
         sync: false
       - key: OBJECT_STORAGE_ENDPOINT

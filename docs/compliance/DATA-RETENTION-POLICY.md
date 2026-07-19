@@ -15,7 +15,7 @@ Content Protect keeps personal data only for a documented purpose and period. De
 | Unverified account | 30 days | Email not verified | 35 days |
 | Account/profile | Account life + 30 days | Verified deletion request | 35 days |
 | Encrypted reference media | Until user deletion/account closure | User action or contract end | 35 days |
-| Derived fingerprints/embeddings | Same as source asset | Source deletion | 35 days |
+| Derived fingerprints/embeddings, if a future approved provider enables them | Same as source asset | Source deletion | 35 days |
 | Match evidence | 12 months after case closure | Retention expiry unless legal hold | 35 days |
 | Takedown communications | 6 years after case closure | Limitation/recordkeeping expiry | 35 days |
 | Failed identity/age check metadata | 90 days | Check completed/abandoned | 35 days |
@@ -28,8 +28,10 @@ Content Protect keeps personal data only for a documented purpose and period. De
 
 ## Controls
 
-- A daily job flags expired records and records deletion outcomes in the audit log.
+- A fail-closed retention command previews eligible PostgreSQL records with `pnpm retention:preview`. Execution additionally requires `RETENTION_EXECUTION_ENABLED=true` and `pnpm retention:execute`. A production scheduler and alert must be approved and configured before this can be described as a daily job.
 - Object deletion and database deletion must both succeed; failures create an operational alert.
 - Account deletion is blocked only by a documented legal hold or mandatory financial retention.
 - Restore procedures must reapply all deletion tombstones created after the backup timestamp.
 - Quarterly sampling verifies that expired objects cannot be retrieved.
+- Closed takedown cases under a documented legal hold are excluded from scheduled deletion until the hold is released.
+- Account deletion archives only the minimum subscription and billing-consent record under a pseudonymous former-user reference for the six-year statutory period; service data and media are deleted.

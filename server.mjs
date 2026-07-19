@@ -23,6 +23,7 @@ import {
   externalMasterKeyRequired,
 } from "./storage.mjs";
 import {
+  archiveAccountingRecords,
   closeDatabase,
   databaseProbe,
   loadPostgresState,
@@ -2142,6 +2143,24 @@ const appServer = http.createServer(async (req, res) => {
         if (!passwordMatches(u, b.password))
           return send(res, 403, { error: "Password is incorrect." });
         const assets = d.assets.filter((x) => x.userId === u.id);
+        const accountingArchived = await archiveAccountingRecords(u.id);
+        if (!accountingArchived) {
+          d.accountingRecords ||= [];
+          const retainedUntil = new Date(
+            Date.now() + 6 * 365.25 * 86400000,
+          ).toISOString();
+          for (const item of [
+            ...d.subscriptions.filter((x) => x.userId === u.id),
+            ...d.billingConsents.filter((x) => x.userId === u.id),
+          ])
+            d.accountingRecords.push({
+              id: randomUUID(),
+              formerUserHash: tokenHash(u.id),
+              record: { ...item, userId: undefined },
+              retainedUntil,
+              createdAt: new Date().toISOString(),
+            });
+        }
         for (const asset of assets)
           await deleteEncryptedObject(
             asset.objectKey || `${asset.id}.vault`,
@@ -2167,7 +2186,11 @@ const appServer = http.createServer(async (req, res) => {
         return send(
           res,
           200,
-          { ok: true },
+          {
+            ok: true,
+            notice:
+              "Account and service data deleted. Minimum billing records remain restricted for the statutory retention period.",
+          },
           {
             "set-cookie":
               "cp_session=; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age=0",

@@ -5,11 +5,12 @@ No provider may receive production personal data until its DPA, security terms, 
 | Provider | Purpose | Expected data | Region/transfer | Contract status | Production gate |
 |---|---|---|---|---|---|
 | Render | Application and PostgreSQL hosting | Accounts, metadata, encrypted media transit | Frankfurt/EU | DPA review required | Blocked |
-| Cloudflare R2 | Private encrypted object storage | Client-side encrypted media objects | Confirm account location | DPA review required | Blocked |
+| Cloudflare R2 | Private encrypted object storage | Application-encrypted media objects | Western Europe bucket location selected; provider transfers still require review | DPA review required | Technical configuration complete; legal review blocked |
 | Stripe | Subscription billing | Email, customer/subscription/payment metadata | Provider-controlled | DPA and UK terms review | Test only |
-| Resend | Transactional email | Email address and message content | Ireland selected | DPA review required | Account email only |
-| Age/identity provider | Adult/identity verification | Minimum verification attributes | Provider TBD | Not selected | Blocked |
-| Scan provider(s) | Image/video matching | Fingerprints or minimum required media | Provider TBD | Not selected | Blocked |
+| Resend | Transactional email | Email address and message content | Ireland selected | DPA review required | Domain and signed webhook configured; legal notices gated |
+| Yoti | Adult age assurance; identity only if separately approved | Minimum verification outcome and provider reference | Provider-controlled; transfer review required | Organisation verification pending | Production blocked |
+| TinEye | Reverse image matching | Resized metadata-stripped provider copy and request metadata | Provider-controlled; transfer review required | Commercial terms/DPA review required | API activation and end-to-end test blocked |
+| Video matching provider | Video matching | Minimum required frames/fingerprints | Not selected | Not selected | Blocked; product must not claim video scanning |
 | Monitoring provider | Logs/alerts | Redacted operational metadata | Provider TBD | Not selected | Blocked |
 
 ## Required evidence per provider
