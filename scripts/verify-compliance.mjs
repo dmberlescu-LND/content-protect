@@ -86,6 +86,13 @@ const [
   read("public/disputes.js"),
   read("yoti-digital-identity.mjs"),
 ]);
+const [incidentPolicy, incidentPlan, incidentMigration, backupSnapshot] =
+  await Promise.all([
+    read("incident-policy.mjs"),
+    read("docs/compliance/INCIDENT-RESPONSE-PLAN.md"),
+    read("db/migrations/019_incident_register.sql"),
+    read("backup-snapshot.mjs"),
+  ]);
 
 for (const [name, page] of [
   ["privacy notice", privacy],
@@ -242,6 +249,39 @@ requireText("DPIA", dpia, "current page capture");
 requireText("takedown notice", takedownPolicy, "Claimant: ${creator.name}");
 requireText("takedown notice", takedownPolicy, "Rights holder:");
 requireText("takedown notice", takedownPolicy, "Claimant capacity:");
+requireText("incident policy", incidentPolicy, "72 * 60 * 60_000");
+requireText(
+  "incident policy",
+  incidentPolicy,
+  "Notification decisions are incomplete",
+);
+requireText(
+  "incident policy",
+  incidentPolicy,
+  "recovery evidence before closure",
+);
+requireText("incident plan", incidentPlan, "non-reusable TOTP");
+requireText("incident plan", incidentPlan, "application-encrypted");
+requireText("incident plan", incidentPlan, "append-only at database level");
+requireText("incident migration", incidentMigration, "security_incidents");
+requireText(
+  "incident migration",
+  incidentMigration,
+  "security_incident_events",
+);
+requireText("incident migration", incidentMigration, "interval '72 hours'");
+requireText("incident migration", incidentMigration, "events are append-only");
+rejectText("incident migration", incidentMigration, " summary text");
+requireText("backup snapshot", backupSnapshot, 'name: "security_incidents"');
+requireText(
+  "backup snapshot",
+  backupSnapshot,
+  'name: "security_incident_events"',
+);
+requireText("server", server, '"incident.declared"');
+requireText("server", server, '"incident.closed"');
+requireText("server", server, "/api/operator/incidents");
+requireText("retention database", database, "closedSecurityIncidents");
 
 requireText("Render", render, "PAYMENTS_MODE");
 requireText("Render", render, "YOTI_SDK_ID");

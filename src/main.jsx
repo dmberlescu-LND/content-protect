@@ -2679,8 +2679,655 @@ function Onboarding({ user, onDone }) {
   );
 }
 
+const incidentDateTimeValue = (value = new Date()) =>
+  new Date(value).toISOString().slice(0, 16);
+
+function IncidentRegister({ active, setGlobalError }) {
+  const [incidents, setIncidents] = useState([]);
+  const [showDeclare, setShowDeclare] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [forms, setForms] = useState({});
+  const [declaration, setDeclaration] = useState({
+    severity: "SEV-1",
+    personalDataStatus: "assessing",
+    occurredAt: incidentDateTimeValue(),
+    awareAt: incidentDateTimeValue(),
+    roles: {
+      incidentCommander: "",
+      securityLead: "",
+      privacyLead: "",
+      communicationsLead: "",
+    },
+  });
+  const load = async () => {
+    const response = await fetch("/api/operator/incidents");
+    if (response.ok) setIncidents((await response.json()).incidents || []);
+  };
+  useEffect(() => {
+    if (active) load();
+  }, [active]);
+  const setAction = (id, section, values) =>
+    setForms((current) => ({
+      ...current,
+      [id]: {
+        ...(current[id] || {}),
+        [section]: { ...(current[id]?.[section] || {}), ...values },
+      },
+    }));
+  const request = async (url, body) => {
+    setBusy(true);
+    setGlobalError("");
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setGlobalError(
+          result.error || "The incident record could not be updated.",
+        );
+        return false;
+      }
+      await load();
+      return true;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const declare = async (event) => {
+    event.preventDefault();
+    if (await request("/api/operator/incidents", declaration))
+      setShowDeclare(false);
+  };
+  if (!active) return null;
+  return (
+    <section className="operator-incidents">
+      <div className="operator-heading">
+        <div>
+          <p>UK BREACH RESPONSE</p>
+          <h1>Security incident register</h1>
+        </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowDeclare(!showDeclare)}
+        >
+          <Plus size={16} /> Declare incident
+        </button>
+      </div>
+      <div className="incident-guidance">
+        <ShieldCheck />
+        <span>
+          Record times in UTC. Never paste intimate media, passwords, keys or
+          identity documents here; preserve them only in the restricted evidence
+          location.
+        </span>
+      </div>
+      {showDeclare && (
+        <form className="incident-declare" onSubmit={declare}>
+          <h2>Declare a security incident</h2>
+          <div className="incident-grid">
+            <label>
+              Severity
+              <select
+                value={declaration.severity}
+                onChange={(e) =>
+                  setDeclaration({ ...declaration, severity: e.target.value })
+                }
+              >
+                <option>SEV-1</option>
+                <option>SEV-2</option>
+                <option>SEV-3</option>
+              </select>
+            </label>
+            <label>
+              Occurred (UTC)
+              <input
+                type="datetime-local"
+                value={declaration.occurredAt}
+                onChange={(e) =>
+                  setDeclaration({ ...declaration, occurredAt: e.target.value })
+                }
+                required
+              />
+            </label>
+            <label className="incident-wide">
+              Short title
+              <input
+                value={declaration.title || ""}
+                onChange={(e) =>
+                  setDeclaration({ ...declaration, title: e.target.value })
+                }
+                minLength={8}
+                maxLength={120}
+                required
+              />
+            </label>
+            <label className="incident-wide">
+              Factual summary — no raw sensitive material
+              <textarea
+                value={declaration.summary || ""}
+                onChange={(e) =>
+                  setDeclaration({ ...declaration, summary: e.target.value })
+                }
+                minLength={20}
+                maxLength={2000}
+                required
+              />
+            </label>
+            <label>
+              Affected systems
+              <input
+                value={declaration.systems || ""}
+                onChange={(e) =>
+                  setDeclaration({ ...declaration, systems: e.target.value })
+                }
+                required
+              />
+            </label>
+            <label>
+              Data categories
+              <input
+                value={declaration.dataCategories || ""}
+                onChange={(e) =>
+                  setDeclaration({
+                    ...declaration,
+                    dataCategories: e.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              Approximate people
+              <input
+                type="number"
+                min="0"
+                value={declaration.approximateSubjects || ""}
+                onChange={(e) =>
+                  setDeclaration({
+                    ...declaration,
+                    approximateSubjects: e.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              Personal-data assessment
+              <select
+                value={declaration.personalDataStatus}
+                onChange={(e) =>
+                  setDeclaration({
+                    ...declaration,
+                    personalDataStatus: e.target.value,
+                  })
+                }
+              >
+                <option value="assessing">Assessment in progress</option>
+                <option value="not-a-breach">Not a breach</option>
+                <option value="personal-data-breach">Breach identified</option>
+              </select>
+            </label>
+            {declaration.personalDataStatus === "personal-data-breach" && (
+              <label>
+                Company became aware (UTC)
+                <input
+                  type="datetime-local"
+                  value={declaration.awareAt}
+                  onChange={(e) =>
+                    setDeclaration({ ...declaration, awareAt: e.target.value })
+                  }
+                  required
+                />
+              </label>
+            )}
+            {[
+              ["incidentCommander", "Incident Commander"],
+              ["securityLead", "Security Lead"],
+              ["privacyLead", "Privacy Lead"],
+              ["communicationsLead", "Communications Lead"],
+            ].map(([key, text]) => (
+              <label key={key}>
+                {text}
+                <input
+                  value={declaration.roles[key]}
+                  onChange={(e) =>
+                    setDeclaration({
+                      ...declaration,
+                      roles: { ...declaration.roles, [key]: e.target.value },
+                    })
+                  }
+                  required
+                />
+              </label>
+            ))}
+            <label>
+              Authenticator code
+              <input
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                autoComplete="one-time-code"
+                value={declaration.mfaCode || ""}
+                onChange={(e) =>
+                  setDeclaration({ ...declaration, mfaCode: e.target.value })
+                }
+                required
+              />
+            </label>
+          </div>
+          <button className="btn btn-primary" disabled={busy}>
+            Declare and start response clock
+          </button>
+        </form>
+      )}
+      {incidents.length ? (
+        incidents.map((incident) => {
+          const action = forms[incident.id] || {},
+            timeline = action.timeline || {},
+            assessment = action.assessment || {},
+            notifications = action.notifications || {},
+            closure = action.closure || {};
+          return (
+            <article
+              className={`incident-card incident-${incident.urgency?.state}`}
+              key={incident.id}
+            >
+              <div className="incident-title">
+                <div>
+                  <small>
+                    {incident.severity} · {incident.id}
+                  </small>
+                  <h2>{incident.title}</h2>
+                  <span>
+                    {incident.status} · {incident.personalDataStatus}
+                  </span>
+                </div>
+                {incident.icoDeadlineAt && incident.status !== "closed" && (
+                  <div className="incident-clock">
+                    <Clock3 />
+                    <b>
+                      {incident.urgency?.hoursRemaining < 0
+                        ? `${Math.abs(incident.urgency.hoursRemaining)}h overdue`
+                        : `${incident.urgency?.hoursRemaining}h remaining`}
+                    </b>
+                    <span>
+                      ICO deadline{" "}
+                      {new Date(incident.icoDeadlineAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <p className="incident-summary">{incident.summary}</p>
+              <dl className="incident-facts">
+                <div>
+                  <dt>Systems</dt>
+                  <dd>{incident.systems}</dd>
+                </div>
+                <div>
+                  <dt>Data</dt>
+                  <dd>{incident.dataCategories || "Not established"}</dd>
+                </div>
+                <div>
+                  <dt>People</dt>
+                  <dd>{incident.approximateSubjects ?? "Unknown"}</dd>
+                </div>
+                <div>
+                  <dt>ICO</dt>
+                  <dd>{incident.icoDecision}</dd>
+                </div>
+                <div>
+                  <dt>Affected people</dt>
+                  <dd>{incident.subjectsDecision}</dd>
+                </div>
+              </dl>
+              <div className="incident-timeline">
+                <h3>UTC response timeline</h3>
+                {(incident.events || []).map((item) => (
+                  <div key={item.id}>
+                    <b>{item.type}</b>
+                    <span>{item.note}</span>
+                    <small>
+                      {new Date(item.at).toISOString()} · {item.actorReference}
+                    </small>
+                  </div>
+                ))}
+              </div>
+              {incident.status !== "closed" && (
+                <div className="incident-actions">
+                  <details>
+                    <summary>Add response event</summary>
+                    <div className="incident-grid">
+                      <label>
+                        Event type
+                        <select
+                          value={timeline.type || "assessment"}
+                          onChange={(e) =>
+                            setAction(incident.id, "timeline", {
+                              type: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="assessment">Assessment</option>
+                          <option value="containment">Containment</option>
+                          <option value="evidence-preserved">
+                            Evidence preserved
+                          </option>
+                          <option value="processor-contacted">
+                            Processor contacted
+                          </option>
+                          <option value="recovery">Recovery</option>
+                          <option value="communication">Communication</option>
+                          <option value="corrective-action">
+                            Corrective action
+                          </option>
+                        </select>
+                      </label>
+                      <label className="incident-wide">
+                        Factual note
+                        <textarea
+                          value={timeline.note || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "timeline", {
+                              note: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-outline"
+                      disabled={busy}
+                      onClick={() =>
+                        request(
+                          `/api/operator/incidents/${incident.id}/events`,
+                          timeline,
+                        )
+                      }
+                    >
+                      Record event
+                    </button>
+                  </details>
+                  <details>
+                    <summary>Record personal-data assessment</summary>
+                    <div className="incident-grid">
+                      <label>
+                        Assessment
+                        <select
+                          value={
+                            assessment.personalDataStatus ||
+                            incident.personalDataStatus
+                          }
+                          onChange={(e) =>
+                            setAction(incident.id, "assessment", {
+                              personalDataStatus: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="assessing">
+                            Assessment in progress
+                          </option>
+                          <option value="not-a-breach">Not a breach</option>
+                          <option value="personal-data-breach">
+                            Breach identified
+                          </option>
+                        </select>
+                      </label>
+                      <label>
+                        Awareness time (UTC)
+                        <input
+                          type="datetime-local"
+                          value={
+                            assessment.awareAt ||
+                            incidentDateTimeValue(
+                              incident.awareAt || new Date(),
+                            )
+                          }
+                          onChange={(e) =>
+                            setAction(incident.id, "assessment", {
+                              awareAt: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="incident-wide">
+                        Assessment rationale
+                        <textarea
+                          value={assessment.assessmentNote || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "assessment", {
+                              assessmentNote: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        New authenticator code
+                        <input
+                          inputMode="numeric"
+                          pattern="[0-9]{6}"
+                          value={assessment.mfaCode || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "assessment", {
+                              mfaCode: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-outline"
+                      disabled={busy}
+                      onClick={() =>
+                        request(
+                          `/api/operator/incidents/${incident.id}/assessment`,
+                          {
+                            ...assessment,
+                            personalDataStatus:
+                              assessment.personalDataStatus ||
+                              incident.personalDataStatus,
+                            awareAt: assessment.awareAt || incident.awareAt,
+                          },
+                        )
+                      }
+                    >
+                      Record assessment
+                    </button>
+                  </details>
+                  <details>
+                    <summary>Record notification decisions</summary>
+                    <div className="incident-grid">
+                      {[
+                        ["ico", "ICO"],
+                        ["subjects", "Affected people"],
+                      ].map(([key, text]) => (
+                        <React.Fragment key={key}>
+                          <label>
+                            {text} decision
+                            <select
+                              value={
+                                notifications[`${key}Decision`] ||
+                                incident[`${key}Decision`]
+                              }
+                              onChange={(e) =>
+                                setAction(incident.id, "notifications", {
+                                  [`${key}Decision`]: e.target.value,
+                                })
+                              }
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="required">
+                                Required — not sent
+                              </option>
+                              <option value="not-required">Not required</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          </label>
+                          <label>
+                            {text} rationale
+                            <input
+                              value={
+                                notifications[`${key}DecisionRationale`] || ""
+                              }
+                              onChange={(e) =>
+                                setAction(incident.id, "notifications", {
+                                  [`${key}DecisionRationale`]: e.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          {(notifications[`${key}Decision`] ||
+                            incident[`${key}Decision`]) === "completed" && (
+                            <label>
+                              {text} notified at
+                              <input
+                                type="datetime-local"
+                                value={
+                                  notifications[`${key}NotifiedAt`] ||
+                                  incidentDateTimeValue()
+                                }
+                                onChange={(e) =>
+                                  setAction(incident.id, "notifications", {
+                                    [`${key}NotifiedAt`]: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                          )}
+                        </React.Fragment>
+                      ))}
+                      {(notifications.icoDecision || incident.icoDecision) ===
+                        "completed" && (
+                        <label>
+                          ICO reference
+                          <input
+                            value={notifications.icoReference || ""}
+                            onChange={(e) =>
+                              setAction(incident.id, "notifications", {
+                                icoReference: e.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                      <label>
+                        New authenticator code
+                        <input
+                          inputMode="numeric"
+                          pattern="[0-9]{6}"
+                          value={notifications.mfaCode || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "notifications", {
+                              mfaCode: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-outline"
+                      disabled={busy}
+                      onClick={() =>
+                        request(
+                          `/api/operator/incidents/${incident.id}/notifications`,
+                          {
+                            ...notifications,
+                            icoDecision:
+                              notifications.icoDecision || incident.icoDecision,
+                            subjectsDecision:
+                              notifications.subjectsDecision ||
+                              incident.subjectsDecision,
+                          },
+                        )
+                      }
+                    >
+                      Record decisions
+                    </button>
+                  </details>
+                  <details>
+                    <summary>Close after independent review</summary>
+                    <div className="incident-grid">
+                      <label className="incident-wide">
+                        Root cause
+                        <textarea
+                          value={closure.rootCause || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "closure", {
+                              rootCause: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="incident-wide">
+                        Corrective actions, owners and deadlines
+                        <textarea
+                          value={closure.correctiveActions || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "closure", {
+                              correctiveActions: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Closure review reference
+                        <input
+                          value={closure.closureReviewReference || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "closure", {
+                              closureReviewReference: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        New authenticator code
+                        <input
+                          inputMode="numeric"
+                          pattern="[0-9]{6}"
+                          value={closure.mfaCode || ""}
+                          onChange={(e) =>
+                            setAction(incident.id, "closure", {
+                              mfaCode: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-outline"
+                      disabled={busy}
+                      onClick={() =>
+                        confirm(
+                          "Close this incident after independent review?",
+                        ) &&
+                        request(
+                          `/api/operator/incidents/${incident.id}/close`,
+                          closure,
+                        )
+                      }
+                    >
+                      Close incident
+                    </button>
+                  </details>
+                </div>
+              )}
+            </article>
+          );
+        })
+      ) : (
+        <div className="operator-empty">
+          <CircleCheck />
+          <h2>No incidents recorded</h2>
+          <p>The encrypted register is ready for immediate use.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function OperatorConsole() {
   const [ready, setReady] = useState(false);
+  const [operatorView, setOperatorView] = useState("cases");
   const [token, setToken] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [operatorId, setOperatorId] = useState("");
@@ -2926,6 +3573,7 @@ function OperatorConsole() {
     setCases([]);
     setDisputeDetails({});
     setDisputeForms({});
+    setOperatorView("cases");
   };
   if (!ready)
     return (
@@ -2974,13 +3622,34 @@ function OperatorConsole() {
       <header>
         <div>
           <Logo />
-          <span>Private takedown operations · {operatorId}</span>
+          <span>Private operations · {operatorId}</span>
         </div>
-        <button className="btn btn-outline" onClick={logout}>
-          Sign out
-        </button>
+        <nav className="operator-nav">
+          <button
+            className={operatorView === "cases" ? "active" : ""}
+            onClick={() => setOperatorView("cases")}
+          >
+            Takedown queue
+          </button>
+          <button
+            className={operatorView === "incidents" ? "active" : ""}
+            onClick={() => setOperatorView("incidents")}
+          >
+            Incident register
+          </button>
+          <button className="btn btn-outline" onClick={logout}>
+            Sign out
+          </button>
+        </nav>
       </header>
-      <section>
+      {error && (
+        <div className="operator-global-error operator-error">{error}</div>
+      )}
+      <IncidentRegister
+        active={operatorView === "incidents"}
+        setGlobalError={setError}
+      />
+      <section hidden={operatorView !== "cases"}>
         <div className="operator-heading">
           <div>
             <p>HUMAN REVIEW REQUIRED</p>
@@ -2988,7 +3657,6 @@ function OperatorConsole() {
           </div>
           <strong>{cases.length} pending</strong>
         </div>
-        {error && <div className="operator-error">{error}</div>}
         {cases.length ? (
           cases.map((item) => (
             <article className="operator-case" key={item.id}>

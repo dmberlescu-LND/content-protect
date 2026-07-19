@@ -18,6 +18,8 @@ export const BACKUP_TABLES = Object.freeze([
   { name: "accounting_records", key: "id" },
   { name: "operational_evidence", key: "id" },
   { name: "object_deletion_queue", key: "id" },
+  { name: "security_incidents", key: "id" },
+  { name: "security_incident_events", key: "id" },
 ]);
 
 export function databaseIdentity(connectionString) {

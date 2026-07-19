@@ -26,6 +26,7 @@ Content Protect keeps personal data only for a documented purpose and period. De
 | Independently retained encrypted audit exports                              |                               400 days | Destination lifecycle rule                             | Not copied to application backup |
 | Billing and tax records                                                     |           6 years after financial year | Statutory expiry                                       |                          35 days |
 | Support conversations                                                       |                24 months after closure | Rolling expiry                                         |                          35 days |
+| Encrypted security-incident register and append-only response timeline      |                  6 years after closure | Limitation/accountability expiry                       |                          35 days |
 | Password reset/email verification tokens                                    |                       24 hours maximum | Use or expiry                                          |      Not backed up intentionally |
 
 ## Controls
@@ -41,3 +42,4 @@ Content Protect keeps personal data only for a documented purpose and period. De
 - The independent audit destination must enforce an enabled 400-day lifecycle on `content-protect-audit/daily/`. The export job verifies the actual provider rule before recording success; a manual retention claim or application configuration value is insufficient. Export credentials must not permit deletion, and the web service must not possess them.
 - Public dispute email, statement and optional supporting link are application-encrypted inside the associated case event. They follow the six-year takedown-communications schedule after case closure unless legal hold applies. Unknown/non-matching submissions are not persisted, and ordinary application/audit logs must never contain the plaintext intake.
 - Account deletion archives only the minimum subscription and billing-consent record under a pseudonymous former-user reference for the six-year statutory period; service data and media are deleted.
+- Incident titles, summaries, roles, decision rationales, references, root cause, corrective actions and timeline notes are application-encrypted. Scheduled deletion may remove a closed incident only after six years; its append-only events can be removed only by the dedicated retention transaction.

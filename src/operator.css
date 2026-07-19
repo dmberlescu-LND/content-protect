@@ -233,6 +233,241 @@
     display: none;
   }
 }
+
+.operator-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.operator-nav > button:not(.btn) {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #77727e;
+  padding: 9px 11px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.operator-nav > button.active {
+  background: #eeeaff;
+  color: #6247d8;
+}
+.operator-global-error {
+  max-width: 992px;
+  margin: 18px auto 0;
+}
+.incident-guidance {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid #d9d1f5;
+  border-radius: 10px;
+  background: #f7f4ff;
+  color: #5f5869;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.incident-guidance svg {
+  width: 18px;
+  flex: 0 0 auto;
+  color: #684bd6;
+}
+.incident-declare,
+.incident-card {
+  margin-top: 16px;
+  padding: 22px;
+  border: 1px solid #e3e1e7;
+  border-radius: 14px;
+  background: #fff;
+}
+.incident-declare h2,
+.incident-card h2,
+.incident-timeline h3 {
+  font-family: "Manrope";
+}
+.incident-declare h2 {
+  margin: 0 0 18px;
+  font-size: 18px;
+}
+.incident-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  margin: 14px 0;
+}
+.incident-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 750;
+}
+.incident-grid input,
+.incident-grid select,
+.incident-grid textarea {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #dcd9e2;
+  border-radius: 8px;
+  background: #fff;
+  color: #242229;
+  font: 500 12px/1.4 inherit;
+}
+.incident-grid textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.incident-grid .incident-wide {
+  grid-column: 1 / -1;
+}
+.incident-card.incident-overdue,
+.incident-card.incident-critical {
+  border-color: #e47d6d;
+  box-shadow: inset 4px 0 #d95b49;
+}
+.incident-card.incident-urgent {
+  border-color: #e9bb59;
+  box-shadow: inset 4px 0 #d89a1f;
+}
+.incident-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.incident-title small {
+  font: 9px/1.4 monospace;
+  color: #8c8792;
+  overflow-wrap: anywhere;
+}
+.incident-title h2 {
+  margin: 6px 0;
+  font-size: 19px;
+}
+.incident-title span {
+  color: #746f79;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+.incident-clock {
+  min-width: 220px;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 2px 8px;
+  padding: 12px;
+  border-radius: 9px;
+  background: #fff3ef;
+  color: #a14235;
+}
+.incident-clock svg {
+  width: 18px;
+  grid-row: 1 / 3;
+}
+.incident-clock b {
+  font-size: 12px;
+}
+.incident-clock span {
+  font-size: 9px;
+  text-transform: none;
+}
+.incident-summary {
+  margin: 16px 0;
+  color: #5f5a64;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.incident-facts {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border-radius: 9px;
+  background: #faf9fb;
+}
+.incident-facts dt {
+  color: #99939f;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.incident-facts dd {
+  margin: 5px 0 0;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.incident-timeline {
+  margin-top: 18px;
+}
+.incident-timeline h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.incident-timeline > div {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid #eeecf1;
+}
+.incident-timeline b {
+  font-size: 10px;
+  text-transform: capitalize;
+}
+.incident-timeline span {
+  font-size: 11px;
+}
+.incident-timeline small {
+  grid-column: 2;
+  color: #938e98;
+  font: 9px/1.4 monospace;
+}
+.incident-actions {
+  margin-top: 18px;
+  border-top: 1px solid #e7e4ea;
+}
+.incident-actions details {
+  padding: 13px 0;
+  border-bottom: 1px solid #e7e4ea;
+}
+.incident-actions summary {
+  cursor: pointer;
+  color: #5d43cb;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 800px) {
+  .operator-console header {
+    height: auto;
+    padding: 14px 18px;
+    align-items: flex-start;
+  }
+  .operator-nav {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .incident-grid,
+  .incident-facts {
+    grid-template-columns: 1fr;
+  }
+  .incident-grid .incident-wide {
+    grid-column: auto;
+  }
+  .incident-title {
+    flex-direction: column;
+  }
+  .incident-clock {
+    min-width: 0;
+    width: 100%;
+  }
+  .incident-timeline > div {
+    grid-template-columns: 1fr;
+  }
+  .incident-timeline small {
+    grid-column: 1;
+  }
+}
 .operator-evidence-download {
   display: flex;
   align-items: center;

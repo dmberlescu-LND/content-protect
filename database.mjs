@@ -1,4 +1,11 @@
-import { createHmac, randomUUID } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+  randomUUID,
+} from "node:crypto";
 import pg from "pg";
 import { protectAuditEvent, verifyAuditChain } from "./audit-integrity.mjs";
 import { drainObjectDeletionQueue } from "./retention-queue.mjs";
@@ -19,6 +26,47 @@ function auditMasterSecret() {
       "CONTENT_PROTECT_MASTER_KEY is required for PostgreSQL audit integrity.",
     );
   return secret;
+}
+
+function incidentEncryptionKey() {
+  return createHash("sha256")
+    .update(`content-protect:incident-register:v1:${auditMasterSecret()}`)
+    .digest();
+}
+
+function encryptIncidentDetails(value) {
+  const iv = randomBytes(12),
+    cipher = createCipheriv("aes-256-gcm", incidentEncryptionKey(), iv),
+    ciphertext = Buffer.concat([
+      cipher.update(JSON.stringify(value), "utf8"),
+      cipher.final(),
+    ]);
+  return [
+    "v1",
+    iv.toString("base64url"),
+    cipher.getAuthTag().toString("base64url"),
+    ciphertext.toString("base64url"),
+  ].join(".");
+}
+
+function decryptIncidentDetails(value) {
+  const [version, ivValue, tagValue, ciphertextValue] = String(
+    value || "",
+  ).split(".");
+  if (version !== "v1" || !ivValue || !tagValue || !ciphertextValue)
+    throw new Error("The encrypted incident record is invalid.");
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    incidentEncryptionKey(),
+    Buffer.from(ivValue, "base64url"),
+  );
+  decipher.setAuthTag(Buffer.from(tagValue, "base64url"));
+  return JSON.parse(
+    Buffer.concat([
+      decipher.update(Buffer.from(ciphertextValue, "base64url")),
+      decipher.final(),
+    ]).toString("utf8"),
+  );
 }
 
 function auditRecord(row) {
@@ -564,11 +612,18 @@ export async function runRetention({
         evaluatedAt,
       ],
       ["expiredRateLimits", "rate_limits", "expires_at < $1", evaluatedAt],
+      [
+        "closedSecurityIncidents",
+        "security_incidents",
+        "closed_at < $1",
+        cutoffs.legal,
+      ],
     ];
   let counts = {};
   try {
     await client.query("BEGIN");
     await client.query("SET LOCAL content_protect.audit_retention = 'on'");
+    await client.query("SET LOCAL content_protect.incident_retention = 'on'");
     await client.query("SELECT pg_advisory_xact_lock(824672)");
     const candidates = await client.query(
       `SELECT count(*)::int AS count FROM (${RETENTION_OBJECT_CANDIDATES_SQL}) candidates`,
@@ -673,6 +728,8 @@ export async function loadPostgresState() {
       "billing_consents",
       "processed_webhooks",
       "audit_events",
+      "security_incidents",
+      "security_incident_events",
     ];
     const results = [];
     for (const name of names)
@@ -693,6 +750,8 @@ export async function loadPostgresState() {
       billingConsents,
       processedWebhooks,
       audit,
+      incidents,
+      incidentEvents,
     ] = results.map((result) => result.rows);
     const profile = new Map(profiles.map((row) => [row.user_id, row]));
     return {
@@ -885,6 +944,36 @@ export async function loadPostgresState() {
           details: row.details,
           at: iso(row.created_at),
         })),
+      incidents: incidents.map((row) => {
+        const details = decryptIncidentDetails(
+          row.restricted_details_ciphertext,
+        );
+        return {
+          id: row.id,
+          severity: row.severity,
+          status: row.status,
+          personalDataStatus: row.personal_data_status,
+          awareAt: iso(row.aware_at),
+          icoDeadlineAt: iso(row.ico_deadline_at),
+          icoDecision: row.ico_decision,
+          subjectsDecision: row.subjects_decision,
+          occurredAt: iso(row.occurred_at),
+          closedAt: iso(row.closed_at),
+          createdAt: iso(row.created_at),
+          updatedAt: iso(row.updated_at),
+          ...details,
+          events: incidentEvents
+            .filter((event) => event.incident_id === row.id)
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+            .map((event) => ({
+              id: event.event_uuid,
+              type: event.event_type,
+              actorReference: event.actor_reference,
+              at: iso(event.created_at),
+              ...decryptIncidentDetails(event.restricted_details_ciphertext),
+            })),
+        };
+      }),
     };
   } finally {
     client.release();
@@ -1194,6 +1283,70 @@ async function upsertBusinessData(
        VALUES ($1,$2,$3) ON CONFLICT (provider,event_id) DO NOTHING`,
       [item.provider, item.eventId, item.processedAt || new Date()],
     );
+  for (const item of state.incidents || []) {
+    const restrictedDetails = {
+      title: item.title,
+      summary: item.summary,
+      systems: item.systems,
+      dataCategories: item.dataCategories || null,
+      approximateSubjects: item.approximateSubjects ?? null,
+      roles: item.roles || {},
+      icoDecisionRationale: item.icoDecisionRationale || null,
+      icoNotifiedAt: item.icoNotifiedAt || null,
+      icoReference: item.icoReference || null,
+      subjectsDecisionRationale: item.subjectsDecisionRationale || null,
+      subjectsNotifiedAt: item.subjectsNotifiedAt || null,
+      rootCause: item.rootCause || null,
+      correctiveActions: item.correctiveActions || null,
+      closureReviewReference: item.closureReviewReference || null,
+    };
+    await client.query(
+      `INSERT INTO security_incidents
+         (id,severity,status,personal_data_status,aware_at,ico_deadline_at,
+          ico_decision,subjects_decision,restricted_details_ciphertext,
+          occurred_at,closed_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       ON CONFLICT (id) DO UPDATE SET
+         severity=EXCLUDED.severity,status=EXCLUDED.status,
+         personal_data_status=EXCLUDED.personal_data_status,
+         aware_at=EXCLUDED.aware_at,ico_deadline_at=EXCLUDED.ico_deadline_at,
+         ico_decision=EXCLUDED.ico_decision,
+         subjects_decision=EXCLUDED.subjects_decision,
+         restricted_details_ciphertext=EXCLUDED.restricted_details_ciphertext,
+         closed_at=EXCLUDED.closed_at,updated_at=EXCLUDED.updated_at`,
+      [
+        item.id,
+        item.severity,
+        item.status,
+        item.personalDataStatus,
+        item.awareAt || null,
+        item.icoDeadlineAt || null,
+        item.icoDecision,
+        item.subjectsDecision,
+        encryptIncidentDetails(restrictedDetails),
+        item.occurredAt,
+        item.closedAt || null,
+        item.createdAt,
+        item.updatedAt,
+      ],
+    );
+    for (const event of item.events || [])
+      await client.query(
+        `INSERT INTO security_incident_events
+           (event_uuid,incident_id,event_type,restricted_details_ciphertext,
+            actor_reference,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (event_uuid) DO NOTHING`,
+        [
+          event.id,
+          item.id,
+          event.type,
+          encryptIncidentDetails({ note: event.note }),
+          event.actorReference,
+          event.at,
+        ],
+      );
+  }
   const newAuditEvents = state.audit.filter(
     (event) => !/^\d+$/.test(String(event.id)),
   );

@@ -112,6 +112,15 @@ import {
   openDisputes,
   validateDisputeIntake,
 } from "./dispute-policy.mjs";
+import {
+  addIncidentEvent,
+  closeIncident,
+  createIncident,
+  incidentUrgency,
+  IncidentPolicyError,
+  recordBreachAssessment,
+  recordNotificationDecision,
+} from "./incident-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -225,6 +234,7 @@ async function load() {
       legacyState.verifications ||= [];
       legacyState.processedWebhooks ||= [];
       legacyState.operatorSessions ||= [];
+      legacyState.incidents ||= [];
       for (const asset of legacyState.assets) {
         asset.objectKey ||= `${asset.id}.vault`;
         if (!asset.checksum) {
@@ -270,6 +280,7 @@ async function load() {
       verifications: [],
       processedWebhooks: [],
       operatorSessions: [],
+      incidents: [],
     };
     await save(d);
     return d;
@@ -287,6 +298,7 @@ async function load() {
   d.verifications ||= [];
   d.processedWebhooks ||= [];
   d.operatorSessions ||= [];
+  d.incidents ||= [];
   d.sessions = d.sessions.filter((x) => new Date(x.expiresAt) > new Date());
   d.passwordResets = d.passwordResets.filter(
     (x) => new Date(x.expiresAt) > new Date(),
@@ -737,6 +749,29 @@ function operatorAuthorised(req, d) {
 }
 function currentOperatorSubject() {
   return operatorActorSubject(OPERATOR_CONFIGURATION);
+}
+async function operatorStepUp(req, value, purpose) {
+  if (!operatorTotpValid(OPERATOR_CONFIGURATION, value))
+    throw new IncidentPolicyError(
+      "A current authenticator code is required.",
+      401,
+    );
+  const code = String(value || "").replace(/\s/g, "");
+  if (
+    !(
+      await allowed(
+        req,
+        `operator-totp:${OPERATOR_CONFIGURATION.id}:${code}`,
+        1,
+        90000,
+      )
+    ).allowed
+  )
+    throw new IncidentPolicyError(
+      "That authenticator code was already used. Wait for a new code.",
+      409,
+    );
+  return purpose;
 }
 async function deliverNotice(caseRecord, creator, recipientEmail) {
   const response = await fetch("https://api.resend.com/emails", {
@@ -1351,6 +1386,223 @@ const appServer = http.createServer(async (req, res) => {
             operatorId: OPERATOR_CONFIGURATION.id,
           })
         : send(res, 401, { error: "Operator authentication required." });
+    if (route === "/api/operator/incidents" && req.method === "GET") {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-incidents:${ip}`, 60, 3600000)).allowed
+      )
+        return send(res, 429, {
+          error: "Too many incident-register requests.",
+        });
+      return send(res, 200, {
+        incidents: [...(d.incidents || [])]
+          .sort((a, b) => {
+            if ((a.status === "closed") !== (b.status === "closed"))
+              return a.status === "closed" ? 1 : -1;
+            return new Date(b.updatedAt) - new Date(a.updatedAt);
+          })
+          .map((item) => ({ ...item, urgency: incidentUrgency(item) })),
+      });
+    }
+    if (route === "/api/operator/incidents" && req.method === "POST") {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-incident-create:${ip}`, 10, 3600000))
+          .allowed
+      )
+        return send(res, 429, { error: "Too many incident declarations." });
+      const b = await parse(req);
+      try {
+        await operatorStepUp(req, b.mfaCode, "incident-declaration");
+        const incident = createIncident(b, {
+          id: randomUUID(),
+          operatorReference: OPERATOR_CONFIGURATION.id,
+        });
+        d.incidents.push(incident);
+        audit(
+          d,
+          null,
+          "incident.declared",
+          {
+            incidentId: incident.id,
+            severity: incident.severity,
+            personalDataStatus: incident.personalDataStatus,
+            icoDeadlineAt: incident.icoDeadlineAt,
+          },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 201, {
+          incident: { ...incident, urgency: incidentUrgency(incident) },
+        });
+      } catch (error) {
+        if (error instanceof IncidentPolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/operator\/incidents\/[^/]+\/events$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-incident-event:${ip}`, 120, 3600000))
+          .allowed
+      )
+        return send(res, 429, { error: "Too many incident events." });
+      const incidentId = route.split("/")[4],
+        incident = d.incidents.find((item) => item.id === incidentId),
+        b = await parse(req);
+      if (!incident) return send(res, 404, { error: "Incident not found." });
+      try {
+        const event = addIncidentEvent(incident, b, {
+          operatorReference: OPERATOR_CONFIGURATION.id,
+        });
+        audit(
+          d,
+          null,
+          "incident.event_recorded",
+          { incidentId, eventId: event.id, eventType: event.type },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 201, { event, status: incident.status });
+      } catch (error) {
+        if (error instanceof IncidentPolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/operator\/incidents\/[^/]+\/assessment$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      const incidentId = route.split("/")[4],
+        incident = d.incidents.find((item) => item.id === incidentId),
+        b = await parse(req);
+      if (!incident) return send(res, 404, { error: "Incident not found." });
+      try {
+        await operatorStepUp(req, b.mfaCode, "breach-assessment");
+        recordBreachAssessment(incident, b);
+        const event = addIncidentEvent(
+          incident,
+          { type: "assessment", note: b.assessmentNote },
+          { operatorReference: OPERATOR_CONFIGURATION.id },
+        );
+        audit(
+          d,
+          null,
+          "incident.breach_assessed",
+          {
+            incidentId,
+            eventId: event.id,
+            personalDataStatus: incident.personalDataStatus,
+            awareAt: incident.awareAt,
+            icoDeadlineAt: incident.icoDeadlineAt,
+          },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 200, {
+          incident: { ...incident, urgency: incidentUrgency(incident) },
+        });
+      } catch (error) {
+        if (error instanceof IncidentPolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/operator\/incidents\/[^/]+\/notifications$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      const incidentId = route.split("/")[4],
+        incident = d.incidents.find((item) => item.id === incidentId),
+        b = await parse(req);
+      if (!incident) return send(res, 404, { error: "Incident not found." });
+      try {
+        await operatorStepUp(req, b.mfaCode, "notification-decision");
+        recordNotificationDecision(incident, b);
+        const event = addIncidentEvent(
+          incident,
+          {
+            type: "communication",
+            note: "ICO and affected-person notification decisions recorded.",
+          },
+          { operatorReference: OPERATOR_CONFIGURATION.id },
+        );
+        audit(
+          d,
+          null,
+          "incident.notifications_decided",
+          {
+            incidentId,
+            eventId: event.id,
+            icoDecision: incident.icoDecision,
+            subjectsDecision: incident.subjectsDecision,
+            icoNotifiedAt: incident.icoNotifiedAt,
+            subjectsNotifiedAt: incident.subjectsNotifiedAt,
+          },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 200, {
+          incident: { ...incident, urgency: incidentUrgency(incident) },
+        });
+      } catch (error) {
+        if (error instanceof IncidentPolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/operator\/incidents\/[^/]+\/close$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      const incidentId = route.split("/")[4],
+        incident = d.incidents.find((item) => item.id === incidentId),
+        b = await parse(req);
+      if (!incident) return send(res, 404, { error: "Incident not found." });
+      try {
+        await operatorStepUp(req, b.mfaCode, "incident-closure");
+        const event = addIncidentEvent(
+          incident,
+          {
+            type: "corrective-action",
+            note: "Root cause, corrective actions and independent closure review recorded.",
+          },
+          { operatorReference: OPERATOR_CONFIGURATION.id },
+        );
+        closeIncident(incident, b);
+        audit(
+          d,
+          null,
+          "incident.closed",
+          {
+            incidentId,
+            eventId: event.id,
+            closureReviewReference: incident.closureReviewReference,
+          },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(res, 200, { incident });
+      } catch (error) {
+        if (error instanceof IncidentPolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
     if (route === "/api/operator/cases" && req.method === "GET") {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
