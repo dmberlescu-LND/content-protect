@@ -26,6 +26,12 @@ To commission the alert route, store the same random `MONITORING_HEARTBEAT_TOKEN
 
 Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-19-v2`. Keep `TAKEDOWNS_MODE=sandbox` during preparation and testing; the dispatch endpoint refuses all external delivery until a separately approved change sets `TAKEDOWNS_MODE=live`. Never advance either value merely to make the readiness check green; a template change requires a new review and version.
 
+### TinEye image-scanning activation
+
+The public TinEye sandbox was exercised on 19 July 2026 with a generated image and the deployed request format: HTTPS `POST /rest/search/`, `x-api-key`, metadata-stripped JPEG upload, result/backlink parsing and the 5% `query_match_percent` filter all passed. The sandbox returns fixed demonstration matches and is not evidence of production coverage. The application pins image transmission to `https://api.tineye.com/rest/search/` to prevent accidental disclosure to a substituted endpoint.
+
+Do not purchase or install a production key until `docs/vendor-due-diligence/TINEYE-ACTIVATION.md` is complete. A key alone leaves the scanner in `compliance-blocked`. After the underlying evidence is genuinely approved, store its internal legal/privacy record identifier in `TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE`, store TinEye's written acceptance reference for lawful explicit-adult creator media in `TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE`, and only then add `TINEYE_API_KEY`. Never put approval text, emails or personal data in environment values—use opaque record or ticket references. Confirm `/api/health/ready` reports `scanner: tineye-commercial`, then perform one consented non-explicit production test before any intimate reference is submitted.
+
 ## Logs and correlation
 
 The service emits one JSON event per request with UTC platform timestamp, request ID, method, path, status and duration. Error events contain the same request ID. Query Render logs using `requestId`; do not log request bodies, cookies, tokens, email addresses or private media.

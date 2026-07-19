@@ -1,12 +1,32 @@
 import assert from "node:assert/strict";
 import sharp from "sharp";
-import { ScanProviderError, searchImage } from "../scanner.mjs";
+import {
+  scannerMode,
+  scannerReadiness,
+  ScanProviderError,
+  searchImage,
+} from "../scanner.mjs";
 
 const image = await sharp({
   create: { width: 320, height: 240, channels: 3, background: "#7659e8" },
 })
   .png()
   .toBuffer();
+
+assert.equal(scannerMode({}), "unconfigured");
+assert.deepEqual(scannerReadiness({}).missingApprovals, [
+  "data-protection-and-transfer-review",
+  "lawful-adult-content-confirmation",
+]);
+assert.equal(scannerMode({ TINEYE_API_KEY: "key" }), "compliance-blocked");
+assert.equal(
+  scannerMode({
+    TINEYE_API_KEY: "key",
+    TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "privacy-review-1",
+    TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
+  }),
+  "tineye-commercial",
+);
 
 let request;
 const result = await searchImage(image, {
@@ -41,9 +61,7 @@ const result = await searchImage(image, {
             {
               score: 99,
               query_match_percent: 4.9,
-              backlinks: [
-                { backlink: "https://irrelevant-logo.example/post" },
-              ],
+              backlinks: [{ backlink: "https://irrelevant-logo.example/post" }],
             },
           ],
         },
@@ -73,6 +91,15 @@ await assert.rejects(
     assetId: "asset-1",
     apiKey: "test-key",
     endpoint: "http://api.tineye.example/search",
+  }),
+  (error) => error instanceof ScanProviderError && error.status === 500,
+);
+
+await assert.rejects(
+  searchImage(image, {
+    assetId: "asset-1",
+    apiKey: "test-key",
+    endpoint: "https://scan-provider.example/rest/search/",
   }),
   (error) => error instanceof ScanProviderError && error.status === 500,
 );
@@ -113,5 +140,7 @@ console.log(
     scoreNotMislabelledAsConfidence: true,
     metadataPreserved: true,
     errorMapping: true,
+    complianceActivationGate: true,
+    providerEndpointPinned: true,
   }),
 );

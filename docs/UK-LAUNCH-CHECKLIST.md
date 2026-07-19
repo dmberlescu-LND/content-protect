@@ -20,6 +20,7 @@ Status: implementation checklist, not legal advice. Company details and counsel 
 - Appoint owners for access requests, deletion, correction, restriction and portability.
 - Define retention periods for source media, embeddings, evidence, notices and audit logs.
 - Execute data-processing agreements and international-transfer safeguards with every provider.
+- Before TinEye activation, complete `docs/vendor-due-diligence/TINEYE-ACTIVATION.md`; record the approved privacy/transfer review and the provider's written lawful-adult-content confirmation in the two fail-closed Render variables. An API key alone must never activate scanning.
 - Commission penetration testing and create a 72-hour personal-data-breach response procedure.
 - Configure the independent retained audit/log export and test the alert raised by an audit-integrity readiness failure.
 

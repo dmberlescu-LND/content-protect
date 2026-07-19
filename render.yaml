@@ -52,6 +52,10 @@ services:
         sync: false
       - key: TINEYE_API_KEY
         sync: false
+      - key: TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE
+        sync: false
+      - key: TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE
+        sync: false
       - key: TINEYE_API_URL
         value: https://api.tineye.com/rest/search/
       - key: RETENTION_EXECUTION_ENABLED

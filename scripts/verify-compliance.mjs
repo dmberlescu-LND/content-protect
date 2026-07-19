@@ -24,6 +24,7 @@ const [
   privacy,
   terms,
   server,
+  scanner,
   render,
   dockerfile,
   runbook,
@@ -36,10 +37,12 @@ const [
   seoRunbook,
   backupRunner,
   isolatedRestoreRunner,
+  tineyeActivation,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
   read("server.mjs"),
+  read("scanner.mjs"),
   read("render.yaml"),
   read("Dockerfile"),
   read("docs/OPERATIONS-RUNBOOK.md"),
@@ -52,6 +55,7 @@ const [
   read("docs/SEO-LAUNCH-RUNBOOK.md"),
   read("scripts/run-backups.mjs"),
   read("scripts/run-isolated-restore-drill.mjs"),
+  read("docs/vendor-due-diligence/TINEYE-ACTIVATION.md"),
 ]);
 
 for (const [name, page] of [
@@ -95,11 +99,7 @@ for (const provider of [
   requireText("processor register", processors, provider);
 }
 requireText("processor register", processors, "Production blocked");
-requireText(
-  "processor register",
-  processors,
-  "API activation and end-to-end test blocked",
-);
+requireText("processor register", processors, "Fail-closed until the API key");
 requireText(
   "processor register",
   processors,
@@ -123,6 +123,16 @@ requireText("Render", render, "PAYMENTS_MODE");
 requireText("Render", render, "YOTI_SDK_ID");
 requireText("Render", render, "YOTI_PRIVATE_KEY");
 rejectText("Render", render, "YOTI_API_KEY");
+for (const key of [
+  "TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE",
+  "TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE",
+]) {
+  requireText("Render", render, key);
+  requireText("scanner", scanner, key);
+}
+requireText("TinEye activation", tineyeActivation, "PIPEDA");
+requireText("TinEye activation", tineyeActivation, "compliance-blocked");
+requireText("TinEye activation", tineyeActivation, "automatic top-up disabled");
 requireText("Render", render, "content-protect-retention");
 requireText("Render", render, "dockerCommand: node scripts/retention.mjs");
 for (const key of [

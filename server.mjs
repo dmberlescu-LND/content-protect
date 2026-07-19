@@ -35,7 +35,12 @@ import {
   recordOperationalEvidence,
   savePostgresState,
 } from "./database.mjs";
-import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
+import {
+  scannerMode,
+  scannerReadiness,
+  ScanProviderError,
+  searchImage,
+} from "./scanner.mjs";
 import { findActiveSubscription, scanIntervalMs } from "./billing-policy.mjs";
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
 import {
@@ -1968,10 +1973,13 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "Add at least one reference image. Video matching requires a separate provider.",
         });
-      if (scannerMode() === "unconfigured")
+      const scannerActivation = scannerReadiness();
+      if (!scannerActivation.ready)
         return send(res, 503, {
           error:
-            "Commercial image scanning is awaiting provider activation. No simulated results were created.",
+            scannerActivation.mode === "compliance-blocked"
+              ? "Commercial image scanning is awaiting documented provider privacy and lawful-content approvals. No image was sent."
+              : "Commercial image scanning is awaiting provider activation. No simulated results were created.",
         });
       const startedAt = new Date().toISOString(),
         scan = {

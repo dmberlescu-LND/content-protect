@@ -3,10 +3,36 @@ import sharp from "sharp";
 const TINEYE_ENDPOINT =
   process.env.TINEYE_API_URL || "https://api.tineye.com/rest/search/";
 
-export function scannerMode() {
-  return process.env.TINEYE_API_KEY?.trim()
-    ? "tineye-commercial"
-    : "unconfigured";
+const TINEYE_HOST = "api.tineye.com";
+
+export function scannerReadiness(environment = process.env) {
+  const hasApiKey = Boolean(environment.TINEYE_API_KEY?.trim());
+  const hasDataProtectionApproval = Boolean(
+    environment.TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE?.trim(),
+  );
+  const hasAdultContentApproval = Boolean(
+    environment.TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE?.trim(),
+  );
+  const missingApprovals = [
+    !hasDataProtectionApproval && "data-protection-and-transfer-review",
+    !hasAdultContentApproval && "lawful-adult-content-confirmation",
+  ].filter(Boolean);
+  return {
+    ready: hasApiKey && missingApprovals.length === 0,
+    mode: !hasApiKey
+      ? "unconfigured"
+      : missingApprovals.length
+        ? "compliance-blocked"
+        : "tineye-commercial",
+    hasApiKey,
+    hasDataProtectionApproval,
+    hasAdultContentApproval,
+    missingApprovals,
+  };
+}
+
+export function scannerMode(environment = process.env) {
+  return scannerReadiness(environment).mode;
 }
 
 export class ScanProviderError extends Error {
@@ -94,7 +120,14 @@ export async function searchImage(
       503,
     );
   const providerUrl = safeWebUrl(endpoint);
-  if (!providerUrl || providerUrl.protocol !== "https:")
+  if (
+    !providerUrl ||
+    providerUrl.protocol !== "https:" ||
+    providerUrl.hostname !== TINEYE_HOST ||
+    providerUrl.port ||
+    providerUrl.pathname !== "/rest/search/" ||
+    providerUrl.search
+  )
     throw new ScanProviderError("The scan provider endpoint is invalid.", 500);
   const prepared = await prepareImageForProvider(image),
     form = new FormData();
