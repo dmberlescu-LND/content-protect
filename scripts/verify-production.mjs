@@ -33,6 +33,10 @@ expect(readyResponse.ok, `readiness returned HTTP ${readyResponse.status}`);
 const ready = readyResponse.ok ? await readyResponse.json() : {};
 expect(ready.ok === true && ready.status === "ready", "readiness body is invalid");
 expect(ready.database === "postgresql", "PostgreSQL is not active");
+expect(
+  ready.checks?.database?.latestMigration === "012_retention_legal_holds.sql",
+  "latest required database migration is not recorded",
+);
 if (requireProductionReady) {
   expect(ready.productionReady === true, "production release gate is not green");
   expect(ready.emailDelivery === "resend", "Resend email delivery is not active");

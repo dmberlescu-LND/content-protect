@@ -5,6 +5,7 @@ services:
     plan: starter
     region: frankfurt
     dockerfilePath: ./Dockerfile
+    preDeployCommand: pnpm run db:migrate
     healthCheckPath: /api/health/ready
     autoDeployTrigger: commit
     envVars:

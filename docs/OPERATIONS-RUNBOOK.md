@@ -47,7 +47,7 @@ Enable private bucket versioning and lifecycle rules. Test recovery with disposa
 ## Deployment and rollback
 
 1. Deploy only a committed main-branch revision after syntax and production build checks.
-2. Confirm migrations are idempotent and complete before traffic is declared healthy.
+2. Run migrations through the Blueprint pre-deploy command. `schema_migrations` checksums must match the committed files, and `/api/health/ready` must report the latest required migration before traffic is declared healthy.
 3. Run the production verifier and one creator sandbox journey.
 4. Roll back the application revision if errors increase. Do not roll back a destructive schema change; use a reviewed forward fix.
 5. Record revision, operator, outcome and any incident reference.

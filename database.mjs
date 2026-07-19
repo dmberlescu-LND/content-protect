@@ -11,11 +11,16 @@ export const databaseMode = () => (pool ? "postgresql" : "local-json");
 export async function databaseProbe() {
   if (!pool) return { ok: true, mode: "local-json" };
   const startedAt = Date.now();
-  await pool.query("SELECT 1");
+  const result = await pool.query(
+    "SELECT name,applied_at FROM schema_migrations ORDER BY name DESC LIMIT 1",
+  );
+  if (!result.rows[0]) throw new Error("No database migrations are recorded.");
   return {
     ok: true,
     mode: "postgresql",
     latencyMs: Date.now() - startedAt,
+    latestMigration: result.rows[0].name,
+    migratedAt: iso(result.rows[0].applied_at),
   };
 }
 
