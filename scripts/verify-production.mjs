@@ -1,3 +1,5 @@
+import { REQUIRED_MIGRATION } from "../operations-readiness.mjs";
+
 const base = (process.env.APP_URL || "https://content-protect.com").replace(
   /\/$/,
   "",
@@ -29,16 +31,33 @@ const live = liveResponse.ok ? await liveResponse.json() : {};
 expect(live.ok === true && live.status === "alive", "liveness body is invalid");
 
 const readyResponse = await request("/api/health/ready");
+let ready = {};
+try {
+  ready = await readyResponse.json();
+} catch {
+  failures.push("readiness did not return JSON");
+}
+expect(
+  readyResponse.status === 200 || readyResponse.status === 503,
+  `readiness returned unexpected HTTP ${readyResponse.status}`,
+);
 expect(readyResponse.ok, `readiness returned HTTP ${readyResponse.status}`);
-const ready = readyResponse.ok ? await readyResponse.json() : {};
 expect(
   ready.ok === true && ready.status === "ready",
   "readiness body is invalid",
 );
 expect(ready.database === "postgresql", "PostgreSQL is not active");
 expect(
-    ready.checks?.database?.latestMigration === "013_takedown_exact_approval.sql",
+  ready.checks?.database?.latestMigration === REQUIRED_MIGRATION,
   "latest required database migration is not recorded",
+);
+expect(
+  ready.checks?.storage?.mode === "private-object-storage",
+  "private object storage is not active",
+);
+expect(
+  ready.keyManagement === "external-secret",
+  "external master key is not active",
 );
 if (requireProductionReady) {
   expect(
@@ -77,6 +96,8 @@ if (requireProductionReady) {
     ready.backupRestore === "verified-recently",
     "database restore evidence is missing or older than 100 days",
   );
+  expect(ready.scanner !== "unconfigured", "scanner is not configured");
+  expect(ready.billing?.startsWith("stripe-"), "Stripe is not configured");
 }
 
 for (const page of [
@@ -101,11 +122,42 @@ for (const page of [
     Boolean(response.headers.get("content-security-policy")),
     `${page} is missing CSP`,
   );
+  expect(
+    response.headers.get("referrer-policy") ===
+      "strict-origin-when-cross-origin",
+    `${page} has an unsafe or missing Referrer-Policy`,
+  );
+  expect(
+    response.headers.get("permissions-policy")?.includes("camera=()"),
+    `${page} is missing the restrictive Permissions-Policy`,
+  );
+  expect(
+    response.headers.get("cross-origin-opener-policy") === "same-origin",
+    `${page} is missing Cross-Origin-Opener-Policy`,
+  );
+  expect(
+    response.headers.get("x-frame-options") === "DENY",
+    `${page} is not protected against framing`,
+  );
   await response.arrayBuffer();
 }
 
 if (failures.length) {
-  console.error(JSON.stringify({ ok: false, base, failures }, null, 2));
+  console.error(
+    JSON.stringify(
+      {
+        ok: false,
+        base,
+        readinessHttpStatus: readyResponse.status,
+        release: ready.release,
+        productionReady: ready.productionReady,
+        operationalGates: ready.operationalGates,
+        failures,
+      },
+      null,
+      2,
+    ),
+  );
   process.exitCode = 1;
 } else {
   console.log(

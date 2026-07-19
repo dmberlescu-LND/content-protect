@@ -4,6 +4,14 @@ const base = (process.env.APP_URL || "https://content-protect.com").replace(
 );
 const failures = [];
 const sitemapLastModified = "2026-07-19";
+const indexedPublicPages = [
+  "/",
+  "/privacy.html",
+  "/terms.html",
+  "/safety.html",
+  "/cookies.html",
+  "/disputes.html",
+];
 const isLocalStaticPreview =
   /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(base);
 const expect = (condition, message) => {
@@ -17,6 +25,10 @@ const get = (path) =>
 const homeResponse = await get("/");
 const home = await homeResponse.text();
 expect(homeResponse.ok, `homepage returned HTTP ${homeResponse.status}`);
+expect(
+  homeResponse.headers.get("content-type")?.includes("text/html"),
+  "homepage content type is not HTML",
+);
 expect(
   home.includes('<link rel="canonical" href="https://content-protect.com/"'),
   "homepage canonical is missing",
@@ -66,6 +78,22 @@ for (const path of [
       !body.includes("/operator"),
       "operator console is exposed in sitemap",
     );
+    const sitemapUrls = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+      (match) => new URL(match[1]).pathname,
+    );
+    expect(
+      new Set(sitemapUrls).size === sitemapUrls.length,
+      "sitemap contains duplicate URLs",
+    );
+    for (const publicPage of indexedPublicPages)
+      expect(
+        sitemapUrls.includes(publicPage),
+        `${publicPage} is missing from sitemap`,
+      );
+    expect(
+      !sitemapUrls.includes("/cancellation-form.html"),
+      "noindex cancellation form is exposed in sitemap",
+    );
   }
   if (path.endsWith("security.txt"))
     expect(
@@ -102,6 +130,10 @@ for (const path of [
   const response = await get(path);
   const body = await response.text();
   expect(response.ok, `${path} returned HTTP ${response.status}`);
+  expect(
+    response.headers.get("content-type")?.includes("text/html"),
+    `${path} content type is not HTML`,
+  );
   expect(
     new RegExp(
       `<link\\s+rel=["']canonical["']\\s+href=["']https://content-protect\\.com${path.replace(".", "\\.")}["']`,
