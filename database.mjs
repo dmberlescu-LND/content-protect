@@ -321,6 +321,9 @@ export async function loadPostgresState() {
         declarations: row.declarations || {},
         recipientEmail: row.recipient_email,
         recipientSource: row.recipient_source,
+        legalBasis: row.legal_basis,
+        preparedNoticeHash: row.prepared_notice_hash,
+        preparedAt: iso(row.prepared_at),
         providerMessageId: row.provider_message_id,
         reviewedAt: iso(row.reviewed_at),
         deliveryAttempts: row.delivery_attempts || 0,
@@ -572,9 +575,9 @@ async function upsertBusinessData(client, state) {
     );
   for (const item of state.cases) {
     await client.query(
-      `INSERT INTO takedown_cases (id,user_id,match_id,jurisdiction,status,mode,target_url,target_host,notice_type,evidence_snapshot,evidence_hash,notice_draft,declarations,recipient_email,recipient_source,provider_message_id,reviewed_at,delivery_attempts,last_delivery_error,delivery_status,delivered_at,last_provider_event_at,legal_hold,approved_at,submitted_at,next_action_at,closed_at,created_at,updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
-       ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,mode=EXCLUDED.mode,target_url=EXCLUDED.target_url,target_host=EXCLUDED.target_host,notice_type=EXCLUDED.notice_type,evidence_snapshot=EXCLUDED.evidence_snapshot,evidence_hash=EXCLUDED.evidence_hash,notice_draft=EXCLUDED.notice_draft,declarations=EXCLUDED.declarations,recipient_email=EXCLUDED.recipient_email,recipient_source=EXCLUDED.recipient_source,provider_message_id=EXCLUDED.provider_message_id,reviewed_at=EXCLUDED.reviewed_at,delivery_attempts=EXCLUDED.delivery_attempts,last_delivery_error=EXCLUDED.last_delivery_error,delivery_status=EXCLUDED.delivery_status,delivered_at=EXCLUDED.delivered_at,last_provider_event_at=EXCLUDED.last_provider_event_at,legal_hold=EXCLUDED.legal_hold,approved_at=EXCLUDED.approved_at,submitted_at=EXCLUDED.submitted_at,next_action_at=EXCLUDED.next_action_at,closed_at=EXCLUDED.closed_at,updated_at=EXCLUDED.updated_at`,
+      `INSERT INTO takedown_cases (id,user_id,match_id,jurisdiction,status,mode,target_url,target_host,notice_type,evidence_snapshot,evidence_hash,notice_draft,declarations,recipient_email,recipient_source,legal_basis,prepared_notice_hash,prepared_at,provider_message_id,reviewed_at,delivery_attempts,last_delivery_error,delivery_status,delivered_at,last_provider_event_at,legal_hold,approved_at,submitted_at,next_action_at,closed_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
+       ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,mode=EXCLUDED.mode,target_url=EXCLUDED.target_url,target_host=EXCLUDED.target_host,notice_type=EXCLUDED.notice_type,evidence_snapshot=EXCLUDED.evidence_snapshot,evidence_hash=EXCLUDED.evidence_hash,notice_draft=EXCLUDED.notice_draft,declarations=EXCLUDED.declarations,recipient_email=EXCLUDED.recipient_email,recipient_source=EXCLUDED.recipient_source,legal_basis=EXCLUDED.legal_basis,prepared_notice_hash=EXCLUDED.prepared_notice_hash,prepared_at=EXCLUDED.prepared_at,provider_message_id=EXCLUDED.provider_message_id,reviewed_at=EXCLUDED.reviewed_at,delivery_attempts=EXCLUDED.delivery_attempts,last_delivery_error=EXCLUDED.last_delivery_error,delivery_status=EXCLUDED.delivery_status,delivered_at=EXCLUDED.delivered_at,last_provider_event_at=EXCLUDED.last_provider_event_at,legal_hold=EXCLUDED.legal_hold,approved_at=EXCLUDED.approved_at,submitted_at=EXCLUDED.submitted_at,next_action_at=EXCLUDED.next_action_at,closed_at=EXCLUDED.closed_at,updated_at=EXCLUDED.updated_at`,
       [
         item.id,
         item.userId,
@@ -591,6 +594,9 @@ async function upsertBusinessData(client, state) {
         JSON.stringify(item.declarations || {}),
         item.recipientEmail || null,
         item.recipientSource || null,
+        item.legalBasis || null,
+        item.preparedNoticeHash || null,
+        item.preparedAt || null,
         item.providerMessageId || null,
         item.reviewedAt || null,
         item.deliveryAttempts || 0,

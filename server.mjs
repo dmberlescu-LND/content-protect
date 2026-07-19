@@ -43,6 +43,11 @@ import {
   interpretYotiAgeResult,
   YOTI_SESSION_ID,
 } from "./yoti-age-policy.mjs";
+import {
+  exactNoticeApproved,
+  noticeText,
+  textDigest,
+} from "./takedown-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -508,9 +513,6 @@ function audit(d, u, action, details = {}) {
 function evidenceDigest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
-function textDigest(value) {
-  return createHash("sha256").update(String(value)).digest("hex");
-}
 function safeHttpsReference(value) {
   try {
     const url = new URL(String(value || "").trim());
@@ -573,23 +575,6 @@ function operatorAuthorised(req, d) {
     (item) =>
       item.tokenHash === sessionHash && new Date(item.expiresAt) > new Date(),
   );
-}
-function noticeText(caseRecord, creator) {
-  const displayName = creator.stageName || creator.name;
-  return `Copyright removal request
-
-Case reference: ${caseRecord.id}
-Claimant: ${displayName}
-Unauthorised material: ${caseRecord.targetUrl}
-Evidence integrity SHA-256: ${caseRecord.evidenceHash}
-
-The claimant has confirmed that they own or are authorised to represent the rights, have a good-faith belief that the identified use is unauthorised, and that the supplied information is accurate.
-
-Please remove or disable access to the identified material and preserve relevant records in accordance with applicable law and your platform policies.
-
-Please reply to Content Protect Legal quoting the case reference above.
-
-Content Protect is operated by White Eagles Digital Marketing LTD, company number 14978662, England and Wales.`;
 }
 async function deliverNotice(caseRecord, creator, recipientEmail) {
   const response = await fetch("https://api.resend.com/emails", {
@@ -1015,7 +1000,12 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 429, { error: "Too many operator requests." });
       return send(res, 200, {
         cases: d.cases
-          .filter((item) => item.status === "Approved — delivery pending")
+          .filter((item) =>
+            [
+              "Awaiting operator preparation",
+              "Approved — delivery pending",
+            ].includes(item.status),
+          )
           .map((item) => {
             const creator = d.users.find((user) => user.id === item.userId);
             const renderedNotice = creator ? noticeText(item, creator) : null;
@@ -1029,12 +1019,70 @@ const appServer = http.createServer(async (req, res) => {
               noticeHash: renderedNotice ? textDigest(renderedNotice) : null,
               templateVersion: item.noticeDraft?.version || null,
               approvedAt: item.approvedAt,
+              status: item.status,
+              recipientEmail: item.recipientEmail || null,
+              recipientSource: item.recipientSource || null,
+              jurisdiction: item.jurisdiction || null,
+              legalBasis: item.legalBasis || null,
               claimant: creator
                 ? { name: creator.name, stageName: creator.stageName || null }
                 : null,
             };
           }),
       });
+    }
+    if (
+      route.match(/^\/api\/operator\/cases\/[^/]+\/prepare$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (!allowed(req, `operator-prepare:${ip}`, 60, 3600000))
+        return send(res, 429, { error: "Too many operator requests." });
+      const caseId = route.split("/")[4],
+        b = await parse(req),
+        recipientEmail = String(b.recipientEmail || "")
+          .trim()
+          .toLowerCase(),
+        recipientSource = safeHttpsReference(b.recipientSource),
+        jurisdiction = String(b.jurisdiction || "").trim().slice(0, 160),
+        legalBasis = String(b.legalBasis || "").trim().slice(0, 240),
+        caseRecord = d.cases.find((item) => item.id === caseId);
+      if (!caseRecord) return send(res, 404, { error: "Case not found." });
+      if (caseRecord.status !== "Awaiting operator preparation")
+        return send(res, 409, { error: "Case is not awaiting preparation." });
+      if (
+        !EMAIL.test(recipientEmail) ||
+        !recipientSource ||
+        jurisdiction.length < 3 ||
+        legalBasis.length < 3 ||
+        b.confirmRecipientReviewed !== true ||
+        b.confirmJurisdictionReviewed !== true
+      )
+        return send(res, 400, {
+          error:
+            "Verified recipient, HTTPS source, jurisdiction and legal basis are required.",
+        });
+      const creator = d.users.find((user) => user.id === caseRecord.userId);
+      if (!creator)
+        return send(res, 409, { error: "Case claimant no longer exists." });
+      caseRecord.recipientEmail = recipientEmail;
+      caseRecord.recipientSource = recipientSource;
+      caseRecord.jurisdiction = jurisdiction;
+      caseRecord.legalBasis = legalBasis;
+      caseRecord.status = "Awaiting creator approval";
+      caseRecord.preparedAt = new Date().toISOString();
+      caseRecord.updatedAt = caseRecord.preparedAt;
+      const preparedHash = textDigest(noticeText(caseRecord, creator));
+      caseRecord.preparedNoticeHash = preparedHash;
+      caseRecord.timeline.push({
+        event: "Recipient and notice prepared for creator review",
+        details: { noticeHash: preparedHash, recipientSource },
+        at: caseRecord.preparedAt,
+      });
+      audit(d, creator, "case.prepared", { caseId, noticeHash: preparedHash });
+      await save(d);
+      return send(res, 200, { ok: true, noticeHash: preparedHash });
     }
     if (
       route.match(/^\/api\/operator\/cases\/[^/]+\/dispatch$/) &&
@@ -1048,18 +1096,13 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 429, { error: "Daily delivery limit reached." });
       const caseId = route.split("/")[4],
         b = await parse(req),
-        recipientEmail = String(b.recipientEmail || "")
-          .trim()
-          .toLowerCase(),
-        recipientSource = safeHttpsReference(b.recipientSource),
         caseRecord = d.cases.find((item) => item.id === caseId);
       if (!caseRecord) return send(res, 404, { error: "Case not found." });
       if (caseRecord.status !== "Approved — delivery pending")
         return send(res, 409, { error: "Case is not ready for delivery." });
       if (
-        !EMAIL.test(recipientEmail) ||
-        !recipientSource ||
-        b.confirmRecipientReviewed !== true ||
+        !EMAIL.test(caseRecord.recipientEmail || "") ||
+        !safeHttpsReference(caseRecord.recipientSource) ||
         b.confirmJurisdictionReviewed !== true ||
         b.confirmNoticeReviewed !== true
       )
@@ -1073,23 +1116,26 @@ const appServer = http.createServer(async (req, res) => {
       const renderedNotice = noticeText(caseRecord, creator),
         renderedNoticeHash = textDigest(renderedNotice);
       if (
-        b.noticeHash !== renderedNoticeHash ||
-        caseRecord.declarations?.approvedNoticeHash !== renderedNoticeHash
+        !exactNoticeApproved({
+          renderedNotice,
+          preparedNoticeHash: caseRecord.preparedNoticeHash,
+          creatorApprovedNoticeHash:
+            caseRecord.declarations?.approvedNoticeHash,
+          submittedNoticeHash: b.noticeHash,
+        })
       )
         return send(res, 409, {
           error:
             "The approved notice text has changed. Return it to the creator for approval.",
         });
       caseRecord.deliveryAttempts = (caseRecord.deliveryAttempts || 0) + 1;
-      caseRecord.recipientEmail = recipientEmail;
-      caseRecord.recipientSource = recipientSource;
       caseRecord.reviewedAt = new Date().toISOString();
       caseRecord.updatedAt = caseRecord.reviewedAt;
       try {
         caseRecord.providerMessageId = await deliverNotice(
           caseRecord,
           creator,
-          recipientEmail,
+          caseRecord.recipientEmail,
         );
       } catch (error) {
         caseRecord.lastDeliveryError = String(error.message).slice(0, 100);
@@ -1120,7 +1166,7 @@ const appServer = http.createServer(async (req, res) => {
         event: "Notice accepted by email provider",
         details: {
           provider: "resend",
-          recipientSource,
+          recipientSource: caseRecord.recipientSource,
           noticeHash: renderedNoticeHash,
           nextReviewAt: caseRecord.nextActionAt,
         },
@@ -1129,7 +1175,7 @@ const appServer = http.createServer(async (req, res) => {
       audit(d, creator, "case.notice_sent", {
         caseId,
         provider: "resend",
-        recipientHost: recipientEmail.split("@")[1],
+        recipientHost: caseRecord.recipientEmail.split("@")[1],
       });
       await save(d);
       return send(res, 200, {
@@ -1521,11 +1567,20 @@ const appServer = http.createServer(async (req, res) => {
             status: cases.some((c) => c.matchId === m.id)
               ? "Takedown sent"
               : m.status,
-          }));
+          })),
+        creatorCases = cases.map((item) => {
+          if (item.status !== "Awaiting creator approval") return item;
+          const renderedNotice = noticeText(item, u);
+          return {
+            ...item,
+            noticeText: renderedNotice,
+            noticeHash: textDigest(renderedNotice),
+          };
+        });
       return send(res, 200, {
         matches,
         assets,
-        cases,
+        cases: creatorCases,
         scans,
         subscription:
           subscription || d.subscriptions.find((x) => x.userId === u.id),
@@ -2256,7 +2311,7 @@ const appServer = http.createServer(async (req, res) => {
         targetHost: m.site,
         jurisdiction: "To be determined from recipient",
         noticeType: "copyright",
-        status: "Awaiting declarations",
+        status: "Awaiting operator preparation",
         mode: "sandbox",
         evidenceSnapshot,
         evidenceHash: evidenceDigest(evidenceSnapshot),
@@ -2293,11 +2348,19 @@ const appServer = http.createServer(async (req, res) => {
       const id = route.split("/")[3],
         c = d.cases.find((x) => x.id === id && x.userId === u.id);
       if (!c) return send(res, 404, { error: "Case not found." });
-      if (c.status !== "Awaiting declarations")
+      if (c.status !== "Awaiting creator approval")
         return send(res, 409, {
           error: "This case has already been reviewed.",
         });
-      const b = await parse(req);
+      const b = await parse(req),
+        renderedNoticeHash = textDigest(noticeText(c, u));
+      if (
+        b.noticeHash !== renderedNoticeHash ||
+        c.preparedNoticeHash !== renderedNoticeHash
+      )
+        return send(res, 409, {
+          error: "The prepared notice changed and must be reviewed again.",
+        });
       if (
         b.rightsHolder !== true ||
         b.goodFaith !== true ||
@@ -2318,7 +2381,7 @@ const appServer = http.createServer(async (req, res) => {
         authoriseDelivery: true,
         acceptedAt: c.approvedAt,
         policyVersion: TAKEDOWN_TEMPLATE_VERSION,
-        approvedNoticeHash: textDigest(noticeText(c, u)),
+        approvedNoticeHash: renderedNoticeHash,
       };
       c.timeline.push({
         event: "Creator declarations accepted",
@@ -2337,7 +2400,7 @@ const appServer = http.createServer(async (req, res) => {
       return send(res, 200, {
         case: c,
         notice:
-          "Approval and declarations recorded. No external notice was sent because the delivery service is not configured yet.",
+          "Approval of the exact notice was recorded. It is queued for final operator review; nothing has been sent yet.",
       });
     }
     send(res, 404, { error: "Not found" });

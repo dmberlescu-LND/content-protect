@@ -37,7 +37,7 @@ expect(
 );
 expect(ready.database === "postgresql", "PostgreSQL is not active");
 expect(
-  ready.checks?.database?.latestMigration === "012_retention_legal_holds.sql",
+    ready.checks?.database?.latestMigration === "013_takedown_exact_approval.sql",
   "latest required database migration is not recorded",
 );
 if (requireProductionReady) {

@@ -872,7 +872,7 @@ function Dashboard({ onLogout, user }) {
     await refresh();
     setTab("Takedowns");
     alert(
-      "Evidence preserved. The case is waiting for creator approval before any notice is sent.",
+      "Evidence preserved. A trained operator must verify the recipient and jurisdiction before the exact notice returns to you for approval.",
     );
   };
   const runScan = async () => {
@@ -942,9 +942,14 @@ function Dashboard({ onLogout, user }) {
     await saveDownload(response, asset.name || "reference-file");
   };
   const approveCase = async (caseId) => {
+    const currentCase = data.cases.find((item) => item.id === caseId);
+    if (!currentCase?.noticeText || !currentCase?.noticeHash) {
+      alert("The exact notice has not been prepared for review yet.");
+      return;
+    }
     if (
       !confirm(
-        "By continuing, you confirm that you own or represent the rights, believe the use is unauthorised, confirm the information is accurate, and authorise Content Protect to deliver the notice once delivery is enabled. Continue?",
+        `Review the exact notice below:\n\n${currentCase.noticeText}\n\nBy continuing, you confirm that you own or represent the rights, believe the use is unauthorised, confirm the information is accurate, and authorise delivery of this exact notice. Continue?`,
       )
     )
       return;
@@ -956,6 +961,7 @@ function Dashboard({ onLogout, user }) {
         goodFaith: true,
         accurate: true,
         authoriseDelivery: true,
+        noticeHash: currentCase.noticeHash,
       }),
     });
     const d = await r.json();
@@ -1283,7 +1289,7 @@ function Dashboard({ onLogout, user }) {
                     <div>
                       <span className="status monitoring">{c.status}</span>
                     </div>
-                    {c.status === "Awaiting declarations" && (
+                    {c.status === "Awaiting creator approval" && (
                       <button
                         className="btn btn-primary"
                         onClick={() => approveCase(c.id)}
@@ -2030,12 +2036,39 @@ function OperatorConsole() {
     setToken("");
     await loadCases();
   };
-  const dispatch = async (caseId) => {
+  const prepare = async (caseId) => {
     const form = forms[caseId] || {};
-    if (!form.recipientEmail || !form.recipientSource) {
-      setError("Recipient email and its verified HTTPS source are required.");
+    if (
+      !form.recipientEmail ||
+      !form.recipientSource ||
+      !form.jurisdiction ||
+      !form.legalBasis ||
+      !form.jurisdictionReviewed
+    ) {
+      setError(
+        "Verify the recipient, HTTPS source, jurisdiction and legal basis before preparation.",
+      );
       return;
     }
+    const response = await fetch(`/api/operator/cases/${caseId}/prepare`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        confirmRecipientReviewed: true,
+        confirmJurisdictionReviewed: true,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "Notice preparation failed.");
+      return;
+    }
+    setError("");
+    await loadCases();
+  };
+  const dispatch = async (caseId) => {
+    const form = forms[caseId] || {};
     if (!form.noticeReviewed || !form.jurisdictionReviewed) {
       setError("Review the exact notice and recipient jurisdiction before sending.");
       return;
@@ -2050,8 +2083,6 @@ function OperatorConsole() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        ...form,
-        confirmRecipientReviewed: true,
         confirmNoticeReviewed: form.noticeReviewed === true,
         confirmJurisdictionReviewed: form.jurisdictionReviewed === true,
         noticeHash: cases.find((item) => item.id === caseId)?.noticeHash,
@@ -2107,7 +2138,7 @@ function OperatorConsole() {
       </header>
       <section>
         <div className="operator-heading">
-          <div><p>HUMAN REVIEW REQUIRED</p><h1>Approved notice queue</h1></div>
+          <div><p>HUMAN REVIEW REQUIRED</p><h1>Notice preparation and delivery queue</h1></div>
           <strong>{cases.length} pending</strong>
         </div>
         {error && <div className="operator-error">{error}</div>}
@@ -2115,26 +2146,28 @@ function OperatorConsole() {
           <article className="operator-case" key={item.id}>
             <div className="operator-case-title">
               <div><small>CASE {item.id}</small><h2>{item.targetHost}</h2></div>
-              <span>Approved {new Date(item.approvedAt).toLocaleString("en-GB")}</span>
+              <span>{item.status}</span>
             </div>
             <dl>
               <div><dt>Claimant</dt><dd>{item.claimant?.stageName || item.claimant?.name}</dd></div>
               <div><dt>Target</dt><dd><a href={item.targetUrl} target="_blank" rel="noreferrer">Review URL</a></dd></div>
               <div><dt>Evidence hash</dt><dd className="operator-hash">{item.evidenceHash}</dd></div>
             </dl>
-            <div className="operator-notice">
+            {item.noticeText && <div className="operator-notice">
               <div><b>Exact notice to be sent</b><span>Template {item.templateVersion} · SHA-256 {item.noticeHash}</span></div>
               <pre>{item.noticeText}</pre>
-            </div>
-            <div className="operator-fields">
+            </div>}
+            {item.status === "Awaiting operator preparation" && <div className="operator-fields">
               <label>Verified recipient email<input type="email" value={forms[item.id]?.recipientEmail || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientEmail:event.target.value}})} /></label>
               <label>HTTPS source proving recipient<input type="url" placeholder="https://…" value={forms[item.id]?.recipientSource || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],recipientSource:event.target.value}})} /></label>
-            </div>
+              <label>Jurisdiction/channel<input type="text" value={forms[item.id]?.jurisdiction || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],jurisdiction:event.target.value}})} /></label>
+              <label>Legal basis/platform policy<input type="text" value={forms[item.id]?.legalBasis || ""} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],legalBasis:event.target.value}})} /></label>
+            </div>}
             <div className="operator-checks">
-              <label><input type="checkbox" checked={forms[item.id]?.noticeReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],noticeReviewed:event.target.checked}})} />I reviewed the exact notice text and evidence hash.</label>
+              {item.status === "Approved — delivery pending" && <label><input type="checkbox" checked={forms[item.id]?.noticeReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],noticeReviewed:event.target.checked}})} />I reviewed the exact creator-approved notice and evidence hash.</label>}
               <label><input type="checkbox" checked={forms[item.id]?.jurisdictionReviewed || false} onChange={(event) => setForms({...forms,[item.id]:{...forms[item.id],jurisdictionReviewed:event.target.checked}})} />I verified the recipient and appropriate jurisdiction/channel.</label>
             </div>
-            <button className="btn btn-primary" onClick={() => dispatch(item.id)}>Review confirmation & send</button>
+            {item.status === "Awaiting operator preparation" ? <button className="btn btn-primary" onClick={() => prepare(item.id)}>Prepare for creator approval</button> : <button className="btn btn-primary" onClick={() => dispatch(item.id)}>Review confirmation & send</button>}
           </article>
         )) : <div className="operator-empty"><CircleCheck/><h2>Queue clear</h2><p>No creator-approved notices are waiting for review.</p></div>}
       </section>

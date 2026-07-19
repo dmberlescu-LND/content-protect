@@ -18,6 +18,7 @@
     "test:operations": "node scripts/test-operations-readiness.mjs",
     "test:security-policy": "node scripts/test-security-policy.mjs",
     "test:yoti-policy": "node scripts/test-yoti-age-policy.mjs",
+    "test:takedown-policy": "node scripts/test-takedown-policy.mjs",
     "test:storage": "node scripts/test-storage.mjs",
     "test:storage-config": "node scripts/test-storage-config.mjs",
     "storage:migrate": "node scripts/migrate-storage.mjs",

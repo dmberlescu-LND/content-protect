@@ -4,17 +4,19 @@ Status: operational draft; no real notice may be sent until counsel approves jur
 
 ## Case opening
 
-1. Confirm the account is adult-, identity-, email- and authority-verified.
-2. Preserve source URL, host, UTC timestamp, page capture hash, matched asset reference and match method/version.
+1. Confirm the account is adult-, email- and authority-verified; do not claim identity verification unless a separately approved identity flow is active.
+2. Preserve source URL, host, UTC timestamp, matched asset reference, provider evidence and evidence-object hash. A page-capture hash must not be claimed until page capture is implemented.
 3. Record why the content appears unauthorised and identify ambiguity, licence or fair-dealing risks.
 4. Redact unrelated personal data and intimate thumbnails from routine staff views.
 
 ## Human review and approval
 
-1. A trained reviewer confirms evidence quality and correct recipient/jurisdiction.
-2. The creator sees the evidence, proposed recipient, legal basis and exact notice text.
-3. The creator explicitly approves each notice; approval is timestamped and immutable.
-4. High-risk, disputed or unclear ownership cases require specialist escalation.
+1. A new case starts in `Awaiting operator preparation`; nothing can be approved or sent yet.
+2. A trained reviewer confirms evidence quality, the recipient from an HTTPS source, jurisdiction/channel and legal basis.
+3. Those fields are inserted into the exact rendered notice and its SHA-256 hash is stored before creator review.
+4. The creator sees the evidence, recipient, verification source, legal basis, jurisdiction and exact notice text, then explicitly approves that hash. Any later mutation invalidates approval.
+5. A separate final operator review can dispatch only the stored recipient and the exact creator-approved hash.
+6. High-risk, disputed or unclear ownership cases require specialist escalation. Automated bulk dispatch is prohibited.
 
 ## Delivery and tracking
 
