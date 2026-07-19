@@ -118,7 +118,12 @@ requireText("Render", render, "YOTI_SDK_ID");
 requireText("Render", render, "YOTI_PRIVATE_KEY");
 rejectText("Render", render, "YOTI_API_KEY");
 requireText("Render", render, "content-protect-retention");
-requireText("Render", render, "node scripts/retention.mjs --execute");
+requireText("Render", render, "dockerCommand: node scripts/retention.mjs");
+rejectText(
+  "Render retention preview",
+  render,
+  "dockerCommand: node scripts/retention.mjs --execute",
+);
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 rejectText("Render", render, "MONITORING_CONFIGURED");
 requireText("server", server, 'from "./yoti-digital-identity.mjs"');

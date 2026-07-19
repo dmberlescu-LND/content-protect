@@ -83,13 +83,13 @@ services:
     plan: starter
     region: frankfurt
     dockerfilePath: ./Dockerfile
-    dockerCommand: node scripts/retention.mjs --execute
+    dockerCommand: node scripts/retention.mjs
     schedule: "17 3 * * *"
     envVars:
       - key: NODE_ENV
         value: production
       - key: RETENTION_EXECUTION_ENABLED
-        value: "true"
+        value: "false"
       - key: DATABASE_URL
         fromService:
           type: web

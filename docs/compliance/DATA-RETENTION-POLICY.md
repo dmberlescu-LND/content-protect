@@ -28,7 +28,7 @@ Content Protect keeps personal data only for a documented purpose and period. De
 
 ## Controls
 
-- A fail-closed retention command previews eligible PostgreSQL records with `pnpm retention:preview`. Execution additionally requires `RETENTION_EXECUTION_ENABLED=true` and `pnpm retention:execute`. The Render Blueprint defines a daily 03:17 UTC job, but it must not be described as operational until the Blueprint resource has been approved, created and has produced a successful evidence row. Readiness expires that evidence after 36 hours.
+- A fail-closed retention command previews eligible PostgreSQL records with `pnpm retention:preview`. Execution additionally requires `RETENTION_EXECUTION_ENABLED=true` and `pnpm retention:execute`. The Render Blueprint creates the daily 03:17 UTC job in preview-only mode first. Activation requires review of a production preview and a separately approved configuration change. It must not be described as operational until an executing job has produced a successful evidence row; readiness expires that evidence after 36 hours.
 - Object deletion and database deletion must both succeed; failures create an operational alert.
 - Account deletion is blocked only by a documented legal hold or mandatory financial retention.
 - Restore procedures must reapply all deletion tombstones created after the backup timestamp.

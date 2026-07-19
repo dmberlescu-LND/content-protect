@@ -39,7 +39,7 @@ Keep application/security logs for 12 months, with access restricted to authoris
 3. Review failed Stripe, Resend, scanner and age-provider webhooks.
 4. Review the operator case queue and overdue actions without opening private media unnecessarily.
 5. Run `pnpm retention:preview` and investigate unexpected volumes. The destructive command remains disabled unless the approved scheduler supplies `RETENTION_EXECUTION_ENABLED=true`; never enable it before migrations and a reviewed preview.
-6. The Blueprint defines `content-protect-retention` at 03:17 UTC daily. It receives `DATABASE_URL` from the web service through Render's service reference and records a successful database evidence row in the same transaction as deletion. Readiness accepts only a successful result less than 36 hours old. A failed or absent job therefore closes the gate automatically.
+6. The Blueprint initially defines `content-protect-retention` at 03:17 UTC daily in preview-only mode. It receives `DATABASE_URL` from the web service through Render's service reference. Review a real production preview before changing its command to `node scripts/retention.mjs --execute` and `RETENTION_EXECUTION_ENABLED=true` in a separately approved release. A successful executing job records database evidence in the same transaction as deletion. Readiness accepts only a successful result less than 36 hours old, so preview runs never open the gate and a failed or absent executing job closes it automatically.
 
 ## External monitoring evidence
 
