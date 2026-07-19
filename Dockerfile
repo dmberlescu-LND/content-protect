@@ -10,11 +10,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 RUN addgroup -S contentprotect && adduser -S contentprotect -G contentprotect
 COPY --from=build --chown=contentprotect:contentprotect /app/dist ./dist
-COPY --from=build --chown=contentprotect:contentprotect /app/server.mjs ./server.mjs
-COPY --from=build --chown=contentprotect:contentprotect /app/database.mjs ./database.mjs
-COPY --from=build --chown=contentprotect:contentprotect /app/scanner.mjs ./scanner.mjs
-COPY --from=build --chown=contentprotect:contentprotect /app/storage.mjs ./storage.mjs
-COPY --from=build --chown=contentprotect:contentprotect /app/media-validation.mjs ./media-validation.mjs
+COPY --from=build --chown=contentprotect:contentprotect /app/*.mjs ./
 COPY --from=build --chown=contentprotect:contentprotect /app/scripts ./scripts
 COPY --from=build --chown=contentprotect:contentprotect /app/db ./db
 COPY --from=build --chown=contentprotect:contentprotect /app/package.json ./package.json
@@ -22,4 +18,4 @@ COPY --from=build --chown=contentprotect:contentprotect /app/node_modules ./node
 RUN mkdir -p /app/.traceguard-data && chown -R contentprotect:contentprotect /app/.traceguard-data
 USER contentprotect
 EXPOSE 8787
-CMD ["sh", "-c", "node scripts/migrate.mjs && node server.mjs"]
+CMD ["node", "server.mjs"]

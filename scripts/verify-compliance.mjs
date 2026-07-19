@@ -25,6 +25,7 @@ const [
   terms,
   server,
   render,
+  dockerfile,
   runbook,
   checklist,
   processors,
@@ -36,6 +37,7 @@ const [
   read("public/terms.html"),
   read("server.mjs"),
   read("render.yaml"),
+  read("Dockerfile"),
   read("docs/OPERATIONS-RUNBOOK.md"),
   read("docs/UK-LAUNCH-CHECKLIST.md"),
   read("docs/compliance/PROCESSOR-REGISTER.md"),
@@ -110,6 +112,7 @@ requireText(
 );
 
 requireText("Render", render, "PAYMENTS_MODE");
+requireText("Render", render, "preDeployCommand: node scripts/migrate.mjs");
 requireText("Render", render, "value: test");
 requireText("Render", render, "TAKEDOWNS_MODE");
 requireText("Render", render, "value: sandbox");
@@ -122,6 +125,12 @@ if (legalVersionBlock !== "sync: false") {
     "Render: legal approval version must remain an operator-supplied secret",
   );
 }
+requireText(
+  "Docker runtime",
+  dockerfile,
+  "COPY --from=build --chown=contentprotect:contentprotect /app/*.mjs ./",
+);
+rejectText("Docker runtime", dockerfile, 'CMD ["sh", "-c"');
 
 requireText("operations readiness", readiness, REQUIRED_MIGRATION);
 try {

@@ -5,7 +5,7 @@ services:
     plan: starter
     region: frankfurt
     dockerfilePath: ./Dockerfile
-    preDeployCommand: pnpm run db:migrate
+    preDeployCommand: node scripts/migrate.mjs
     healthCheckPath: /api/health/ready
     autoDeployTrigger: commit
     envVars:
