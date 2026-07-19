@@ -1638,6 +1638,7 @@ const appServer = http.createServer(async (req, res) => {
         d.scans.unshift(scan);
         try {
           const discovered = [];
+          let sourcesChecked = 0;
           for (const asset of assets) {
             const encrypted = await getEncryptedObject(
                 asset.objectKey || `${asset.id}.vault`,
@@ -1648,6 +1649,7 @@ const appServer = http.createServer(async (req, res) => {
                 allowedHosts: ownedHosts,
               });
             discovered.push(...result.matches);
+            sourcesChecked += Number(result.providerStats?.total_backlinks) || 0;
           }
           for (const found of discovered) {
             const existing = d.matches.find(
@@ -1680,6 +1682,7 @@ const appServer = http.createServer(async (req, res) => {
           }
           scan.status = "Completed";
           scan.matchesFound = discovered.length;
+          scan.sourcesChecked = sourcesChecked;
           scan.completedAt = new Date().toISOString();
           audit(d, u, "scan.completed", {
             scanId: scan.id,

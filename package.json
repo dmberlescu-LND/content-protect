@@ -13,6 +13,7 @@
     "test:webhook": "node scripts/test-resend-webhook.mjs",
     "test:stripe-webhook": "node scripts/test-stripe-webhook.mjs",
     "test:media": "node scripts/test-media-validation.mjs",
+    "test:scanner": "node scripts/test-scanner.mjs",
     "test:storage": "node scripts/test-storage.mjs",
     "test:storage-config": "node scripts/test-storage-config.mjs",
     "storage:migrate": "node scripts/migrate-storage.mjs",

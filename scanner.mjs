@@ -4,7 +4,9 @@ const TINEYE_ENDPOINT =
   process.env.TINEYE_API_URL || "https://api.tineye.com/rest/search/";
 
 export function scannerMode() {
-  return process.env.TINEYE_API_KEY ? "tineye-commercial" : "unconfigured";
+  return process.env.TINEYE_API_KEY?.trim()
+    ? "tineye-commercial"
+    : "unconfigured";
 }
 
 export class ScanProviderError extends Error {
@@ -48,18 +50,52 @@ export async function prepareImageForProvider(image) {
 function safeWebUrl(value) {
   try {
     const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) ? url : null;
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password
+    )
+      return null;
+    url.hash = "";
+    return url;
   } catch {
     return null;
   }
 }
 
-export async function searchImage(image, { assetId, allowedHosts = [] }) {
-  if (!process.env.TINEYE_API_KEY)
+function normalizedHost(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/\.$/, "");
+}
+
+function hostIsOwned(host, ownedHosts) {
+  const candidate = normalizedHost(host);
+  return ownedHosts.some(
+    (owned) => candidate === owned || candidate.endsWith(`.${owned}`),
+  );
+}
+
+export async function searchImage(
+  image,
+  {
+    assetId,
+    allowedHosts = [],
+    fetchImpl = fetch,
+    apiKey = process.env.TINEYE_API_KEY,
+    endpoint = TINEYE_ENDPOINT,
+  },
+) {
+  if (!apiKey?.trim())
     throw new ScanProviderError(
       "Commercial image scanning is awaiting provider activation.",
       503,
     );
+  const providerUrl = safeWebUrl(endpoint);
+  if (!providerUrl || providerUrl.protocol !== "https:")
+    throw new ScanProviderError("The scan provider endpoint is invalid.", 500);
   const prepared = await prepareImageForProvider(image),
     form = new FormData();
   form.append(
@@ -71,15 +107,25 @@ export async function searchImage(image, { assetId, allowedHosts = [] }) {
   form.append("limit", "100");
   form.append("sort", "score");
   form.append("order", "desc");
-  const response = await fetch(TINEYE_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "x-api-key": process.env.TINEYE_API_KEY,
-      "user-agent": "Content-Protect/1.0",
-    },
-    body: form,
-    signal: AbortSignal.timeout(70_000),
-  });
+  let response;
+  try {
+    response = await fetchImpl(providerUrl, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey.trim(),
+        "user-agent": "Content-Protect/1.0",
+      },
+      body: form,
+      signal: AbortSignal.timeout(70_000),
+    });
+  } catch (error) {
+    throw new ScanProviderError(
+      error?.name === "TimeoutError"
+        ? "The scan provider timed out. Try again shortly."
+        : "The scan provider is temporarily unreachable.",
+      503,
+    );
+  }
   let payload;
   try {
     payload = await response.json();
@@ -100,16 +146,18 @@ export async function searchImage(image, { assetId, allowedHosts = [] }) {
       status >= 400 && status < 600 ? status : 502,
     );
   }
-  const excluded = new Set([
+  const excluded = [
     "content-protect.com",
     "www.content-protect.com",
     ...allowedHosts,
-  ]);
+  ]
+    .map(normalizedHost)
+    .filter(Boolean);
   const found = new Map();
   for (const match of payload.results?.matches || []) {
     for (const backlink of match.backlinks || []) {
       const page = safeWebUrl(backlink.backlink);
-      if (!page || excluded.has(page.hostname.toLowerCase())) continue;
+      if (!page || hostIsOwned(page.hostname, excluded)) continue;
       const key = page.href;
       const candidate = {
         assetId,
@@ -123,6 +171,12 @@ export async function searchImage(image, { assetId, allowedHosts = [] }) {
           crawlDate: backlink.crawl_date || null,
           providerDomain: match.domain || null,
           queryHash: match.query_hash || null,
+          queryMatchPercent: Number.isFinite(Number(match.query_match_percent))
+            ? Math.max(0, Math.min(100, Number(match.query_match_percent)))
+            : null,
+          tags: Array.isArray(match.tags)
+            ? match.tags.filter((tag) => typeof tag === "string").slice(0, 10)
+            : [],
         },
       };
       if (!found.has(key) || found.get(key).confidence < candidate.confidence)
