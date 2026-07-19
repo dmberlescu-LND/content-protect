@@ -34,6 +34,14 @@ assert.equal(
 assert.equal(
   unsafeRequestOriginAllowed({
     ...base,
+    route: "/api/operations/monitor-heartbeat",
+    origin: undefined,
+  }),
+  true,
+);
+assert.equal(
+  unsafeRequestOriginAllowed({
+    ...base,
     route: "/api/takedowns/webhook",
     origin: undefined,
   }),

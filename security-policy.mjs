@@ -1,7 +1,8 @@
 const UNSAFE_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
-const SIGNED_WEBHOOK_ROUTES = new Set([
+const AUTHENTICATED_MACHINE_ROUTES = new Set([
   "/api/billing/webhook",
   "/api/takedowns/webhook",
+  "/api/operations/monitor-heartbeat",
 ]);
 
 export function unsafeRequestOriginAllowed({
@@ -12,7 +13,7 @@ export function unsafeRequestOriginAllowed({
   production,
 }) {
   if (!UNSAFE_METHODS.has(method)) return true;
-  if (SIGNED_WEBHOOK_ROUTES.has(route)) return true;
+  if (AUTHENTICATED_MACHINE_ROUTES.has(route)) return true;
   if (origin === appOrigin) return true;
   if (
     !production &&

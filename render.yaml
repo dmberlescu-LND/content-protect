@@ -54,8 +54,8 @@ services:
         value: https://api.tineye.com/rest/search/
       - key: RETENTION_EXECUTION_ENABLED
         value: "false"
-      - key: MONITORING_CONFIGURED
-        value: "false"
+      - key: MONITORING_HEARTBEAT_TOKEN
+        sync: false
       - key: BACKUP_EVIDENCE_KEY
         generateValue: true
       - key: BACKUP_RESTORE_VERIFIED_AT
@@ -76,3 +76,22 @@ services:
       name: content-protect-staging-data
       mountPath: /app/.traceguard-data
       sizeGB: 1
+
+  - type: cron
+    name: content-protect-retention
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node scripts/retention.mjs --execute
+    schedule: "17 3 * * *"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RETENTION_EXECUTION_ENABLED
+        value: "true"
+      - key: DATABASE_URL
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: DATABASE_URL

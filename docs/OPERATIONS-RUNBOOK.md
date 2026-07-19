@@ -10,7 +10,7 @@ Status: operational baseline. External alert destinations and a verified databas
 - Alert when readiness fails twice consecutively, the 5xx rate exceeds 2% for five minutes, or p95 response time exceeds two seconds for ten minutes.
 - SEV-1 acknowledgement target: 15 minutes. SEV-2: 60 minutes. SEV-3: next business day.
 
-The readiness endpoint checks PostgreSQL, the latest required migration, private storage and external key configuration without writing customer data. It returns HTTP 503 and `status: degraded` when any of those infrastructure checks fails; local JSON or local disk can never pass the production readiness probe. `productionReady` is deliberately false until scanning, age verification, operator-reviewed delivery, Stripe, approved retention automation, external monitoring and recent restore evidence are also configured.
+The readiness endpoint checks PostgreSQL, the latest required migration, private storage and external key configuration without writing customer data. It returns HTTP 503 and `status: degraded` when any of those infrastructure checks fails; local JSON or local disk can never pass the production readiness probe. `productionReady` is deliberately false until scanning, age verification, operator-reviewed delivery, Stripe, successful recent retention evidence, successful recent external-monitor evidence and recent restore evidence are present. Manual boolean switches do not satisfy these operational gates.
 
 Yoti age assurance uses the official signed Digital Identity SDK. Configure both `YOTI_SDK_ID` and the PEM private key in `YOTI_PRIVATE_KEY`; an API key is not a substitute. The policy requests only the derived `age_over:18` attribute and rejects self-asserted evidence. Missing or invalid credentials disable the age-check flow without making the application unavailable. Keep the production readiness gate closed until Yoti approves the organisation/application and a real end-to-end receipt test passes.
 
@@ -39,7 +39,11 @@ Keep application/security logs for 12 months, with access restricted to authoris
 3. Review failed Stripe, Resend, scanner and age-provider webhooks.
 4. Review the operator case queue and overdue actions without opening private media unnecessarily.
 5. Run `pnpm retention:preview` and investigate unexpected volumes. The destructive command remains disabled unless the approved scheduler supplies `RETENTION_EXECUTION_ENABLED=true`; never enable it before migrations and a reviewed preview.
-6. Confirm no provider credentials or customer data appeared in logs.
+6. The Blueprint defines `content-protect-retention` at 03:17 UTC daily. It receives `DATABASE_URL` from the web service through Render's service reference and records a successful database evidence row in the same transaction as deletion. Readiness accepts only a successful result less than 36 hours old. A failed or absent job therefore closes the gate automatically.
+
+## External monitoring evidence
+
+The GitHub production monitor runs public production and SEO checks every five minutes. After both checks succeed, it calls the machine-only heartbeat endpoint with `MONITORING_HEARTBEAT_TOKEN`; the same random value must be stored as a Render environment secret and a GitHub Actions repository secret. The endpoint applies constant-time credential comparison, rate limiting and server-side timestamps. Readiness accepts only successful evidence less than 15 minutes old. Never place the token in source code or workflow logs. 6. Confirm no provider credentials or customer data appeared in logs.
 
 Stripe access is reconciled from the current Subscription object for checkout, subscription and invoice events; an invoice event alone must never grant or revoke access from its historical snapshot. The webhook destination must subscribe to checkout completion, subscription created/updated/deleted/paused/resumed, invoice paid, payment failed and payment action required. Checkout creation uses a 30-minute per-user/plan idempotency window to prevent duplicate subscriptions during retries.
 

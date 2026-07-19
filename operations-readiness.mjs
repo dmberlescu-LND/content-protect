@@ -1,10 +1,20 @@
-export const REQUIRED_MIGRATION = "014_distributed_rate_limits.sql";
+export const REQUIRED_MIGRATION = "015_operational_evidence.sql";
 
 const verifiedRestore = (value) => {
   if (!value) return false;
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp) || timestamp > Date.now()) return false;
   return Date.now() - timestamp <= 100 * 24 * 60 * 60 * 1000;
+};
+
+const freshEvidence = (value, maxAgeMs) => {
+  const timestamp = Date.parse(value?.occurredAt || "");
+  return Boolean(
+    value?.status === "succeeded" &&
+    Number.isFinite(timestamp) &&
+    timestamp <= Date.now() + 5 * 60 * 1000 &&
+    Date.now() - timestamp <= maxAgeMs,
+  );
 };
 
 export function operationsReadiness({
@@ -15,8 +25,8 @@ export function operationsReadiness({
   takedownDeliveryConfigured,
   stripeConfigured,
   yotiConfigured,
-  retentionAutomationConfigured,
-  monitoringConfigured,
+  retentionEvidence,
+  monitoringEvidence,
   backupRestoreVerifiedAt,
 }) {
   const infrastructureReady = Boolean(
@@ -32,8 +42,8 @@ export function operationsReadiness({
     takedownDelivery: Boolean(takedownDeliveryConfigured),
     billing: Boolean(stripeConfigured),
     ageVerification: Boolean(yotiConfigured),
-    retentionAutomation: Boolean(retentionAutomationConfigured),
-    monitoring: Boolean(monitoringConfigured),
+    retentionAutomation: freshEvidence(retentionEvidence, 36 * 60 * 60 * 1000),
+    monitoring: freshEvidence(monitoringEvidence, 15 * 60 * 1000),
     backupRestore: verifiedRestore(backupRestoreVerifiedAt),
   };
   return {

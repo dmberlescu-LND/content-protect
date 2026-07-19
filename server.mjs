@@ -27,7 +27,9 @@ import {
   closeDatabase,
   consumeRateLimit,
   databaseProbe,
+  latestOperationalEvidence,
   loadPostgresState,
+  recordOperationalEvidence,
   savePostgresState,
 } from "./database.mjs";
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
@@ -569,6 +571,14 @@ function operatorTokenValid(value) {
     b = createHash("sha256").update(expected).digest();
   return timingSafeEqual(a, b);
 }
+function monitoringTokenValid(value) {
+  const supplied = String(value || ""),
+    expected = process.env.MONITORING_HEARTBEAT_TOKEN || "";
+  if (supplied.length < 32 || expected.length < 32) return false;
+  const a = createHash("sha256").update(supplied).digest(),
+    b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
 function operatorAuthorised(req, d) {
   const supplied = String(req.headers.authorization || "").replace(
     /^Bearer\s+/i,
@@ -854,11 +864,50 @@ const appServer = http.createServer(async (req, res) => {
         status: "alive",
         uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
       });
+    if (
+      route === "/api/operations/monitor-heartbeat" &&
+      req.method === "POST"
+    ) {
+      if (!process.env.MONITORING_HEARTBEAT_TOKEN)
+        return send(res, 503, {
+          error: "Monitoring evidence is not configured.",
+        });
+      const supplied = String(req.headers.authorization || "").replace(
+        /^Bearer\s+/i,
+        "",
+      );
+      if (!monitoringTokenValid(supplied))
+        return send(res, 401, { error: "Invalid monitoring credential." });
+      if (!(await allowed(req, `monitor-heartbeat:${ip}`, 15, 3600000)).allowed)
+        return send(res, 429, { error: "Too many monitoring heartbeats." });
+      const body = await parse(req),
+        release = String(body.release || "");
+      if (
+        !/^[a-f0-9]{7,40}$/i.test(release) ||
+        body.production !== true ||
+        body.seo !== true
+      )
+        return send(res, 400, {
+          error: "Successful production and SEO evidence is required.",
+        });
+      const evidence = await recordOperationalEvidence({
+        type: "monitoring",
+        source: "github-actions",
+        release,
+        details: {
+          production: body.production === true,
+          seo: body.seo === true,
+        },
+      });
+      return send(res, 202, { recorded: true, evidence });
+    }
     if (route === "/api/health/ready" || route === "/api/health") {
-      const [databaseResult, storageResult] = await Promise.allSettled([
-        databaseProbe(),
-        storageProbe(VAULT),
-      ]);
+      const [databaseResult, storageResult, evidenceResult] =
+        await Promise.allSettled([
+          databaseProbe(),
+          storageProbe(VAULT),
+          latestOperationalEvidence(),
+        ]);
       const database =
           databaseResult.status === "fulfilled"
             ? databaseResult.value
@@ -867,6 +916,8 @@ const appServer = http.createServer(async (req, res) => {
           storageResult.status === "fulfilled"
             ? storageResult.value
             : { ok: false, mode: "unavailable" },
+        operationalEvidence =
+          evidenceResult.status === "fulfilled" ? evidenceResult.value : {},
         scanner = scannerMode(),
         readiness = operationsReadiness({
           database,
@@ -876,9 +927,8 @@ const appServer = http.createServer(async (req, res) => {
           takedownDeliveryConfigured: TAKEDOWN_DELIVERY_CONFIGURED,
           stripeConfigured: STRIPE_CONFIGURED,
           yotiConfigured: YOTI_CONFIGURED,
-          retentionAutomationConfigured:
-            process.env.RETENTION_EXECUTION_ENABLED === "true",
-          monitoringConfigured: process.env.MONITORING_CONFIGURED === "true",
+          retentionEvidence: operationalEvidence.retention,
+          monitoringEvidence: operationalEvidence.monitoring,
           backupRestoreVerifiedAt: process.env.BACKUP_RESTORE_VERIFIED_AT,
         });
       return send(res, readiness.infrastructureReady ? 200 : 503, {
@@ -891,7 +941,7 @@ const appServer = http.createServer(async (req, res) => {
         keyManagement: process.env.CONTENT_PROTECT_MASTER_KEY
           ? "external-secret"
           : "local-key-file",
-        checks: { database, storage },
+        checks: { database, storage, operationalEvidence },
         productionReady: readiness.productionReady,
         operationalGates: readiness.operationalGates,
         scanner,

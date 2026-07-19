@@ -16,8 +16,14 @@ const complete = {
   takedownDeliveryConfigured: true,
   stripeConfigured: true,
   yotiConfigured: true,
-  retentionAutomationConfigured: true,
-  monitoringConfigured: true,
+  retentionEvidence: {
+    status: "succeeded",
+    occurredAt: new Date().toISOString(),
+  },
+  monitoringEvidence: {
+    status: "succeeded",
+    occurredAt: new Date().toISOString(),
+  },
   backupRestoreVerifiedAt: new Date().toISOString(),
 };
 
@@ -58,8 +64,20 @@ for (const missingGate of [
   { takedownDeliveryConfigured: false },
   { stripeConfigured: false },
   { yotiConfigured: false },
-  { retentionAutomationConfigured: false },
-  { monitoringConfigured: false },
+  { retentionEvidence: undefined },
+  { monitoringEvidence: undefined },
+  {
+    retentionEvidence: {
+      status: "succeeded",
+      occurredAt: new Date(Date.now() - 37 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    monitoringEvidence: {
+      status: "succeeded",
+      occurredAt: new Date(Date.now() - 16 * 60 * 1000).toISOString(),
+    },
+  },
   { backupRestoreVerifiedAt: "2020-01-01T00:00:00.000Z" },
 ]) {
   const result = operationsReadiness({ ...complete, ...missingGate });

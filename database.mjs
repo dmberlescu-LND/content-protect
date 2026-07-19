@@ -30,6 +30,68 @@ export async function closeDatabase() {
   if (pool) await pool.end();
 }
 
+const OPERATIONAL_EVIDENCE_TYPES = new Set(["monitoring", "retention"]);
+
+export async function recordOperationalEvidence({
+  type,
+  status = "succeeded",
+  source,
+  release = null,
+  details = {},
+  occurredAt = new Date(),
+}) {
+  if (!pool)
+    throw new Error("PostgreSQL is required for operational evidence.");
+  if (!OPERATIONAL_EVIDENCE_TYPES.has(type))
+    throw new Error("Unsupported operational evidence type.");
+  if (!new Set(["succeeded", "failed"]).has(status))
+    throw new Error("Unsupported operational evidence status.");
+  if (!/^[a-z0-9._-]{2,80}$/i.test(String(source || "")))
+    throw new Error("Operational evidence source is invalid.");
+  const timestamp = new Date(occurredAt);
+  if (
+    !Number.isFinite(timestamp.getTime()) ||
+    timestamp > new Date(Date.now() + 5 * 60_000)
+  )
+    throw new Error("Operational evidence timestamp is invalid.");
+  await pool.query(
+    `INSERT INTO operational_evidence
+       (evidence_type,status,source,release,details,occurred_at)
+     VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,
+    [
+      type,
+      status,
+      source,
+      String(release || "").slice(0, 80) || null,
+      JSON.stringify(details || {}),
+      timestamp,
+    ],
+  );
+  return { type, status, occurredAt: timestamp.toISOString() };
+}
+
+export async function latestOperationalEvidence() {
+  if (!pool) return {};
+  const result = await pool.query(
+    `SELECT DISTINCT ON (evidence_type)
+       evidence_type,status,source,release,occurred_at
+     FROM operational_evidence
+     WHERE status='succeeded'
+     ORDER BY evidence_type,occurred_at DESC`,
+  );
+  return Object.fromEntries(
+    result.rows.map((row) => [
+      row.evidence_type,
+      {
+        status: row.status,
+        source: row.source,
+        release: row.release,
+        occurredAt: iso(row.occurred_at),
+      },
+    ]),
+  );
+}
+
 export async function consumeRateLimit({
   key,
   max,
@@ -167,6 +229,12 @@ export async function runRetention({ execute = false, now = new Date() } = {}) {
       cutoffs.operational,
     ],
     [
+      "oldOperationalEvidence",
+      "operational_evidence",
+      "occurred_at < $1",
+      cutoffs.operational,
+    ],
+    [
       "closedCases",
       "takedown_cases",
       "closed_at < $1 AND legal_hold = false",
@@ -214,6 +282,18 @@ export async function runRetention({ execute = false, now = new Date() } = {}) {
           );
       counts[name] = result.rows[0].count;
     }
+    if (execute)
+      await client.query(
+        `INSERT INTO operational_evidence
+           (evidence_type,status,source,release,details,occurred_at)
+         VALUES ('retention','succeeded',$1,$2,$3::jsonb,$4)`,
+        [
+          process.env.RENDER_SERVICE_NAME || "retention-command",
+          process.env.RENDER_GIT_COMMIT?.slice(0, 80) || null,
+          JSON.stringify({ counts, cutoffs }),
+          now,
+        ],
+      );
     await client.query(execute ? "COMMIT" : "ROLLBACK");
     return {
       ok: true,
