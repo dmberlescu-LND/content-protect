@@ -61,7 +61,8 @@ export function protectAuditEvent(
       auditActorHash(
         event.userId,
         masterSecret,
-        event.databaseId ? `deleted:${event.databaseId}` : "system",
+        event.actorSubject ||
+          (event.databaseId ? `deleted:${event.databaseId}` : "system"),
       ),
     ipHash: event.ipHash || null,
     action: String(event.action),

@@ -2172,6 +2172,8 @@ function Onboarding({ user, onDone }) {
 function OperatorConsole() {
   const [ready, setReady] = useState(false);
   const [token, setToken] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [operatorId, setOperatorId] = useState("");
   const [error, setError] = useState("");
   const [cases, setCases] = useState([]);
   const [forms, setForms] = useState({});
@@ -2185,9 +2187,12 @@ function OperatorConsole() {
     setReady(true);
   };
   useEffect(() => {
-    fetch("/api/operator/me").then((response) => {
-      if (response.ok) loadCases();
-      else setReady(false);
+    fetch("/api/operator/me").then(async (response) => {
+      if (response.ok) {
+        const result = await response.json();
+        setOperatorId(result.operatorId || "operator");
+        await loadCases();
+      } else setReady(false);
     });
   }, []);
   const login = async (event) => {
@@ -2196,7 +2201,7 @@ function OperatorConsole() {
     const response = await fetch("/api/operator/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, mfaCode }),
     });
     const result = await response.json();
     if (!response.ok) {
@@ -2204,6 +2209,8 @@ function OperatorConsole() {
       return;
     }
     setToken("");
+    setMfaCode("");
+    setOperatorId(result.operatorId || "operator");
     await loadCases();
   };
   const prepare = async (caseId) => {
@@ -2238,16 +2245,21 @@ function OperatorConsole() {
     await loadCases();
   };
   const dispatch = async (caseId) => {
-    const form = forms[caseId] || {};
-    if (!form.noticeReviewed || !form.jurisdictionReviewed) {
+    const form = forms[caseId] || {},
+      item = cases.find((candidate) => candidate.id === caseId);
+    if (
+      !form.noticeReviewed ||
+      !form.jurisdictionReviewed ||
+      !/^\d{6}$/.test(String(form.mfaCode || "").replace(/\s/g, ""))
+    ) {
       setError(
-        "Review the exact notice and recipient jurisdiction before sending.",
+        "Review the notice and jurisdiction, then enter a current authenticator code.",
       );
       return;
     }
     if (
       !confirm(
-        `Send this legal notice to ${form.recipientEmail}? This external action cannot be undone.`,
+        `Send this legal notice to ${item?.recipientEmail}? This external action cannot be undone.`,
       )
     )
       return;
@@ -2257,7 +2269,8 @@ function OperatorConsole() {
       body: JSON.stringify({
         confirmNoticeReviewed: form.noticeReviewed === true,
         confirmJurisdictionReviewed: form.jurisdictionReviewed === true,
-        noticeHash: cases.find((item) => item.id === caseId)?.noticeHash,
+        noticeHash: item?.noticeHash,
+        mfaCode: String(form.mfaCode || "").replace(/\s/g, ""),
       }),
     });
     const result = await response.json();
@@ -2266,11 +2279,16 @@ function OperatorConsole() {
       return;
     }
     setError("");
+    setForms({
+      ...forms,
+      [caseId]: { ...form, mfaCode: "" },
+    });
     await loadCases();
   };
   const logout = async () => {
     await fetch("/api/operator/session", { method: "DELETE" });
     setReady(false);
+    setOperatorId("");
     setCases([]);
   };
   if (!ready)
@@ -2281,8 +2299,9 @@ function OperatorConsole() {
           <p>PRIVATE OPERATIONS</p>
           <h1>Operator access</h1>
           <span>
-            Enter the dedicated takedown token. It is exchanged for a four-hour
-            secure session and is not stored in the browser.
+            Enter the dedicated takedown token and the current authenticator
+            code. They are exchanged for a one-hour secure session; the token is
+            not stored in the browser.
           </span>
           <label>
             Access token
@@ -2293,6 +2312,18 @@ function OperatorConsole() {
               autoComplete="off"
               required
               minLength={32}
+            />
+          </label>
+          <label>
+            Authenticator code
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              value={mfaCode}
+              onChange={(event) => setMfaCode(event.target.value)}
+              required
             />
           </label>
           {error && <div className="operator-error">{error}</div>}
@@ -2307,7 +2338,7 @@ function OperatorConsole() {
       <header>
         <div>
           <Logo />
-          <span>Private takedown operations</span>
+          <span>Private takedown operations · {operatorId}</span>
         </div>
         <button className="btn btn-outline" onClick={logout}>
           Sign out
@@ -2433,23 +2464,44 @@ function OperatorConsole() {
               )}
               <div className="operator-checks">
                 {item.status === "Approved — delivery pending" && (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={forms[item.id]?.noticeReviewed || false}
-                      onChange={(event) =>
-                        setForms({
-                          ...forms,
-                          [item.id]: {
-                            ...forms[item.id],
-                            noticeReviewed: event.target.checked,
-                          },
-                        })
-                      }
-                    />
-                    I reviewed the exact creator-approved notice and evidence
-                    hash.
-                  </label>
+                  <>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={forms[item.id]?.noticeReviewed || false}
+                        onChange={(event) =>
+                          setForms({
+                            ...forms,
+                            [item.id]: {
+                              ...forms[item.id],
+                              noticeReviewed: event.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      I reviewed the exact creator-approved notice and evidence
+                      hash.
+                    </label>
+                    <label className="operator-step-up">
+                      Current authenticator code (required again to send)
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        value={forms[item.id]?.mfaCode || ""}
+                        onChange={(event) =>
+                          setForms({
+                            ...forms,
+                            [item.id]: {
+                              ...forms[item.id],
+                              mfaCode: event.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </>
                 )}
                 <label>
                   <input

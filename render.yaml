@@ -42,6 +42,10 @@ services:
         value: Content Protect Legal <legal@content-protect.com>
       - key: TAKEDOWN_OPERATOR_TOKEN
         sync: false
+      - key: TAKEDOWN_OPERATOR_ID
+        sync: false
+      - key: TAKEDOWN_OPERATOR_TOTP_SECRET
+        sync: false
       - key: TAKEDOWN_LEGAL_APPROVED_VERSION
         sync: false
       - key: RESEND_WEBHOOK_SECRET

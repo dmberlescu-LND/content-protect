@@ -854,6 +854,7 @@ export async function loadPostgresState() {
         .map((row) => ({
           id: String(row.id),
           userId: row.user_id,
+          actorHash: row.actor_hash,
           action: row.action,
           details: row.details,
           at: iso(row.created_at),
@@ -1183,6 +1184,8 @@ async function upsertBusinessData(
         {
           eventUuid: item.id,
           userId: item.userId,
+          actorHash: item.actorHash,
+          actorSubject: item.actorSubject,
           action: item.action,
           details: item.details || {},
           ipHash: item.ipHash,

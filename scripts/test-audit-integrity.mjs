@@ -35,12 +35,28 @@ const second = protectAuditEvent(
   },
   { masterSecret, sequenceNo: 2, previousHash: first.eventHash },
 );
+const operatorEvent = protectAuditEvent(
+  {
+    eventUuid: "33333333-3333-4333-8333-333333333333",
+    userId: null,
+    actorSubject: "operator:director-01",
+    action: "case.prepared",
+    details: { caseId: "case-1" },
+    at: "2026-07-19T12:02:00.000Z",
+  },
+  { masterSecret, sequenceNo: 3, previousHash: second.eventHash },
+);
 
 assert.equal(first.actorHash, second.actorHash);
 assert.equal(
   first.actorHash,
   auditActorHash("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", masterSecret),
 );
+assert.equal(
+  operatorEvent.actorHash,
+  auditActorHash(null, masterSecret, "operator:director-01"),
+);
+assert.notEqual(operatorEvent.actorHash, first.actorHash);
 assert.deepEqual(verifyAuditChain([first, second], masterSecret), {
   ok: true,
   protectedEvents: 2,
@@ -107,5 +123,6 @@ console.log(
     retainedPrefixSupport: true,
     appendOnlyDatabasePolicy: true,
     accountErasureCompatibility: true,
+    distinctOperatorIdentity: true,
   }),
 );

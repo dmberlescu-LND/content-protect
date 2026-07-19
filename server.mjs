@@ -9,7 +9,6 @@ import {
   createCipheriv,
   createDecipheriv,
   createHash,
-  createHmac,
 } from "node:crypto";
 import path from "node:path";
 import Stripe from "stripe";
@@ -79,6 +78,12 @@ import {
   accountDeletionBlockedByLegalHold,
   assetDeletionBlockedByLegalHold,
 } from "./retention-policy.mjs";
+import { base32Encode, validTotp } from "./totp.mjs";
+import {
+  operatorAccessConfiguration,
+  operatorActorSubject,
+  operatorTotpValid,
+} from "./operator-access-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -127,6 +132,7 @@ try {
   YOTI_CONFIGURATION = { configured: false };
 }
 const YOTI_CONFIGURED = YOTI_CONFIGURATION.configured;
+const OPERATOR_CONFIGURATION = operatorAccessConfiguration();
 const RESEND_EMAIL_CONFIGURED = Boolean(
   process.env.RESEND_API_KEY?.startsWith("re_") &&
   emailFromAddress(process.env.RESET_FROM_EMAIL) &&
@@ -141,7 +147,7 @@ const TAKEDOWN_LEGAL_TEMPLATES_APPROVED =
 const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
   RESEND_EMAIL_CONFIGURED &&
   RESEND_WEBHOOK_CONFIGURED &&
-  process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32 &&
+  OPERATOR_CONFIGURATION.configured &&
   TAKEDOWN_LEGAL_TEMPLATES_APPROVED,
 );
 const TAKEDOWN_DELIVERY_LIVE = Boolean(
@@ -415,55 +421,6 @@ function attachmentName(value, fallback) {
     .slice(0, 120);
   return cleaned || fallback;
 }
-const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-function base32Encode(buffer) {
-  let bits = "";
-  for (const byte of buffer) bits += byte.toString(2).padStart(8, "0");
-  let output = "";
-  for (let index = 0; index < bits.length; index += 5)
-    output +=
-      BASE32_ALPHABET[parseInt(bits.slice(index, index + 5).padEnd(5, "0"), 2)];
-  return output;
-}
-function base32Decode(value) {
-  const normalised = String(value || "")
-    .toUpperCase()
-    .replace(/[^A-Z2-7]/g, "");
-  let bits = "";
-  for (const character of normalised) {
-    const index = BASE32_ALPHABET.indexOf(character);
-    if (index < 0) throw new Error("Invalid authenticator secret.");
-    bits += index.toString(2).padStart(5, "0");
-  }
-  const bytes = [];
-  for (let index = 0; index + 8 <= bits.length; index += 8)
-    bytes.push(parseInt(bits.slice(index, index + 8), 2));
-  return Buffer.from(bytes);
-}
-function totpAt(secret, timestamp = Date.now()) {
-  const counter = Math.floor(timestamp / 30000),
-    message = Buffer.alloc(8);
-  message.writeBigUInt64BE(BigInt(counter));
-  const digest = createHmac("sha1", base32Decode(secret))
-      .update(message)
-      .digest(),
-    offset = digest[digest.length - 1] & 15,
-    number =
-      (((digest[offset] & 127) << 24) |
-        ((digest[offset + 1] & 255) << 16) |
-        ((digest[offset + 2] & 255) << 8) |
-        (digest[offset + 3] & 255)) %
-      1000000;
-  return String(number).padStart(6, "0");
-}
-function validTotp(secret, value) {
-  const code = String(value || "").replace(/\s/g, "");
-  if (!/^\d{6}$/.test(code)) return false;
-  return [-30000, 0, 30000].some((offset) => {
-    const expected = Buffer.from(totpAt(secret, Date.now() + offset));
-    return timingSafeEqual(expected, Buffer.from(code));
-  });
-}
 function mfaSecret(user) {
   return user.mfaSecretCiphertext
     ? unvault(Buffer.from(user.mfaSecretCiphertext, "base64")).toString("utf8")
@@ -543,10 +500,11 @@ function unvault(encrypted) {
     decipher.final(),
   ]);
 }
-function audit(d, u, action, details = {}) {
+function audit(d, u, action, details = {}, { actorSubject = null } = {}) {
   d.audit.unshift({
     id: randomUUID(),
-    userId: u.id,
+    userId: actorSubject ? null : u?.id || null,
+    actorSubject: actorSubject || undefined,
     action,
     details,
     at: new Date().toISOString(),
@@ -600,7 +558,7 @@ function buildCopyrightNotice(user, match, caseId, capturedAt) {
   };
 }
 function operatorTokenValid(value) {
-  return secretTokenValid(value, process.env.TAKEDOWN_OPERATOR_TOKEN);
+  return secretTokenValid(value, OPERATOR_CONFIGURATION.token);
 }
 function secretTokenValid(value, expectedValue) {
   const supplied = String(value || ""),
@@ -613,17 +571,18 @@ function secretTokenValid(value, expectedValue) {
 function monitoringTokenValid(value) {
   return secretTokenValid(value, process.env.MONITORING_HEARTBEAT_TOKEN);
 }
-function operatorAuthorised(req, d) {
-  const supplied = String(req.headers.authorization || "").replace(
-    /^Bearer\s+/i,
-    "",
-  );
-  if (operatorTokenValid(supplied)) return true;
+function operatorSession(req, d) {
   const sessionHash = tokenHash(cookie(req).cp_operator || "");
   return (d.operatorSessions || []).some(
     (item) =>
       item.tokenHash === sessionHash && new Date(item.expiresAt) > new Date(),
   );
+}
+function operatorAuthorised(req, d) {
+  return OPERATOR_CONFIGURATION.configured && operatorSession(req, d);
+}
+function currentOperatorSubject() {
+  return operatorActorSubject(OPERATOR_CONFIGURATION);
 }
 async function deliverNotice(caseRecord, creator, recipientEmail) {
   const response = await fetch("https://api.resend.com/emails", {
@@ -1042,10 +1001,9 @@ const appServer = http.createServer(async (req, res) => {
         emailWebhook: RESEND_WEBHOOK_CONFIGURED
           ? "resend-signed"
           : "unconfigured",
-        operatorAccess:
-          process.env.TAKEDOWN_OPERATOR_TOKEN?.length >= 32
-            ? "configured"
-            : "unconfigured",
+        operatorAccess: OPERATOR_CONFIGURATION.configured
+          ? "token-totp-step-up"
+          : "unconfigured",
         takedownDelivery: TAKEDOWN_DELIVERY_LIVE
           ? "operator-reviewed-live"
           : TAKEDOWN_DELIVERY_CONFIGURED
@@ -1068,16 +1026,38 @@ const appServer = http.createServer(async (req, res) => {
     }
     const d = await load();
     if (route === "/api/operator/session" && req.method === "POST") {
+      if (!OPERATOR_CONFIGURATION.configured)
+        return send(res, 503, {
+          error: "Operator access is awaiting secure configuration.",
+        });
       if (!(await allowed(req, `operator-login:${ip}`, 5, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many operator login attempts. Try again later.",
         });
       const b = await parse(req);
-      if (!operatorTokenValid(b.token))
-        return send(res, 401, { error: "Invalid operator access token." });
+      if (
+        !operatorTokenValid(b.token) ||
+        !operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode)
+      )
+        return send(res, 401, { error: "Invalid operator credentials." });
+      const totpCode = String(b.mfaCode || "").replace(/\s/g, "");
+      if (
+        !(
+          await allowed(
+            req,
+            `operator-totp:${OPERATOR_CONFIGURATION.id}:${totpCode}`,
+            1,
+            90000,
+          )
+        ).allowed
+      )
+        return send(res, 409, {
+          error:
+            "That authenticator code was already used. Wait for a new code.",
+        });
       const rawToken = randomBytes(32).toString("hex"),
         now = new Date().toISOString(),
-        expiresAt = new Date(Date.now() + 4 * 3600000).toISOString();
+        expiresAt = new Date(Date.now() + 3600000).toISOString();
       d.operatorSessions = (d.operatorSessions || []).filter(
         (item) => new Date(item.expiresAt) > new Date(),
       );
@@ -1086,21 +1066,37 @@ const appServer = http.createServer(async (req, res) => {
         expiresAt,
         createdAt: now,
       });
+      audit(
+        d,
+        null,
+        "operator.login",
+        { mfa: "totp", sessionMinutes: 60 },
+        { actorSubject: currentOperatorSubject() },
+      );
       await save(d);
       return send(
         res,
         200,
-        { ok: true, expiresAt },
+        { ok: true, operatorId: OPERATOR_CONFIGURATION.id, expiresAt },
         {
-          "set-cookie": `cp_operator=${rawToken}; HttpOnly; SameSite=Strict; Secure; Path=/api/operator; Max-Age=14400`,
+          "set-cookie": `cp_operator=${rawToken}; HttpOnly; SameSite=Strict; Secure; Path=/api/operator; Max-Age=3600`,
         },
       );
     }
     if (route === "/api/operator/session" && req.method === "DELETE") {
+      const wasAuthorised = operatorAuthorised(req, d);
       const currentHash = tokenHash(cookie(req).cp_operator || "");
       d.operatorSessions = (d.operatorSessions || []).filter(
         (item) => item.tokenHash !== currentHash,
       );
+      if (wasAuthorised)
+        audit(
+          d,
+          null,
+          "operator.logout",
+          {},
+          { actorSubject: currentOperatorSubject() },
+        );
       await save(d);
       return send(
         res,
@@ -1114,7 +1110,10 @@ const appServer = http.createServer(async (req, res) => {
     }
     if (route === "/api/operator/me" && req.method === "GET")
       return operatorAuthorised(req, d)
-        ? send(res, 200, { operator: true })
+        ? send(res, 200, {
+            operator: true,
+            operatorId: OPERATOR_CONFIGURATION.id,
+          })
         : send(res, 401, { error: "Operator authentication required." });
     if (route === "/api/operator/cases" && req.method === "GET") {
       if (!operatorAuthorised(req, d))
@@ -1204,10 +1203,20 @@ const appServer = http.createServer(async (req, res) => {
       caseRecord.preparedNoticeHash = preparedHash;
       caseRecord.timeline.push({
         event: "Recipient and notice prepared for creator review",
-        details: { noticeHash: preparedHash, recipientSource },
+        details: {
+          noticeHash: preparedHash,
+          recipientSource,
+          operatorReference: OPERATOR_CONFIGURATION.id,
+        },
         at: caseRecord.preparedAt,
       });
-      audit(d, creator, "case.prepared", { caseId, noticeHash: preparedHash });
+      audit(
+        d,
+        null,
+        "case.prepared",
+        { caseId, noticeHash: preparedHash },
+        { actorSubject: currentOperatorSubject() },
+      );
       await save(d);
       return send(res, 200, { ok: true, noticeHash: preparedHash });
     }
@@ -1227,6 +1236,25 @@ const appServer = http.createServer(async (req, res) => {
       const caseId = route.split("/")[4],
         b = await parse(req),
         caseRecord = d.cases.find((item) => item.id === caseId);
+      if (!operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode))
+        return send(res, 401, {
+          error: "A current authenticator code is required before delivery.",
+        });
+      const totpCode = String(b.mfaCode || "").replace(/\s/g, "");
+      if (
+        !(
+          await allowed(
+            req,
+            `operator-totp:${OPERATOR_CONFIGURATION.id}:${totpCode}`,
+            1,
+            90000,
+          )
+        ).allowed
+      )
+        return send(res, 409, {
+          error:
+            "That authenticator code was already used. Wait for a new code.",
+        });
       if (!caseRecord) return send(res, 404, { error: "Case not found." });
       if (caseRecord.status !== "Approved — delivery pending")
         return send(res, 409, { error: "Case is not ready for delivery." });
@@ -1271,13 +1299,19 @@ const appServer = http.createServer(async (req, res) => {
         caseRecord.lastDeliveryError = String(error.message).slice(0, 100);
         caseRecord.timeline.push({
           event: "Delivery attempt failed",
-          details: { attempt: caseRecord.deliveryAttempts },
+          details: {
+            attempt: caseRecord.deliveryAttempts,
+            operatorReference: OPERATOR_CONFIGURATION.id,
+          },
           at: caseRecord.updatedAt,
         });
-        audit(d, creator, "case.delivery_failed", {
-          caseId,
-          attempt: caseRecord.deliveryAttempts,
-        });
+        audit(
+          d,
+          null,
+          "case.delivery_failed",
+          { caseId, attempt: caseRecord.deliveryAttempts },
+          { actorSubject: currentOperatorSubject() },
+        );
         await save(d);
         return send(res, 502, {
           error: "The delivery provider rejected the request.",
@@ -1299,14 +1333,21 @@ const appServer = http.createServer(async (req, res) => {
           recipientSource: caseRecord.recipientSource,
           noticeHash: renderedNoticeHash,
           nextReviewAt: caseRecord.nextActionAt,
+          operatorReference: OPERATOR_CONFIGURATION.id,
         },
         at: caseRecord.submittedAt,
       });
-      audit(d, creator, "case.notice_sent", {
-        caseId,
-        provider: "resend",
-        recipientHost: caseRecord.recipientEmail.split("@")[1],
-      });
+      audit(
+        d,
+        null,
+        "case.notice_sent",
+        {
+          caseId,
+          provider: "resend",
+          recipientHost: caseRecord.recipientEmail.split("@")[1],
+        },
+        { actorSubject: currentOperatorSubject() },
+      );
       await save(d);
       return send(res, 200, {
         ok: true,

@@ -73,8 +73,8 @@ if (requireProductionReady) {
     "signed Resend webhook is not active",
   );
   expect(
-    ready.operatorAccess === "configured",
-    "operator access is not configured",
+    ready.operatorAccess === "token-totp-step-up",
+    "operator token, identity and MFA step-up are not configured",
   );
   expect(
     ready.legalTemplates?.startsWith("approved-"),

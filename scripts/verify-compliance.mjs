@@ -172,6 +172,26 @@ requireText("Render", render, "YOTI_MODE");
 requireText("server", server, "TAKEDOWN_DELIVERY_LIVE");
 requireText("server", server, 'TAKEDOWNS_MODE === "live"');
 requireText("Render", render, "TAKEDOWN_LEGAL_APPROVED_VERSION");
+for (const key of [
+  "TAKEDOWN_OPERATOR_TOKEN",
+  "TAKEDOWN_OPERATOR_ID",
+  "TAKEDOWN_OPERATOR_TOTP_SECRET",
+]) {
+  requireText("Render", render, key);
+  const operatorSecretBlock = render.match(
+    new RegExp(`- key: ${key}\\n\\s+([^\\n]+)`),
+  )?.[1];
+  if (operatorSecretBlock !== "sync: false")
+    failures.push(`Render: ${key} must remain operator-supplied`);
+}
+requireText("server", server, "operatorTotpValid");
+requireText("server", server, '"operator.login"');
+requireText(
+  "server",
+  server,
+  "OPERATOR_CONFIGURATION.configured && operatorSession(req, d)",
+);
+rejectText("server", server, "if (operatorTokenValid(supplied)) return true");
 const legalVersionBlock = render.match(
   /- key: TAKEDOWN_LEGAL_APPROVED_VERSION\n\s+([^\n]+)/,
 )?.[1];
