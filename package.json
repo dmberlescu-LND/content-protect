@@ -17,6 +17,7 @@
     "test:webhook": "node scripts/test-resend-webhook.mjs",
     "test:stripe-webhook": "node scripts/test-stripe-webhook.mjs",
     "test:billing-policy": "node scripts/test-billing-policy.mjs",
+    "test:audit-integrity": "node scripts/test-audit-integrity.mjs",
     "test:backup-policy": "node scripts/test-backup-restore-policy.mjs",
     "test:database-backup-policy": "node scripts/test-database-backup-policy.mjs",
     "test:backup-schedule": "node scripts/test-backup-schedule.mjs",

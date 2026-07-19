@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import pg from "pg";
+import { protectAuditEvent, verifyAuditChain } from "./audit-integrity.mjs";
 
 const { Pool } = pg;
 const localRateLimits = new Map();
@@ -10,6 +11,109 @@ const iso = (value) => (value ? new Date(value).toISOString() : null);
 
 export const databaseMode = () => (pool ? "postgresql" : "local-json");
 
+function auditMasterSecret() {
+  const secret = process.env.CONTENT_PROTECT_MASTER_KEY;
+  if (!secret)
+    throw new Error(
+      "CONTENT_PROTECT_MASTER_KEY is required for PostgreSQL audit integrity.",
+    );
+  return secret;
+}
+
+function auditRecord(row) {
+  return {
+    databaseId: row.id,
+    eventUuid: row.event_uuid,
+    sequenceNo: Number(row.sequence_no),
+    actorHash: row.actor_hash,
+    ipHash: row.ip_hash,
+    action: row.action,
+    details: row.details || {},
+    createdAt: iso(row.created_at),
+    previousHash: row.previous_hash,
+    eventHash: row.event_hash,
+    hashVersion: Number(row.hash_version),
+  };
+}
+
+async function auditRows(client) {
+  const result = await client.query(
+    `SELECT id,user_id,action,details,ip_hash,created_at,event_uuid,sequence_no,
+       actor_hash,previous_hash,event_hash,hash_version
+     FROM audit_events ORDER BY id`,
+  );
+  return result.rows;
+}
+
+export async function initializeAuditIntegrity() {
+  if (!pool) return { ok: true, mode: "local-json", protectedEvents: 0 };
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(824671)");
+    let rows = await auditRows(client);
+    const legacy = rows.filter((row) => row.hash_version === null),
+      protectedCount = rows.length - legacy.length;
+    if (legacy.length && protectedCount)
+      throw new Error("Audit integrity migration is only partially applied.");
+    if (legacy.length) {
+      let previousHash = null,
+        sequenceNo = 0;
+      for (const row of rows) {
+        const event = protectAuditEvent(
+          {
+            databaseId: row.id,
+            userId: row.user_id,
+            action: row.action,
+            details: row.details || {},
+            ipHash: row.ip_hash,
+            createdAt: row.created_at,
+          },
+          {
+            masterSecret: auditMasterSecret(),
+            sequenceNo: ++sequenceNo,
+            previousHash,
+          },
+        );
+        await client.query(
+          `UPDATE audit_events SET event_uuid=$2,sequence_no=$3,actor_hash=$4,
+             previous_hash=$5,event_hash=$6,hash_version=$7
+           WHERE id=$1 AND hash_version IS NULL`,
+          [
+            row.id,
+            event.eventUuid,
+            event.sequenceNo,
+            event.actorHash,
+            event.previousHash,
+            event.eventHash,
+            event.hashVersion,
+          ],
+        );
+        previousHash = event.eventHash;
+      }
+      rows = await auditRows(client);
+    }
+    const verified = verifyAuditChain(
+      rows.map(auditRecord),
+      auditMasterSecret(),
+    );
+    await client.query("COMMIT");
+    return { ...verified, mode: "hmac-sha256-chain-v1" };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function auditIntegrityProbe() {
+  if (!pool) return { ok: true, mode: "local-json", protectedEvents: 0 };
+  const rows = await auditRows(pool);
+  const verified = verifyAuditChain(rows.map(auditRecord), auditMasterSecret());
+  return { ...verified, mode: "hmac-sha256-chain-v1" };
+}
+
 export async function databaseProbe() {
   if (!pool) return { ok: true, mode: "local-json" };
   const startedAt = Date.now();
@@ -17,12 +121,14 @@ export async function databaseProbe() {
     "SELECT name,applied_at FROM schema_migrations ORDER BY name DESC LIMIT 1",
   );
   if (!result.rows[0]) throw new Error("No database migrations are recorded.");
+  const auditIntegrity = await auditIntegrityProbe();
   return {
     ok: true,
     mode: "postgresql",
     latencyMs: Date.now() - startedAt,
     latestMigration: result.rows[0].name,
     migratedAt: iso(result.rows[0].applied_at),
+    auditIntegrity: { ok: auditIntegrity.ok, mode: auditIntegrity.mode },
   };
 }
 
@@ -272,6 +378,7 @@ export async function runRetention({ execute = false, now = new Date() } = {}) {
   ];
   try {
     await client.query("BEGIN");
+    await client.query("SET LOCAL content_protect.audit_retention = 'on'");
     await client.query("SELECT pg_advisory_xact_lock(824672)");
     const counts = {};
     for (const [name, table, predicate, cutoff] of rules) {
@@ -824,11 +931,54 @@ async function upsertBusinessData(client, state) {
        VALUES ($1,$2,$3) ON CONFLICT (provider,event_id) DO NOTHING`,
       [item.provider, item.eventId, item.processedAt || new Date()],
     );
-  for (const item of state.audit.filter(
+  const newAuditEvents = state.audit.filter(
     (event) => !/^\d+$/.test(String(event.id)),
-  ))
-    await client.query(
-      "INSERT INTO audit_events (user_id,action,details,created_at) VALUES ($1,$2,$3::jsonb,$4)",
-      [item.userId, item.action, JSON.stringify(item.details || {}), item.at],
-    );
+  );
+  if (newAuditEvents.length) {
+    const headResult = await client.query(
+        `SELECT sequence_no,event_hash FROM audit_events
+         WHERE hash_version=1 ORDER BY sequence_no DESC LIMIT 1`,
+      ),
+      head = headResult.rows[0];
+    let sequenceNo = Number(head?.sequence_no || 0),
+      previousHash = head?.event_hash || null;
+    for (const item of [...newAuditEvents].reverse()) {
+      const event = protectAuditEvent(
+        {
+          eventUuid: item.id,
+          userId: item.userId,
+          action: item.action,
+          details: item.details || {},
+          ipHash: item.ipHash,
+          at: item.at,
+        },
+        {
+          masterSecret: auditMasterSecret(),
+          sequenceNo: ++sequenceNo,
+          previousHash,
+        },
+      );
+      await client.query(
+        `INSERT INTO audit_events
+           (event_uuid,sequence_no,user_id,actor_hash,action,details,ip_hash,previous_hash,event_hash,hash_version,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11)`,
+        [
+          event.eventUuid,
+          event.sequenceNo,
+          item.userId,
+          event.actorHash,
+          event.action,
+          JSON.stringify(event.details),
+          event.ipHash,
+          event.previousHash,
+          event.eventHash,
+          event.hashVersion,
+          event.createdAt,
+        ],
+      );
+      previousHash = event.eventHash;
+    }
+    const rows = await auditRows(client);
+    verifyAuditChain(rows.map(auditRecord), auditMasterSecret());
+  }
 }

@@ -9,6 +9,7 @@ const complete = {
     ok: true,
     mode: "postgresql",
     latestMigration: REQUIRED_MIGRATION,
+    auditIntegrity: { ok: true, mode: "hmac-sha256-chain-v1" },
   },
   storage: { ok: true, mode: "private-object-storage" },
   hasExternalMasterKey: true,
@@ -56,6 +57,15 @@ for (const unsafe of [
       ok: true,
       mode: "postgresql",
       latestMigration: "011_asset_media_validation.sql",
+      auditIntegrity: { ok: true, mode: "hmac-sha256-chain-v1" },
+    },
+  },
+  {
+    database: {
+      ok: true,
+      mode: "postgresql",
+      latestMigration: REQUIRED_MIGRATION,
+      auditIntegrity: { ok: false, mode: "hmac-sha256-chain-v1" },
     },
   },
 ]) {

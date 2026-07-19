@@ -1,4 +1,4 @@
-export const REQUIRED_MIGRATION = "016_backup_restore_evidence.sql";
+export const REQUIRED_MIGRATION = "017_audit_integrity.sql";
 
 const freshEvidence = (value, maxAgeMs) => {
   const timestamp = Date.parse(value?.occurredAt || "");
@@ -29,6 +29,8 @@ export function operationsReadiness({
     database?.ok &&
     database.mode === "postgresql" &&
     database.latestMigration === REQUIRED_MIGRATION &&
+    database.auditIntegrity?.ok === true &&
+    database.auditIntegrity.mode === "hmac-sha256-chain-v1" &&
     storage?.ok &&
     storage.mode === "private-object-storage" &&
     hasExternalMasterKey,

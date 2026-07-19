@@ -27,6 +27,7 @@ import {
   closeDatabase,
   consumeRateLimit,
   databaseProbe,
+  initializeAuditIntegrity,
   latestOperationalEvidence,
   loadPostgresState,
   recordOperationalEvidence,
@@ -2608,6 +2609,8 @@ const appServer = http.createServer(async (req, res) => {
     });
   }
 });
+
+await initializeAuditIntegrity();
 
 appServer.listen(PORT, "0.0.0.0", () => {
   console.log(
