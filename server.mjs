@@ -121,6 +121,7 @@ import {
   recordBreachAssessment,
   recordNotificationDecision,
 } from "./incident-policy.mjs";
+import { launchGovernanceStatus } from "./launch-governance.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -1156,6 +1157,9 @@ const appServer = http.createServer(async (req, res) => {
         operationalEvidence =
           evidenceResult.status === "fulfilled" ? evidenceResult.value : {},
         scanner = scannerMode(),
+        launchGovernance = launchGovernanceStatus(process.env, {
+          expectedMigration: REQUIRED_MIGRATION,
+        }),
         readiness = operationsReadiness({
           database,
           storage,
@@ -1171,6 +1175,7 @@ const appServer = http.createServer(async (req, res) => {
           monitoringEvidence: operationalEvidence.monitoring,
           backupRestoreEvidence: operationalEvidence.backup_restore,
           auditExportEvidence: operationalEvidence.audit_export,
+          launchGovernance,
         });
       return send(res, readiness.infrastructureReady ? 200 : 503, {
         ok: readiness.infrastructureReady,
@@ -1185,6 +1190,7 @@ const appServer = http.createServer(async (req, res) => {
         checks: { database, storage, operationalEvidence },
         productionReady: readiness.productionReady,
         operationalGates: readiness.operationalGates,
+        launchGovernance,
         scanner,
         videoScanning: videoScannerMode(),
         ageVerification: YOTI_CONFIGURED ? `yoti-${YOTI_MODE}` : "unconfigured",

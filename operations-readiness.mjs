@@ -25,6 +25,7 @@ export function operationsReadiness({
   monitoringEvidence,
   backupRestoreEvidence,
   auditExportEvidence,
+  launchGovernance,
 }) {
   const infrastructureReady = Boolean(
     database?.ok &&
@@ -51,6 +52,7 @@ export function operationsReadiness({
     auditExport:
       freshEvidence(auditExportEvidence, 36 * 60 * 60 * 1000) &&
       auditExportEvidence?.requiredMigration === REQUIRED_MIGRATION,
+    launchGovernance: launchGovernance?.approved === true,
   };
   return {
     infrastructureReady,

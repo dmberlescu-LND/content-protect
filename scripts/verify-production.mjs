@@ -100,6 +100,11 @@ if (requireProductionReady) {
     ready.auditExport === "verified-recently",
     "independent retained audit export evidence is missing or older than 36 hours",
   );
+  expect(
+    ready.launchGovernance?.status === "approved" &&
+      ready.operationalGates?.launchGovernance === true,
+    "signed UK launch governance approval is missing, invalid or expired",
+  );
   expect(ready.scanner !== "unconfigured", "scanner is not configured");
   expect(
     ready.takedownDelivery === "operator-reviewed-live",

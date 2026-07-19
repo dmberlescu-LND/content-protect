@@ -38,6 +38,10 @@ const complete = {
     requiredMigration: REQUIRED_MIGRATION,
     occurredAt: new Date().toISOString(),
   },
+  launchGovernance: {
+    approved: true,
+    status: "approved",
+  },
 };
 
 assert.deepEqual(operationsReadiness(complete), {
@@ -52,6 +56,7 @@ assert.deepEqual(operationsReadiness(complete), {
     monitoring: true,
     backupRestore: true,
     auditExport: true,
+    launchGovernance: true,
   },
 });
 
@@ -146,6 +151,8 @@ for (const missingGate of [
       occurredAt: new Date().toISOString(),
     },
   },
+  { launchGovernance: undefined },
+  { launchGovernance: { approved: false, status: "unconfigured" } },
 ]) {
   const result = operationsReadiness({ ...complete, ...missingGate });
   assert.equal(result.infrastructureReady, true);
@@ -159,5 +166,6 @@ console.log(
     completeCommercialGate: true,
     restoreEvidenceExpiry: true,
     auditExportEvidenceRequired: true,
+    signedLaunchGovernanceRequired: true,
   }),
 );

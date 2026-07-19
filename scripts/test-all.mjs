@@ -18,6 +18,7 @@ const checks = [
   "test-media-backup-policy.mjs",
   "test-scanner.mjs",
   "test-operations-readiness.mjs",
+  "test-launch-governance.mjs",
   "test-security-policy.mjs",
   "test-distributed-rate-limit.mjs",
   "test-retention-queue.mjs",

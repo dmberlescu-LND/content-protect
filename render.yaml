@@ -70,6 +70,10 @@ services:
         value: https://api.tineye.com/rest/search/
       - key: RETENTION_EXECUTION_ENABLED
         value: "false"
+      - key: UK_LAUNCH_GOVERNANCE_PUBLIC_KEY
+        sync: false
+      - key: UK_LAUNCH_GOVERNANCE_MANIFEST
+        sync: false
       - key: MONITORING_HEARTBEAT_TOKEN
         sync: false
       - key: BACKUP_EVIDENCE_KEY

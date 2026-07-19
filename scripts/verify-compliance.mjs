@@ -93,6 +93,12 @@ const [incidentPolicy, incidentPlan, incidentMigration, backupSnapshot] =
     read("db/migrations/019_incident_register.sql"),
     read("backup-snapshot.mjs"),
   ]);
+const [launchGovernance, launchGovernanceSigner, launchGovernanceDocument] =
+  await Promise.all([
+    read("launch-governance.mjs"),
+    read("scripts/create-launch-governance-manifest.mjs"),
+    read("docs/compliance/UK-LAUNCH-GOVERNANCE.md"),
+  ]);
 
 for (const [name, page] of [
   ["privacy notice", privacy],
@@ -282,6 +288,33 @@ requireText("server", server, '"incident.declared"');
 requireText("server", server, '"incident.closed"');
 requireText("server", server, "/api/operator/incidents");
 requireText("retention database", database, "closedSecurityIncidents");
+requireText("launch governance", launchGovernance, "ed25519");
+requireText(
+  "launch governance",
+  launchGovernance,
+  "UK_LAUNCH_GOVERNANCE_CONTROLS",
+);
+requireText("launch governance", launchGovernance, "requiredMigration");
+requireText("launch governance", launchGovernance, "complianceVersions");
+requireText("launch governance", launchGovernance, "370");
+requireText("launch governance signer", launchGovernanceSigner, 'flag: "wx"');
+requireText(
+  "launch governance signer",
+  launchGovernanceSigner,
+  "outsideRepository",
+);
+requireText("launch governance signer", launchGovernanceSigner, "mode 0600");
+requireText(
+  "launch governance document",
+  launchGovernanceDocument,
+  "company_filings_current",
+);
+requireText(
+  "launch governance document",
+  launchGovernanceDocument,
+  "Never configure the private key",
+);
+requireText("operations readiness", readiness, "launchGovernance");
 
 requireText("Render", render, "PAYMENTS_MODE");
 requireText("Render", render, "YOTI_SDK_ID");
@@ -352,6 +385,15 @@ requireText(
 );
 requireText("UK launch checklist", checklist, "29 expired rate-limit entries");
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
+requireText("Render", render, "UK_LAUNCH_GOVERNANCE_PUBLIC_KEY");
+requireText("Render", render, "UK_LAUNCH_GOVERNANCE_MANIFEST");
+rejectText("Render", render, "UK_LAUNCH_GOVERNANCE_PRIVATE_KEY");
+requireText("server", server, "launchGovernanceStatus");
+requireText(
+  "production verifier",
+  await read("scripts/verify-production.mjs"),
+  "signed UK launch governance approval",
+);
 rejectText("Render", render, "MONITORING_CONFIGURED");
 requireText("operations runbook", runbook, "29704210377");
 requireText("operations runbook", runbook, "29704238669");

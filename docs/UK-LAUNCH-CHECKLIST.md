@@ -26,6 +26,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 - Before video-frame scanning, obtain written confirmation covering derived video frames, approve the DPIA and the maximum three paid queries per video, publish counsel-approved Privacy Notice and Service Terms versions describing the flow, and only then set `TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE`. Stored videos must remain unsearched while this value is absent.
 - Commission independent penetration testing before commercial launch.
 - The encrypted incident register and 72-hour personal-data-breach workflow are implemented in `/operator`: automatic non-overridable ICO deadline, named roles, append-only event timeline, fresh-MFA critical decisions, minimised audit metadata and fail-closed recovery/notification/closure rules. Complete the emergency contact list in `docs/compliance/INCIDENT-RESPONSE-PLAN.md`, obtain management/counsel approval and run a documented tabletop exercise before launch.
+- The signed UK launch-governance gate is implemented and fail-closed. It requires an offline Ed25519 signature over the current migration, every current compliance version, a maximum 370-day approval period and ten exact evidence controls. Production holds only the public key and manifest; the private key must remain outside Render/GitHub/repository. The gate is intentionally unconfigured until every item in `docs/compliance/UK-LAUNCH-GOVERNANCE.md` has real retained evidence and director/board approval.
 - The encrypted, signed, non-overwriting audit-export job is implemented and fail-closed. Before launch, select a separately administered S3-compatible destination, approve its DPA/transfer and custody record, configure a 400-day lifecycle and isolated read/write-without-delete credentials, run `pnpm audit:export`, and confirm fresh verified evidence opens the `auditExport` readiness gate.
 - Production-monitor alert delivery was acceptance-tested on 19 July 2026: deliberately failed GitHub run #27 (`29704210377`) generated a notification received by the director on-call mailbox at 22:22 BST, and recovery run #28 (`29704238669`) succeeded. Re-test after any recipient, notification-setting or workflow-ownership change.
 - Schema-bound disaster recovery was re-tested after migration `019_incident_register.sql` on 20 July 2026. Render job `content-protect-backup` created encrypted database/media snapshots, restored the database into an isolated PostgreSQL identity, compared all 17 durable tables including both incident-register tables with zero discrepancies, reported authenticated evidence and reopened the live `backupRestore` gate. Evidence is recorded in `docs/OPERATIONS-RUNBOOK.md`.
@@ -62,7 +63,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 
 ## Release gate
 
-Live launch remains blocked until the company identity, privacy notice, terms, DPIA, provider contracts, incident plan, payment account and specialist legal review are complete.
+Live launch remains blocked until the company filings, privacy notice, terms, DPIA, provider contracts, incident plan, payment account, specialist legal review and every signed UK launch-governance control are complete.
 
 ## SEO launch status
 
