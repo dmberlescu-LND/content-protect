@@ -49,6 +49,9 @@ const [
   database,
   auditExportPolicy,
   auditExportJob,
+  disputePolicy,
+  disputesPage,
+  disputesScript,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -77,6 +80,9 @@ const [
   read("database.mjs"),
   read("audit-export-policy.mjs"),
   read("scripts/export-audit-log.mjs"),
+  read("dispute-policy.mjs"),
+  read("public/disputes.html"),
+  read("public/disputes.js"),
 ]);
 
 for (const [name, page] of [
@@ -89,9 +95,12 @@ for (const [name, page] of [
   requireText(name, page, "white.eagles.dm@gmail.com");
 }
 requireText("privacy notice", privacy, "19 July 2026");
-requireText("privacy notice", privacy, "Version 1.1");
+requireText("privacy notice", privacy, "Version 1.2");
 requireText("privacy notice", privacy, "creator-supplied page captures");
 requireText("privacy notice", privacy, "not independent notarisation");
+requireText("privacy notice", privacy, "dispute intake");
+requireText("privacy notice", privacy, "application-layer");
+requireText("privacy notice", privacy, "encrypted.");
 requireText("service terms", terms, "19 July 2026");
 requireText("service terms", terms, "Version 1.1");
 for (const [plan, entitlement] of Object.entries(PLAN_ENTITLEMENTS))
@@ -183,6 +192,29 @@ requireText("server", server, "/page-capture");
 requireText("server", server, "confirmPageCaptureReviewed");
 requireText("server", server, "case.page_capture_accessed");
 requireText("server", server, "pageCaptureChecksum");
+requireText(
+  "dispute policy",
+  disputePolicy,
+  "COMPLIANCE_VERSIONS.disputeIntake",
+);
+requireText("dispute policy", disputePolicy, "DISPUTABLE_STATUSES");
+requireText("dispute policy", disputePolicy, "confirmCreatorNotified");
+requireText("dispute policy", disputePolicy, "confirmCounselApproval");
+requireText("server", server, "/api/public/disputes");
+requireText("server", server, "case.dispute_received");
+requireText("server", server, "case.dispute_accessed");
+requireText("server", server, "case.dispute_resolved");
+requireText("server", server, "creatorSafeCase");
+requireText("server", server, "disputeEventIntegrityValid");
+requireText("server", server, "disputeIntegrityHash");
+requireText("dispute page", disputesPage, 'id="dispute-form"');
+requireText("dispute page", disputesPage, "confirmNoSensitiveAttachments");
+rejectText("dispute page", disputesPage, 'type="file"');
+requireText("dispute script", disputesScript, "/api/public/disputes");
+requireText("takedown procedure", takedowns, "generic `202` response");
+requireText("operations runbook", runbook, "Dispute intake and freeze");
+requireText("UK launch checklist", checklist, "non-enumerating public intake");
+requireText("DPIA", dpia, "Reported-party dispute intake");
 requireText("retention policy", retentionPolicy, "pageCapture?.assetId");
 requireText("retention database", database, "orphanEvidenceCaptures");
 requireText("audit export policy", auditExportPolicy, "CPAEX001");

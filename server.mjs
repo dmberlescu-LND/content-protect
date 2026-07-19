@@ -9,6 +9,7 @@ import {
   createCipheriv,
   createDecipheriv,
   createHash,
+  createHmac,
 } from "node:crypto";
 import path from "node:path";
 import Stripe from "stripe";
@@ -100,6 +101,15 @@ import {
   pageCaptureSnapshot,
   referenceAssets,
 } from "./page-capture-policy.mjs";
+import {
+  disputeReceivedEvent,
+  disputeReview,
+  disputeReviewEvent,
+  disputeSummaries,
+  DisputePolicyError,
+  openDisputes,
+  validateDisputeIntake,
+} from "./dispute-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -516,6 +526,64 @@ function unvault(encrypted) {
     decipher.final(),
   ]);
 }
+function disputeContactHash(email) {
+  return createHmac("sha256", key)
+    .update(`dispute-contact:${String(email || "").toLowerCase()}`)
+    .digest("hex");
+}
+function disputeCiphertext(intake) {
+  return vault(Buffer.from(JSON.stringify(intake))).toString("base64");
+}
+function disputeEventIntegrityHash(caseId, event) {
+  const { integrityHash: _ignored, ...details } = event?.details || {};
+  return createHmac("sha256", key)
+    .update(
+      JSON.stringify({
+        caseId,
+        event: event?.event,
+        details,
+        at: event?.at,
+      }),
+    )
+    .digest("hex");
+}
+function protectDisputeEvent(caseId, event) {
+  return {
+    ...event,
+    details: {
+      ...event.details,
+      integrityHash: disputeEventIntegrityHash(caseId, event),
+    },
+  };
+}
+function disputeEventIntegrityValid(caseId, event) {
+  if (!/^[a-f0-9]{64}$/.test(event?.details?.integrityHash || "")) return false;
+  const expected = Buffer.from(disputeEventIntegrityHash(caseId, event), "hex"),
+    received = Buffer.from(event.details.integrityHash, "hex");
+  return timingSafeEqual(expected, received);
+}
+function openDisputePayload(caseRecord, dispute) {
+  try {
+    const payload = JSON.parse(
+      unvault(Buffer.from(dispute.ciphertext, "base64")).toString("utf8"),
+    );
+    if (
+      payload.caseReference !== caseRecord.id ||
+      payload.reportedUrl !== caseRecord.targetUrl ||
+      payload.category !== dispute.category ||
+      payload.country !== dispute.country ||
+      disputeContactHash(payload.email) !== dispute.contactHash ||
+      textDigest(payload.statement) !== dispute.statementChecksum
+    )
+      throw new Error("Dispute evidence binding failed.");
+    return payload;
+  } catch {
+    throw new DisputePolicyError(
+      "The encrypted dispute evidence is unavailable or invalid.",
+      409,
+    );
+  }
+}
 function audit(d, u, action, details = {}, { actorSubject = null } = {}) {
   d.audit.unshift({
     id: randomUUID(),
@@ -539,9 +607,45 @@ function creatorVisibleMatchStatus(match, cases) {
       "Awaiting creator approval": "Your approval",
       "Approved — delivery pending": "Delivery pending",
       "Submitted — awaiting delivery confirmation": "Reported",
+      "Delivered — monitoring": "Reported",
+      "Disputed — review required": "Disputed — paused",
+      "Dispute — counsel review required": "Disputed — paused",
+      "Closed — dispute accepted": "Closed after dispute",
       Removed: "Removed",
     }[caseRecord.status] || "Case review"
   );
+}
+function creatorSafeCase(caseRecord) {
+  return {
+    ...caseRecord,
+    disputes: disputeSummaries(caseRecord),
+    timeline: (caseRecord.timeline || []).map((event) => {
+      if (event.event === "Dispute received — follow-ups frozen")
+        return {
+          ...event,
+          details: {
+            disputeId: event.details?.disputeId,
+            version: event.details?.version,
+            category: event.details?.category,
+            country: event.details?.country,
+            statementChecksum: event.details?.statementChecksum,
+          },
+        };
+      if (
+        ["Dispute resolved", "Dispute escalated for counsel review"].includes(
+          event.event,
+        )
+      )
+        return {
+          ...event,
+          details: {
+            disputeId: event.details?.disputeId,
+            outcome: event.details?.outcome,
+          },
+        };
+      return event;
+    }),
+  };
 }
 function safeHttpsReference(value) {
   try {
@@ -1067,6 +1171,83 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     const d = await load();
+    if (route === "/api/public/disputes" && req.method === "POST") {
+      if (!(await allowed(req, `public-dispute:${ip}`, 10, 3600000)).allowed)
+        return send(res, 429, {
+          error: "Too many dispute submissions. Try again later.",
+        });
+      const b = await parse(req),
+        disputeId = randomUUID(),
+        accepted = () =>
+          send(res, 202, {
+            received: true,
+            reference: disputeId,
+            message:
+              "If the case details match a delivered Content Protect notice, follow-ups are now frozen for human review.",
+          });
+      if (String(b.website || "").trim()) return accepted();
+      const caseReference = String(b.caseReference || "").trim();
+      if (
+        /^[0-9a-f-]{36}$/i.test(caseReference) &&
+        !(
+          await allowed(
+            req,
+            `public-dispute-case:${caseReference}`,
+            5,
+            86400000,
+          )
+        ).allowed
+      )
+        return send(res, 429, {
+          error: "This case reference has several recent submissions.",
+        });
+      const caseRecord = d.cases.find((item) => item.id === caseReference);
+      let intake;
+      try {
+        intake = validateDisputeIntake(b, caseRecord);
+      } catch (error) {
+        if (error instanceof DisputePolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+      if (!intake) return accepted();
+      const contactHash = disputeContactHash(intake.email);
+      if (
+        openDisputes(caseRecord).some(
+          (item) => item.contactHash === contactHash,
+        )
+      )
+        return accepted();
+      const receivedAt = new Date().toISOString(),
+        previousStatus = caseRecord.status,
+        creator = d.users.find((item) => item.id === caseRecord.userId);
+      caseRecord.timeline ||= [];
+      const receivedEvent = protectDisputeEvent(
+        caseRecord.id,
+        disputeReceivedEvent({
+          disputeId,
+          intake,
+          contactHash,
+          statementChecksum: textDigest(intake.statement),
+          ciphertext: disputeCiphertext(intake),
+          previousStatus,
+          receivedAt,
+        }),
+      );
+      caseRecord.timeline.push(receivedEvent);
+      caseRecord.status = "Disputed — review required";
+      caseRecord.nextActionAt = null;
+      caseRecord.updatedAt = receivedAt;
+      audit(d, creator, "case.dispute_received", {
+        caseId: caseRecord.id,
+        disputeId,
+        category: intake.category,
+        followUpsFrozen: true,
+        disputeIntegrityHash: receivedEvent.details.integrityHash,
+      });
+      await save(d);
+      return accepted();
+    }
     if (route === "/api/operator/session" && req.method === "POST") {
       if (!OPERATOR_CONFIGURATION.configured)
         return send(res, 503, {
@@ -1168,6 +1349,8 @@ const appServer = http.createServer(async (req, res) => {
             [
               "Awaiting operator preparation",
               "Approved — delivery pending",
+              "Disputed — review required",
+              "Dispute — counsel review required",
             ].includes(item.status),
           )
           .map((item) => {
@@ -1191,11 +1374,215 @@ const appServer = http.createServer(async (req, res) => {
               rightsDeclaration: item.evidenceSnapshot?.contentRights || null,
               rightsReview: item.noticeDraft?.rightsReview || null,
               pageCapture: item.evidenceSnapshot?.pageCapture || null,
+              disputes: disputeSummaries(item),
               claimant: creator
                 ? { name: creator.name, stageName: creator.stageName || null }
                 : null,
             };
           }),
+      });
+    }
+    if (
+      route.match(/^\/api\/operator\/cases\/[^/]+\/disputes\/[^/]+\/access$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-dispute-access:${ip}`, 30, 3600000))
+          .allowed
+      )
+        return send(res, 429, {
+          error: "Too many dispute evidence access attempts.",
+        });
+      const segments = route.split("/"),
+        caseId = segments[4],
+        disputeId = segments[6],
+        b = await parse(req),
+        caseRecord = d.cases.find((item) => item.id === caseId),
+        dispute = openDisputes(caseRecord).find(
+          (item) => item.disputeId === disputeId,
+        ),
+        rawDisputeEvent = caseRecord?.timeline?.find(
+          (event) =>
+            event.event === "Dispute received — follow-ups frozen" &&
+            event.details?.disputeId === disputeId,
+        );
+      if (!caseRecord || !dispute)
+        return send(res, 404, { error: "Open dispute not found." });
+      if (!disputeEventIntegrityValid(caseId, rawDisputeEvent))
+        return send(res, 409, {
+          error:
+            "The dispute integrity binding failed and the case must be escalated.",
+        });
+      if (b.confirmNeedToReview !== true)
+        return send(res, 400, {
+          error: "Confirm that access is required for this dispute review.",
+        });
+      if (!operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode))
+        return send(res, 401, {
+          error: "A current authenticator code is required.",
+        });
+      const totpCode = String(b.mfaCode || "").replace(/\s/g, "");
+      if (
+        !(
+          await allowed(
+            req,
+            `operator-totp:${OPERATOR_CONFIGURATION.id}:${totpCode}`,
+            1,
+            90000,
+          )
+        ).allowed
+      )
+        return send(res, 409, {
+          error:
+            "That authenticator code was already used. Wait for a new code.",
+        });
+      const payload = openDisputePayload(caseRecord, dispute);
+      audit(
+        d,
+        null,
+        "case.dispute_accessed",
+        {
+          caseId,
+          disputeId,
+          disputeIntegrityHash: rawDisputeEvent.details.integrityHash,
+        },
+        { actorSubject: currentOperatorSubject() },
+      );
+      await save(d);
+      return send(res, 200, {
+        dispute: {
+          disputeId,
+          version: payload.version,
+          caseReference: payload.caseReference,
+          reportedUrl: payload.reportedUrl,
+          contactEmail: payload.email,
+          country: payload.country,
+          category: payload.category,
+          statement: payload.statement,
+          supportingUrl: payload.supportingUrl,
+          receivedAt: dispute.receivedAt,
+          statementChecksum: dispute.statementChecksum,
+        },
+      });
+    }
+    if (
+      route.match(/^\/api\/operator\/cases\/[^/]+\/disputes\/[^/]+\/review$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-dispute-review:${ip}`, 20, 3600000))
+          .allowed
+      )
+        return send(res, 429, { error: "Too many dispute review attempts." });
+      const segments = route.split("/"),
+        caseId = segments[4],
+        disputeId = segments[6],
+        b = await parse(req),
+        caseRecord = d.cases.find((item) => item.id === caseId),
+        dispute = openDisputes(caseRecord).find(
+          (item) => item.disputeId === disputeId,
+        ),
+        rawDisputeEvent = caseRecord?.timeline?.find(
+          (event) =>
+            event.event === "Dispute received — follow-ups frozen" &&
+            event.details?.disputeId === disputeId,
+        );
+      if (!caseRecord || !dispute)
+        return send(res, 404, { error: "Open dispute not found." });
+      if (!disputeEventIntegrityValid(caseId, rawDisputeEvent))
+        return send(res, 409, {
+          error:
+            "The dispute integrity binding failed and the case must be escalated.",
+        });
+      let review;
+      try {
+        review = disputeReview(b, dispute);
+      } catch (error) {
+        if (error instanceof DisputePolicyError)
+          return send(res, error.status, { error: error.message });
+        throw error;
+      }
+      if (!operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode))
+        return send(res, 401, {
+          error: "A current authenticator code is required.",
+        });
+      const totpCode = String(b.mfaCode || "").replace(/\s/g, "");
+      if (
+        !(
+          await allowed(
+            req,
+            `operator-totp:${OPERATOR_CONFIGURATION.id}:${totpCode}`,
+            1,
+            90000,
+          )
+        ).allowed
+      )
+        return send(res, 409, {
+          error:
+            "That authenticator code was already used. Wait for a new code.",
+        });
+      const reviewedAt = new Date().toISOString();
+      caseRecord.timeline ||= [];
+      const reviewEvent = protectDisputeEvent(
+        caseId,
+        disputeReviewEvent({
+          disputeId,
+          review,
+          operatorReference: OPERATOR_CONFIGURATION.id,
+          reviewedAt,
+        }),
+      );
+      caseRecord.timeline.push(reviewEvent);
+      caseRecord.nextActionAt = null;
+      caseRecord.updatedAt = reviewedAt;
+      const remainingDisputes = openDisputes(caseRecord),
+        anyAcceptedDispute = caseRecord.timeline.some(
+          (event) =>
+            event.event === "Dispute resolved" &&
+            event.details?.outcome === "accept",
+        );
+      if (review.action === "escalate") {
+        caseRecord.status = "Dispute — counsel review required";
+      } else if (remainingDisputes.length) {
+        caseRecord.status = "Disputed — review required";
+        caseRecord.closedAt = null;
+      } else if (anyAcceptedDispute) {
+        caseRecord.status = "Closed — dispute accepted";
+        caseRecord.closedAt = reviewedAt;
+      } else {
+        caseRecord.status = "Delivered — monitoring";
+        caseRecord.closedAt = null;
+      }
+      audit(
+        d,
+        null,
+        review.action === "escalate"
+          ? "case.dispute_escalated"
+          : "case.dispute_resolved",
+        {
+          caseId,
+          disputeId,
+          outcome: review.action,
+          counselReference: review.counselReference,
+          followUpsFrozen: caseRecord.nextActionAt === null,
+          disputeIntegrityHash: reviewEvent.details.integrityHash,
+        },
+        { actorSubject: currentOperatorSubject() },
+      );
+      await save(d);
+      return send(res, 200, {
+        ok: true,
+        status: caseRecord.status,
+        disputeStatus:
+          review.action === "escalate"
+            ? "open-escalated"
+            : remainingDisputes.length
+              ? "resolved-other-disputes-open"
+              : "resolved",
       });
     }
     if (
@@ -2025,10 +2412,11 @@ const appServer = http.createServer(async (req, res) => {
             status: creatorVisibleMatchStatus(m, cases),
           })),
         creatorCases = cases.map((item) => {
-          if (item.status !== "Awaiting creator approval") return item;
+          const safeCase = creatorSafeCase(item);
+          if (item.status !== "Awaiting creator approval") return safeCase;
           const renderedNotice = noticeText(item, u);
           return {
-            ...item,
+            ...safeCase,
             noticeText: renderedNotice,
             noticeHash: textDigest(renderedNotice),
           };

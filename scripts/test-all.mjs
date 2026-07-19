@@ -10,6 +10,8 @@ const checks = [
   "test-isolated-restore-policy.mjs",
   "test-media-validation.mjs",
   "test-content-rights-policy.mjs",
+  "test-dispute-policy.mjs",
+  "test-dispute-integration.mjs",
   "test-page-capture-policy.mjs",
   "test-page-capture-integration.mjs",
   "test-video-frames.mjs",

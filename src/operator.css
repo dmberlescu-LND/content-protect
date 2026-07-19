@@ -250,3 +250,96 @@
 .operator-evidence-download svg {
   width: 14px;
 }
+
+.operator-disputes {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #efc86e;
+  border-radius: 10px;
+  background: #fffaf0;
+}
+.operator-disputes h3 {
+  margin: 0 0 12px;
+  font: 700 14px "Manrope";
+  color: #7d5511;
+}
+.operator-dispute {
+  padding: 13px;
+  border: 1px solid #eadcc0;
+  border-radius: 9px;
+  background: #fff;
+}
+.operator-dispute + .operator-dispute {
+  margin-top: 10px;
+}
+.operator-dispute-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.operator-dispute-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.operator-dispute-summary b {
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.operator-dispute-summary span,
+.operator-dispute-summary small {
+  font-size: 10px;
+  color: #746d78;
+  overflow-wrap: anywhere;
+}
+.operator-dispute-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #ebe4d7;
+}
+.operator-dispute-detail > p {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8f6fb;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.operator-dispute-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+.operator-dispute-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.operator-dispute-fields input,
+.operator-dispute-fields select,
+.operator-dispute-fields textarea {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #dcd9e2;
+  border-radius: 8px;
+  font: inherit;
+}
+.operator-dispute-fields textarea {
+  min-height: 95px;
+  resize: vertical;
+}
+
+@media (max-width: 700px) {
+  .operator-dispute-summary {
+    flex-direction: column;
+  }
+  .operator-dispute-fields {
+    grid-template-columns: 1fr;
+  }
+}

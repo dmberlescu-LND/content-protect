@@ -1697,6 +1697,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                         Case opened{" "}
                         {new Date(c.createdAt).toLocaleDateString("en-GB")}
                       </span>
+                      {c.disputes?.some(
+                        (dispute) => dispute.status === "open",
+                      ) && (
+                        <span>
+                          Dispute received · follow-ups frozen for human review
+                        </span>
+                      )}
                     </div>
                     <div className="confidence">
                       <b>{c.mode === "sandbox" ? "Sandbox" : "Live"}</b>
@@ -2633,6 +2640,8 @@ function OperatorConsole() {
   const [error, setError] = useState("");
   const [cases, setCases] = useState([]);
   const [forms, setForms] = useState({});
+  const [disputeDetails, setDisputeDetails] = useState({});
+  const [disputeForms, setDisputeForms] = useState({});
   const loadCases = async () => {
     const response = await fetch("/api/operator/cases");
     if (!response.ok) {
@@ -2779,11 +2788,97 @@ function OperatorConsole() {
     });
     await loadCases();
   };
+  const disputeKey = (caseId, disputeId) => `${caseId}:${disputeId}`;
+  const accessDispute = async (item, dispute) => {
+    if (
+      !confirm(
+        "Open the encrypted dispute only if it is necessary for this case review. Continue?",
+      )
+    )
+      return;
+    const code = prompt(
+      "Enter a current authenticator code. A different new code will be required to record the outcome.",
+    );
+    if (!/^\d{6}$/.test(String(code || "").replace(/\s/g, ""))) {
+      setError("A current six-digit authenticator code is required.");
+      return;
+    }
+    const response = await fetch(
+      `/api/operator/cases/${item.id}/disputes/${dispute.disputeId}/access`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          confirmNeedToReview: true,
+          mfaCode: String(code).replace(/\s/g, ""),
+        }),
+      },
+    );
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "The dispute evidence could not be opened.");
+      return;
+    }
+    setError("");
+    setDisputeDetails({
+      ...disputeDetails,
+      [disputeKey(item.id, dispute.disputeId)]: result.dispute,
+    });
+  };
+  const reviewDispute = async (item, dispute) => {
+    const key = disputeKey(item.id, dispute.disputeId),
+      form = disputeForms[key] || {};
+    if (
+      !form.action ||
+      !form.reviewNote ||
+      !/^\d{6}$/.test(String(form.mfaCode || "").replace(/\s/g, ""))
+    ) {
+      setError(
+        "Choose an outcome, enter the review note and use a new authenticator code.",
+      );
+      return;
+    }
+    if (
+      !confirm(
+        "Record this dispute outcome? Follow-ups remain frozen unless qualified counsel approved continuation.",
+      )
+    )
+      return;
+    const response = await fetch(
+      `/api/operator/cases/${item.id}/disputes/${dispute.disputeId}/review`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          confirmCaseClosure:
+            form.action === "accept" && form.confirmCaseClosure === true,
+          confirmCreatorNotified:
+            ["accept", "continue"].includes(form.action) &&
+            form.confirmCreatorNotified === true,
+          confirmCounselApproval:
+            form.action === "continue" && form.confirmCounselApproval === true,
+          mfaCode: String(form.mfaCode).replace(/\s/g, ""),
+        }),
+      },
+    );
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || "The dispute outcome could not be recorded.");
+      return;
+    }
+    setError("");
+    setDisputeDetails({ ...disputeDetails, [key]: undefined });
+    setDisputeForms({ ...disputeForms, [key]: undefined });
+    await loadCases();
+  };
   const logout = async () => {
     await fetch("/api/operator/session", { method: "DELETE" });
     setReady(false);
     setOperatorId("");
     setCases([]);
+    setDisputeDetails({});
+    setDisputeForms({});
   };
   if (!ready)
     return (
@@ -2842,7 +2937,7 @@ function OperatorConsole() {
         <div className="operator-heading">
           <div>
             <p>HUMAN REVIEW REQUIRED</p>
-            <h1>Notice preparation and delivery queue</h1>
+            <h1>Notice and dispute review queue</h1>
           </div>
           <strong>{cases.length} pending</strong>
         </div>
@@ -2922,6 +3017,235 @@ function OperatorConsole() {
                     </span>
                   </div>
                   <pre>{item.noticeText}</pre>
+                </div>
+              )}
+              {item.disputes?.length > 0 && (
+                <div className="operator-disputes">
+                  <h3>Dispute review — follow-ups frozen</h3>
+                  {item.disputes.map((dispute) => {
+                    const key = disputeKey(item.id, dispute.disputeId),
+                      detail = disputeDetails[key],
+                      disputeForm = disputeForms[key] || {};
+                    return (
+                      <section className="operator-dispute" key={key}>
+                        <div className="operator-dispute-summary">
+                          <div>
+                            <b>{dispute.category}</b>
+                            <span>
+                              {dispute.country} · {dispute.status} ·{" "}
+                              {new Date(dispute.receivedAt).toLocaleString()}
+                            </span>
+                            <small>
+                              Statement SHA-256: {dispute.statementChecksum}
+                            </small>
+                          </div>
+                          {dispute.status === "open" && (
+                            <button
+                              className="operator-evidence-download"
+                              onClick={() => accessDispute(item, dispute)}
+                            >
+                              <LockKeyhole /> Open with MFA
+                            </button>
+                          )}
+                        </div>
+                        {detail && dispute.status === "open" && (
+                          <div className="operator-dispute-detail">
+                            <dl>
+                              <div>
+                                <dt>Safe contact</dt>
+                                <dd>{detail.contactEmail}</dd>
+                              </div>
+                              <div>
+                                <dt>Reported URL</dt>
+                                <dd>
+                                  <a
+                                    href={detail.reportedUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Open reported URL
+                                  </a>
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>Supporting URL</dt>
+                                <dd>
+                                  {detail.supportingUrl ? (
+                                    <a
+                                      href={detail.supportingUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      Open public support
+                                    </a>
+                                  ) : (
+                                    "None"
+                                  )}
+                                </dd>
+                              </div>
+                            </dl>
+                            <p>{detail.statement}</p>
+                            <div className="operator-dispute-fields">
+                              <label>
+                                Outcome
+                                <select
+                                  value={disputeForm.action || ""}
+                                  onChange={(event) =>
+                                    setDisputeForms({
+                                      ...disputeForms,
+                                      [key]: {
+                                        ...disputeForm,
+                                        action: event.target.value,
+                                      },
+                                    })
+                                  }
+                                >
+                                  <option value="">Choose outcome</option>
+                                  <option value="escalate">
+                                    Keep frozen — escalate to counsel
+                                  </option>
+                                  <option value="accept">
+                                    Accept dispute and close case
+                                  </option>
+                                  <option value="continue">
+                                    Counsel-approved continuation
+                                  </option>
+                                </select>
+                              </label>
+                              <label>
+                                Review note (20–1,000 characters)
+                                <textarea
+                                  maxLength={1000}
+                                  value={disputeForm.reviewNote || ""}
+                                  onChange={(event) =>
+                                    setDisputeForms({
+                                      ...disputeForms,
+                                      [key]: {
+                                        ...disputeForm,
+                                        reviewNote: event.target.value,
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              {disputeForm.action === "continue" && (
+                                <label>
+                                  Qualified-counsel approval reference
+                                  <input
+                                    value={disputeForm.counselReference || ""}
+                                    onChange={(event) =>
+                                      setDisputeForms({
+                                        ...disputeForms,
+                                        [key]: {
+                                          ...disputeForm,
+                                          counselReference: event.target.value,
+                                        },
+                                      })
+                                    }
+                                  />
+                                </label>
+                              )}
+                              <label>
+                                New authenticator code
+                                <input
+                                  inputMode="numeric"
+                                  autoComplete="one-time-code"
+                                  pattern="[0-9]{6}"
+                                  value={disputeForm.mfaCode || ""}
+                                  onChange={(event) =>
+                                    setDisputeForms({
+                                      ...disputeForms,
+                                      [key]: {
+                                        ...disputeForm,
+                                        mfaCode: event.target.value,
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                            </div>
+                            <div className="operator-checks">
+                              {disputeForm.action === "accept" && (
+                                <label>
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      disputeForm.confirmCaseClosure || false
+                                    }
+                                    onChange={(event) =>
+                                      setDisputeForms({
+                                        ...disputeForms,
+                                        [key]: {
+                                          ...disputeForm,
+                                          confirmCaseClosure:
+                                            event.target.checked,
+                                        },
+                                      })
+                                    }
+                                  />
+                                  I confirm this case must close after accepting
+                                  the dispute.
+                                </label>
+                              )}
+                              {["accept", "continue"].includes(
+                                disputeForm.action,
+                              ) && (
+                                <label>
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      disputeForm.confirmCreatorNotified ||
+                                      false
+                                    }
+                                    onChange={(event) =>
+                                      setDisputeForms({
+                                        ...disputeForms,
+                                        [key]: {
+                                          ...disputeForm,
+                                          confirmCreatorNotified:
+                                            event.target.checked,
+                                        },
+                                      })
+                                    }
+                                  />
+                                  I notified the creator of this outcome.
+                                </label>
+                              )}
+                              {disputeForm.action === "continue" && (
+                                <label>
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      disputeForm.confirmCounselApproval ||
+                                      false
+                                    }
+                                    onChange={(event) =>
+                                      setDisputeForms({
+                                        ...disputeForms,
+                                        [key]: {
+                                          ...disputeForm,
+                                          confirmCounselApproval:
+                                            event.target.checked,
+                                        },
+                                      })
+                                    }
+                                  />
+                                  Qualified counsel approved continuation under
+                                  the recorded reference.
+                                </label>
+                              )}
+                            </div>
+                            <button
+                              className="btn btn-primary"
+                              onClick={() => reviewDispute(item, dispute)}
+                            >
+                              Record dispute outcome
+                            </button>
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
                 </div>
               )}
               {item.status === "Awaiting operator preparation" && (
@@ -3089,31 +3413,38 @@ function OperatorConsole() {
                     </label>
                   </>
                 )}
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={forms[item.id]?.jurisdictionReviewed || false}
-                    onChange={(event) =>
-                      setForms({
-                        ...forms,
-                        [item.id]: {
-                          ...forms[item.id],
-                          jurisdictionReviewed: event.target.checked,
-                        },
-                      })
-                    }
-                  />
-                  I verified the recipient and appropriate jurisdiction/channel.
-                </label>
+                {[
+                  "Awaiting operator preparation",
+                  "Approved — delivery pending",
+                ].includes(item.status) && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={forms[item.id]?.jurisdictionReviewed || false}
+                      onChange={(event) =>
+                        setForms({
+                          ...forms,
+                          [item.id]: {
+                            ...forms[item.id],
+                            jurisdictionReviewed: event.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    I verified the recipient and appropriate
+                    jurisdiction/channel.
+                  </label>
+                )}
               </div>
-              {item.status === "Awaiting operator preparation" ? (
+              {item.status === "Awaiting operator preparation" && (
                 <button
                   className="btn btn-primary"
                   onClick={() => prepare(item.id)}
                 >
                   Prepare for creator approval
                 </button>
-              ) : (
+              )}
+              {item.status === "Approved — delivery pending" && (
                 <button
                   className="btn btn-primary"
                   onClick={() => dispatch(item.id)}

@@ -30,6 +30,59 @@
     a {
       color: #6548d6;
     }
+    form {
+      display: grid;
+      gap: 14px;
+      margin: 28px 0;
+      padding: 22px;
+      border: 1px solid #ded8f1;
+      border-radius: 12px;
+      background: #faf9ff;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      font-weight: 650;
+    }
+    label.check {
+      grid-template-columns: auto 1fr;
+      align-items: start;
+      font-weight: 400;
+    }
+    input,
+    select,
+    textarea,
+    button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #bdb7ca;
+      border-radius: 8px;
+      font: inherit;
+    }
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+    button {
+      border: 0;
+      background: #6548d6;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    #dispute-result {
+      min-height: 1.7em;
+      font-weight: 650;
+    }
+    .trap {
+      position: absolute;
+      left: -9999px;
+    }
   </style>
   <body>
     <a href="/">← Content Protect</a>
@@ -40,9 +93,112 @@
       <a
         href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20takedown%20dispute"
         >white.eagles.dm@gmail.com</a
-      >. Quote the case reference. Do not send identity documents until we
-      provide a secure method.
+      >. Quote the case reference. Do not send identity documents or intimate
+      files through this form or ordinary email.
     </aside>
+    <h2>Submit securely</h2>
+    <p>
+      This form accepts text and public HTTPS links only. It does not accept
+      files, identity documents or intimate attachments. Submission pauses
+      follow-ups only when the case reference and reported URL match a delivered
+      Content Protect notice.
+    </p>
+    <form id="dispute-form">
+      <label>
+        Case reference
+        <input
+          name="caseReference"
+          required
+          maxlength="36"
+          autocomplete="off"
+        />
+      </label>
+      <label>
+        Reported URL from the notice
+        <input name="reportedUrl" required type="url" inputmode="url" />
+      </label>
+      <label>
+        Safe contact email
+        <input
+          name="email"
+          required
+          type="email"
+          autocomplete="email"
+          maxlength="254"
+        />
+      </label>
+      <label>
+        Two-letter country code
+        <input
+          name="country"
+          required
+          maxlength="2"
+          placeholder="GB"
+          autocapitalize="characters"
+        />
+      </label>
+      <label>
+        Reason
+        <select name="category" required>
+          <option value="">Choose one</option>
+          <option value="ownership">I own or control the rights</option>
+          <option value="authorisation">
+            I have the claimant's authorisation
+          </option>
+          <option value="wrong-content">
+            The notice identifies the wrong content
+          </option>
+          <option value="licence">The use is licensed</option>
+          <option value="fair-dealing">
+            Fair dealing or another legal exception
+          </option>
+          <option value="other">Another reason</option>
+        </select>
+      </label>
+      <label>
+        Dispute statement (40–4,000 characters)
+        <textarea
+          name="statement"
+          required
+          minlength="40"
+          maxlength="4000"
+        ></textarea>
+      </label>
+      <label>
+        Optional public supporting HTTPS link
+        <input name="supportingUrl" type="url" inputmode="url" />
+      </label>
+      <label class="trap" aria-hidden="true" inert>
+        Website
+        <input name="website" tabindex="-1" autocomplete="off" />
+      </label>
+      <label class="check">
+        <input name="confirmAccuracy" type="checkbox" required />
+        <span
+          >I confirm the information is accurate to the best of my
+          knowledge.</span
+        >
+      </label>
+      <label class="check">
+        <input name="confirmAuthority" type="checkbox" required />
+        <span
+          >I am the reported party or authorised to submit this dispute.</span
+        >
+      </label>
+      <label class="check">
+        <input name="confirmNoSensitiveAttachments" type="checkbox" required />
+        <span
+          >I have not included identity documents, intimate files or secret
+          links.</span
+        >
+      </label>
+      <label class="check">
+        <input name="privacyAccepted" type="checkbox" required />
+        <span>I have read the <a href="/privacy.html">Privacy Notice</a>.</span>
+      </label>
+      <button type="submit">Submit dispute for human review</button>
+      <p id="dispute-result" role="status" aria-live="polite"></p>
+    </form>
     <h2>What to include</h2>
     <ul>
       <li>The case reference and reported URL.</li>
@@ -78,5 +234,6 @@
       claims. You may exercise applicable data-protection rights independently
       of the dispute.
     </p>
+    <script src="/disputes.js" defer></script>
   </body>
 </html>

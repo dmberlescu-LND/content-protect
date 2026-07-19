@@ -31,12 +31,14 @@ Status: operational draft; no real notice may be sent until counsel approves jur
 
 ## Counter-notice/dispute
 
-1. Freeze automated follow-ups immediately.
-2. Notify the creator and preserve the counter-notice unchanged.
-3. Re-verify ownership/authority, licences, claimant assurance and jurisdiction; do not claim full identity verification unless separately enabled and approved.
-4. Do not disclose private creator contact details beyond legal necessity.
-5. Route contested legal assertions to qualified counsel; Content Protect does not decide court claims.
-6. Record outcome, reasoning, communications and any reinstatement.
+1. The independent public form accepts only text and optional public HTTPS links. It requires the delivered notice's case reference and exact reported URL, a safe contact email, country, reason, 40–4,000 character statement, authority/accuracy/privacy confirmations and confirmation that no identity or intimate files were supplied. File uploads are prohibited.
+2. Malformed submissions are rejected, while unknown or non-delivered cases receive the same generic `202` response as a valid intake so the endpoint cannot enumerate cases. Distributed IP/case limits, a honeypot and duplicate-contact suppression reduce abuse.
+3. For a matching delivered case, application-encrypt the complete intake immediately. Store only category, country, keyed contact pseudonym, statement SHA-256 and encrypted ciphertext in the case event. HMAC-bind the event to the case and copy only that integrity hash into the tamper-evident audit chain. Do not copy contact email or statement into logs or audit metadata.
+4. Freeze automated follow-ups immediately by clearing the next-action time and moving the case to `Disputed — review required`. Show the creator only the non-sensitive dispute summary and never the ciphertext, contact hash, internal note or counsel reference.
+5. The operator queue exposes metadata only. Opening the encrypted statement requires a secure operator session, explicit need-to-review confirmation and a current non-reusable TOTP code; access is audited. Recording an outcome requires another new TOTP code.
+6. Re-verify ownership/authority, licences, claimant assurance and jurisdiction; do not claim full identity verification unless separately enabled and approved. Escalation leaves the dispute open and follow-ups frozen. Acceptance closes the case. Continuation requires an opaque qualified-counsel approval reference plus confirmation that the creator was notified. When several disputes exist, the case remains frozen until every dispute is resolved; any accepted dispute closes the case.
+7. Do not disclose private creator contact details beyond legal necessity. Content Protect does not decide court claims.
+8. Record outcome, reasoning, communications and any reinstatement. Retain dispute communications with the associated case under the six-year case-communications schedule unless a documented legal hold applies.
 
 ## Abuse controls
 
