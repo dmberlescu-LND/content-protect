@@ -56,6 +56,10 @@ services:
         value: "false"
       - key: MONITORING_CONFIGURED
         value: "false"
+      - key: BACKUP_EVIDENCE_KEY
+        generateValue: true
+      - key: BACKUP_RESTORE_VERIFIED_AT
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: OBJECT_STORAGE_ENDPOINT

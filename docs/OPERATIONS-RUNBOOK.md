@@ -52,6 +52,10 @@ Stripe access is reconciled from the current Subscription object for checkout, s
 
 A backup is not considered operational until one restore has succeeded. Never download production dumps to an unmanaged personal device.
 
+Create the non-personal, signed integrity manifest beside each logical backup by running `pnpm backup:manifest` with the production `DATABASE_URL` and a separately managed `BACKUP_EVIDENCE_KEY` of at least 32 characters. Store the JSON manifest with the encrypted backup; it contains counts and keyed integrity samples, not customer records. Capture the manifest as part of the same controlled backup operation so its timestamp identifies the recovery point.
+
+After restoring into an isolated empty PostgreSQL database, run `pnpm backup:verify-restore /secure/path/manifest.json` with only `RESTORE_DATABASE_URL` and the same `BACKUP_EVIDENCE_KEY`. The verifier refuses the source database, runs a repeatable-read/read-only transaction, requires the current migration, validates the manifest signature, and compares counts plus HMAC integrity samples for users, assets, takedown cases, audit events and subscriptions. A discrepancy or altered manifest exits non-zero. Review and retain its JSON evidence before setting `BACKUP_RESTORE_VERIFIED_AT` to the successful `completedAt`; never set the flag from the manifest-creation step.
+
 ## Media storage recovery
 
 Enable private bucket versioning and lifecycle rules. Test recovery with disposable encrypted objects only: upload, read, compare checksum, delete, restore the prior version, compare again, then permanently purge the test object. Public bucket access must remain disabled.
