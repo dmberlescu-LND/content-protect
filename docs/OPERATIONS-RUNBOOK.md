@@ -31,6 +31,8 @@ Keep application/security logs for 12 months, with access restricted to authoris
 5. Run `pnpm retention:preview` and investigate unexpected volumes. The destructive command remains disabled unless the approved scheduler supplies `RETENTION_EXECUTION_ENABLED=true`; never enable it before migrations and a reviewed preview.
 6. Confirm no provider credentials or customer data appeared in logs.
 
+Stripe access is reconciled from the current Subscription object for checkout, subscription and invoice events; an invoice event alone must never grant or revoke access from its historical snapshot. The webhook destination must subscribe to checkout completion, subscription created/updated/deleted/paused/resumed, invoice paid, payment failed and payment action required. Checkout creation uses a 30-minute per-user/plan idempotency window to prevent duplicate subscriptions during retries.
+
 ## Database backup and restore gate
 
 1. Use a paid managed PostgreSQL plan with point-in-time recovery enabled.

@@ -32,7 +32,6 @@ import {
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
 import {
   findActiveSubscription,
-  planForPrice as billingPlanForPrice,
   scanIntervalMs,
 } from "./billing-policy.mjs";
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
@@ -48,6 +47,12 @@ import {
   noticeText,
   textDigest,
 } from "./takedown-policy.mjs";
+import {
+  checkoutIdempotencyKey,
+  reconcileStripeSubscription,
+  STRIPE_SUBSCRIPTION_EVENTS,
+  stripeSubscriptionId,
+} from "./stripe-subscription-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -699,83 +704,60 @@ const appServer = http.createServer(async (req, res) => {
         )
       )
         return send(res, 200, { received: true, duplicate: true });
-      if (
-        [
-          "checkout.session.completed",
-          "customer.subscription.updated",
-          "customer.subscription.deleted",
-          "invoice.paid",
-          "invoice.payment_failed",
-        ].includes(event.type)
-      ) {
-        const o = event.data.object,
-          subscriptionId =
-            typeof o.subscription === "string"
-              ? o.subscription
-              : typeof o.parent?.subscription_details?.subscription === "string"
-                ? o.parent.subscription_details.subscription
-                : typeof o.id === "string" && o.object === "subscription"
-                  ? o.id
-                  : null,
-          customerId = typeof o.customer === "string" ? o.customer : null,
+      if (STRIPE_SUBSCRIPTION_EVENTS.has(event.type)) {
+        const object = event.data.object,
+          subscriptionId = stripeSubscriptionId(object),
+          customerId =
+            typeof object.customer === "string" ? object.customer : null,
           existing = d.subscriptions.find(
             (item) =>
               (subscriptionId &&
                 item.stripeSubscriptionId === subscriptionId) ||
               (customerId && item.stripeCustomerId === customerId),
-          ),
-          userId = o.metadata?.userId || existing?.userId,
-          eventPriceId =
-            o.metadata?.priceId ||
-            o.items?.data?.[0]?.price?.id ||
-            o.lines?.data?.[0]?.pricing?.price_details?.price ||
-            null,
-          plan =
-            billingPlanForPrice(STRIPE_PRICES, eventPriceId) || existing?.plan;
-        if (userId) {
-          let sub =
-            existing || d.subscriptions.find((x) => x.userId === userId);
-          if (!sub) {
-            sub = { id: randomUUID(), userId };
-            d.subscriptions.push(sub);
-          }
-          const nextStatus =
-            event.type === "customer.subscription.deleted"
-              ? "cancelled"
-              : event.type === "invoice.payment_failed"
-                ? "past_due"
-                : event.type === "invoice.paid"
-                  ? "active"
-                  : o.status || sub.status || "active";
-          Object.assign(sub, {
-            plan: plan || sub.plan,
-            status: nextStatus,
-            mode: `stripe_${PAYMENTS_MODE}`,
-            stripeLivemode: Boolean(event.livemode),
-            stripePriceId: eventPriceId || sub.stripePriceId,
-            stripeCustomerId: customerId || sub.stripeCustomerId,
-            stripeSubscriptionId: subscriptionId || sub.stripeSubscriptionId,
-            renewalAt: o.current_period_end
-              ? new Date(o.current_period_end * 1000).toISOString()
-              : sub.renewalAt,
-            updatedAt: new Date().toISOString(),
-          });
-          const user = d.users.find((x) => x.id === userId);
-          if (
-            user &&
-            plan &&
-            STRIPE_PRICES[plan] &&
-            ["active", "trialing"].includes(nextStatus)
-          )
-            user.plan = plan;
-          else if (user && nextStatus === "cancelled")
-            user.plan = "Unsubscribed";
-          if (user)
-            audit(d, user, "billing.webhook_processed", {
-              type: event.type,
-              status: nextStatus,
-              mode: PAYMENTS_MODE,
+          );
+        if (subscriptionId) {
+          const stripeSubscription = await stripe.subscriptions.retrieve(
+              subscriptionId,
+            ),
+            reconciled = reconcileStripeSubscription(stripeSubscription, {
+              prices: STRIPE_PRICES,
+              paymentsMode: PAYMENTS_MODE,
+              fallbackUserId: object.metadata?.userId || existing?.userId,
             });
+          if (reconciled.valid) {
+            let sub =
+              existing ||
+              d.subscriptions.find((item) => item.userId === reconciled.userId);
+            if (!sub) {
+              sub = { id: randomUUID(), userId: reconciled.userId };
+              d.subscriptions.push(sub);
+            }
+            Object.assign(sub, {
+              plan: reconciled.plan,
+              status: reconciled.status,
+              mode: `stripe_${PAYMENTS_MODE}`,
+              stripeLivemode: reconciled.stripeLivemode,
+              stripePriceId: reconciled.stripePriceId,
+              stripeCustomerId: reconciled.stripeCustomerId,
+              stripeSubscriptionId: reconciled.stripeSubscriptionId,
+              renewalAt: reconciled.renewalAt || sub.renewalAt,
+              updatedAt: new Date().toISOString(),
+            });
+            const user = d.users.find(
+              (item) => item.id === reconciled.userId,
+            );
+            if (user) {
+              user.plan = reconciled.entitled
+                ? reconciled.plan
+                : "Unsubscribed";
+              audit(d, user, "billing.webhook_processed", {
+                type: event.type,
+                status: reconciled.status,
+                entitled: reconciled.entitled,
+                mode: PAYMENTS_MODE,
+              });
+            }
+          }
         }
       }
       d.processedWebhooks.push({
@@ -1905,22 +1887,25 @@ const appServer = http.createServer(async (req, res) => {
           priceId: STRIPE_PRICES[b.plan],
           mode: PAYMENTS_MODE,
         },
-        session = await stripe.checkout.sessions.create({
-          mode: "subscription",
-          client_reference_id: u.id,
-          ...(current?.stripeCustomerId
-            ? { customer: current.stripeCustomerId }
-            : { customer_email: u.email }),
-          line_items: [{ quantity: 1, price: STRIPE_PRICES[b.plan] }],
-          billing_address_collection: "required",
-          automatic_tax: {
-            enabled: process.env.STRIPE_TAX_ENABLED === "true",
+        session = await stripe.checkout.sessions.create(
+          {
+            mode: "subscription",
+            client_reference_id: u.id,
+            ...(current?.stripeCustomerId
+              ? { customer: current.stripeCustomerId }
+              : { customer_email: u.email }),
+            line_items: [{ quantity: 1, price: STRIPE_PRICES[b.plan] }],
+            billing_address_collection: "required",
+            automatic_tax: {
+              enabled: process.env.STRIPE_TAX_ENABLED === "true",
+            },
+            success_url: `${base}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${base}/?checkout=cancelled`,
+            metadata,
+            subscription_data: { metadata },
           },
-          success_url: `${base}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${base}/?checkout=cancelled`,
-          metadata,
-          subscription_data: { metadata },
-        });
+          { idempotencyKey: checkoutIdempotencyKey(u.id, b.plan) },
+        );
       const consent = {
         id: randomUUID(),
         userId: u.id,
@@ -1967,16 +1952,24 @@ const appServer = http.createServer(async (req, res) => {
         !session.subscription
       )
         return send(res, 409, { error: "Checkout is not complete." });
-      const stripeSubscription = await stripe.subscriptions.retrieve(
-          session.subscription,
+      const subscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription.id,
+        stripeSubscription = await stripe.subscriptions.retrieve(
+          subscriptionId,
         ),
-        selectedPlan = session.metadata?.plan,
-        selectedPrice = stripeSubscription.items.data[0]?.price?.id;
+        reconciled = reconcileStripeSubscription(stripeSubscription, {
+          prices: STRIPE_PRICES,
+          paymentsMode: PAYMENTS_MODE,
+          fallbackUserId: u.id,
+        });
       if (
-        !["active", "trialing"].includes(stripeSubscription.status) ||
-        !STRIPE_PRICES[selectedPlan] ||
-        selectedPrice !== STRIPE_PRICES[selectedPlan] ||
-        session.metadata?.priceId !== selectedPrice
+        !reconciled.valid ||
+        !reconciled.entitled ||
+        reconciled.userId !== u.id ||
+        session.metadata?.plan !== reconciled.plan ||
+        session.metadata?.priceId !== reconciled.stripePriceId
       )
         return send(res, 409, {
           error:
@@ -1988,16 +1981,17 @@ const appServer = http.createServer(async (req, res) => {
         d.subscriptions.push(sub);
       }
       Object.assign(sub, {
-        plan: selectedPlan,
-        status: stripeSubscription.status,
+        plan: reconciled.plan,
+        status: reconciled.status,
         mode: `stripe_${PAYMENTS_MODE}`,
-        stripeLivemode: session.livemode,
-        stripePriceId: selectedPrice,
-        stripeCustomerId: session.customer,
-        stripeSubscriptionId: session.subscription,
+        stripeLivemode: reconciled.stripeLivemode,
+        stripePriceId: reconciled.stripePriceId,
+        stripeCustomerId: reconciled.stripeCustomerId,
+        stripeSubscriptionId: reconciled.stripeSubscriptionId,
+        renewalAt: reconciled.renewalAt,
         updatedAt: new Date().toISOString(),
       });
-      u.plan = session.metadata.plan;
+      u.plan = reconciled.plan;
       audit(d, u, "billing.checkout_completed", {
         sessionId: id,
         plan: u.plan,
