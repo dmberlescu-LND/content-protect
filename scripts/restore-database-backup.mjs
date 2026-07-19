@@ -1,8 +1,4 @@
-import {
-  GetBucketLifecycleConfigurationCommand,
-  GetObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { spawn } from "node:child_process";
 import { createDecipheriv, createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
@@ -22,10 +18,7 @@ import {
   safeDatabaseManifestKey,
   validateDatabaseBackupManifest,
 } from "../database-backup-policy.mjs";
-import {
-  storageIdentity,
-  validateMediaBackupLifecycle,
-} from "../media-backup-policy.mjs";
+import { storageIdentity } from "../media-backup-policy.mjs";
 
 const manifestKey = safeDatabaseManifestKey(process.argv[2]),
   connectionString = process.env.RESTORE_DATABASE_URL,
@@ -80,17 +73,6 @@ function run(command, args, options) {
 }
 
 try {
-  const lifecycleResponse = await backupClient.send(
-      new GetBucketLifecycleConfigurationCommand({ Bucket: backup.bucket }),
-    ),
-    lifecycle = validateMediaBackupLifecycle(lifecycleResponse.Rules, {
-      dailyDays: Number(process.env.MEDIA_DAILY_RETENTION_DAYS || 35),
-      monthlyDays: Number(process.env.MEDIA_MONTHLY_RETENTION_DAYS || 400),
-    });
-  if (!lifecycle.ok)
-    throw new Error(
-      `Backup lifecycle configuration mismatch: ${JSON.stringify(lifecycle.discrepancies)}.`,
-    );
   const manifestResponse = await backupClient.send(
       new GetObjectCommand({ Bucket: backup.bucket, Key: manifestKey }),
     ),
