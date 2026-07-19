@@ -59,10 +59,30 @@ for (const path of [
   "/content-protect-social.png",
   "/robots.txt",
   "/sitemap.xml",
+  "/site.webmanifest",
   "/.well-known/security.txt",
 ]) {
   const response = await get(path);
   expect(response.ok, `${path} returned HTTP ${response.status}`);
+  const contentType = response.headers.get("content-type") || "";
+  if (path.endsWith(".txt"))
+    expect(contentType.includes("text/plain"), `${path} is not text/plain`);
+  if (path.endsWith(".xml"))
+    expect(
+      contentType.includes("application/xml") ||
+        contentType.includes("text/xml"),
+      `${path} is not XML`,
+    );
+  if (path.endsWith(".webmanifest"))
+    expect(
+      contentType.includes("application/manifest+json"),
+      `${path} is not a web manifest`,
+    );
+  if (["/robots.txt", "/sitemap.xml"].includes(path))
+    expect(
+      !response.headers.get("cache-control")?.includes("immutable"),
+      `${path} must remain revalidatable`,
+    );
   const body = await response.text();
   if (path === "/robots.txt")
     expect(

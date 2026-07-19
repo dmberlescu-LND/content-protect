@@ -291,10 +291,14 @@ async function staticFile(req, res) {
         ".html": "text/html; charset=utf-8",
         ".js": "text/javascript; charset=utf-8",
         ".css": "text/css; charset=utf-8",
+        ".txt": "text/plain; charset=utf-8",
+        ".xml": "application/xml; charset=utf-8",
+        ".webmanifest": "application/manifest+json; charset=utf-8",
         ".svg": "image/svg+xml",
         ".png": "image/png",
         ".ico": "image/x-icon",
-      };
+      },
+      revalidate = new Set([".html", ".txt", ".xml", ".webmanifest"]).has(ext);
     res.writeHead(200, {
       ...securityHeaders,
       "content-type": types[ext] || "application/octet-stream",
@@ -303,8 +307,9 @@ async function staticFile(req, res) {
             link: `<https://content-protect.com/${canonicalPath}>; rel="canonical"`,
           }
         : {}),
-      "cache-control":
-        ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
+      "cache-control": revalidate
+        ? "no-cache"
+        : "public, max-age=31536000, immutable",
     });
     res.end(data);
     return true;
