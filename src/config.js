@@ -10,5 +10,5 @@ export const productConfig = {
   livePayments: false,
   liveTakedowns: false,
   minimumAge: 18,
-  supportEmail: 'support@your-domain.co.uk',
+  supportEmail: 'white.eagles.dm@gmail.com',
 };

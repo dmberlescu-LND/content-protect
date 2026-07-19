@@ -1,14 +1,15 @@
 # Content Protect UK launch checklist
 
-Status: implementation checklist, not legal advice. Company details and counsel approval are required before publication.
+Status: implementation checklist, not legal advice. Company identity is verified; overdue statutory filings, counsel approval and provider approvals remain release gates.
 
 ## Company and tax
 
-- Incorporate the operating company and confirm the registered name, number and address.
-- Open a UK business bank account and appoint the responsible directors.
+- Companies House was checked on 19 July 2026 and confirms **WHITE EAGLES DIGITAL MARKETING LTD**, company **14978662**, as an active private limited company incorporated on 4 July 2023. The registered office is **The Spaceworks, Flat 7, Plumbers Row, London, England, E1 1AG**. Evidence: [official Companies House record](https://find-and-update.company-information.service.gov.uk/company/14978662).
+- **Commercial launch blocker:** Companies House reports the accounts made up to 31 July 2025 as overdue; they were due by 30 April 2026. File them and confirm the register no longer shows the warning before launch.
+- **Commercial launch blocker:** Companies House reports the confirmation statement dated 3 July 2026 as overdue; it was due by 17 July 2026. File it and confirm the register no longer shows the warning before launch.
+- Confirm the UK business bank account and responsible directors operationally; do not store bank details in this repository.
 - Confirm corporation tax, VAT threshold and cross-border digital-service treatment with an accountant.
-- Confirm the Companies House number and registered office for White Eagles Digital Marketing LTD.
-- Use “Content Protect is a trading name of White Eagles Digital Marketing LTD” in customer-facing legal pages.
+- Use “Content Protect is a trading name of White Eagles Digital Marketing LTD” in the next counsel-approved version of each customer-facing legal page.
 
 ## Privacy and security
 
