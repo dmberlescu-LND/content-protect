@@ -26,17 +26,22 @@ import {
   archiveAccountingRecords,
   closeDatabase,
   consumeRateLimit,
+  databaseMode,
   databaseProbe,
   initializeAuditIntegrity,
   latestOperationalEvidence,
   loadPostgresState,
+  markObjectDeletionComplete,
   recordOperationalEvidence,
   savePostgresState,
 } from "./database.mjs";
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
 import { findActiveSubscription, scanIntervalMs } from "./billing-policy.mjs";
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
-import { operationsReadiness } from "./operations-readiness.mjs";
+import {
+  operationsReadiness,
+  REQUIRED_MIGRATION,
+} from "./operations-readiness.mjs";
 import { unsafeRequestOriginAllowed } from "./security-policy.mjs";
 import {
   buildYotiAgeShareConfiguration,
@@ -59,6 +64,10 @@ import {
 } from "./stripe-subscription-policy.mjs";
 import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
 import { BACKUP_TABLES } from "./backup-snapshot.mjs";
+import {
+  accountDeletionBlockedByLegalHold,
+  assetDeletionBlockedByLegalHold,
+} from "./retention-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -241,8 +250,8 @@ async function load() {
   );
   return d;
 }
-async function save(d) {
-  if (await savePostgresState(d)) return;
+async function save(d, databaseChanges) {
+  if (await savePostgresState(d, databaseChanges)) return;
   await writeFile(DB, JSON.stringify(d, null, 2));
 }
 const securityHeaders = {
@@ -965,6 +974,7 @@ const appServer = http.createServer(async (req, res) => {
           sourceIdentity,
           restoreIdentity,
           tablesChecked,
+          requiredMigration: REQUIRED_MIGRATION,
         },
       });
       return send(res, 202, { recorded: true, evidence });
@@ -1896,11 +1906,35 @@ const appServer = http.createServer(async (req, res) => {
       const id = route.split("/").pop(),
         i = d.assets.findIndex((x) => x.id === id && x.userId === u.id);
       if (i < 0) return send(res, 404, { error: "Asset not found." });
-      const [asset] = d.assets.splice(i, 1);
-      await deleteEncryptedObject(asset.objectKey || `${id}.vault`, VAULT);
+      if (assetDeletionBlockedByLegalHold(d, u.id, id))
+        return send(res, 409, {
+          error:
+            "This reference file is preserved by a documented legal hold. Contact support before deletion.",
+        });
+      const [asset] = d.assets.splice(i, 1),
+        objectKey = asset.objectKey || `${id}.vault`,
+        durableQueue = databaseMode() === "postgresql";
+      if (!durableQueue) await deleteEncryptedObject(objectKey, VAULT);
       audit(d, u, "vault.asset_deleted", { assetId: id, name: asset.name });
-      await save(d);
-      return send(res, 200, { ok: true });
+      await save(d, {
+        deletedAssetIds: [id],
+        objectDeletions: [objectKey],
+      });
+      let deletionPending = false;
+      if (durableQueue)
+        try {
+          await deleteEncryptedObject(objectKey, VAULT);
+          await markObjectDeletionComplete(objectKey);
+        } catch {
+          deletionPending = true;
+          console.error(
+            "A user-requested object deletion remains safely queued for retry.",
+          );
+        }
+      return send(res, deletionPending ? 202 : 200, {
+        ok: true,
+        deletionStatus: deletionPending ? "queued" : "deleted",
+      });
     }
     if (route === "/api/scans" && req.method === "POST") {
       if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
@@ -2401,6 +2435,11 @@ const appServer = http.createServer(async (req, res) => {
       const b = await parse(req);
       if (!passwordMatches(u, b.password))
         return send(res, 403, { error: "Password is incorrect." });
+      if (accountDeletionBlockedByLegalHold(d, u.id))
+        return send(res, 409, {
+          error:
+            "This account has records under a documented legal hold. Contact support before deletion.",
+        });
       const assets = d.assets.filter((x) => x.userId === u.id);
       const accountingArchived = await archiveAccountingRecords(u.id);
       if (!accountingArchived) {
@@ -2420,11 +2459,13 @@ const appServer = http.createServer(async (req, res) => {
             createdAt: new Date().toISOString(),
           });
       }
-      for (const asset of assets)
-        await deleteEncryptedObject(
-          asset.objectKey || `${asset.id}.vault`,
-          VAULT,
-        );
+      const durableQueue = databaseMode() === "postgresql";
+      if (!durableQueue)
+        for (const asset of assets)
+          await deleteEncryptedObject(
+            asset.objectKey || `${asset.id}.vault`,
+            VAULT,
+          );
       d.assets = d.assets.filter((x) => x.userId !== u.id);
       d.matches = d.matches.filter((x) => x.userId !== u.id);
       d.cases = d.cases.filter((x) => x.userId !== u.id);
@@ -2441,14 +2482,35 @@ const appServer = http.createServer(async (req, res) => {
       );
       d.verifications = d.verifications.filter((x) => x.userId !== u.id);
       d.users = d.users.filter((x) => x.id !== u.id);
-      await save(d);
+      await save(d, {
+        deletedUserIds: [u.id],
+        objectDeletions: assets.map(
+          (asset) => asset.objectKey || `${asset.id}.vault`,
+        ),
+      });
+      let deletionPending = false;
+      if (durableQueue)
+        for (const asset of assets) {
+          const objectKey = asset.objectKey || `${asset.id}.vault`;
+          try {
+            await deleteEncryptedObject(objectKey, VAULT);
+            await markObjectDeletionComplete(objectKey);
+          } catch {
+            deletionPending = true;
+            console.error(
+              "An account-deletion object remains safely queued for retry.",
+            );
+          }
+        }
       return send(
         res,
-        200,
+        deletionPending ? 202 : 200,
         {
           ok: true,
-          notice:
-            "Account and service data deleted. Minimum billing records remain restricted for the statutory retention period.",
+          notice: deletionPending
+            ? "Account and service data removed from active use. Encrypted object deletion is queued for automatic retry. Minimum billing records remain restricted for the statutory retention period."
+            : "Account and service data deleted. Minimum billing records remain restricted for the statutory retention period.",
+          deletionStatus: deletionPending ? "queued" : "deleted",
         },
         {
           "set-cookie":

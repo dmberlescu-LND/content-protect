@@ -121,6 +121,13 @@ requireText("Render", render, "YOTI_PRIVATE_KEY");
 rejectText("Render", render, "YOTI_API_KEY");
 requireText("Render", render, "content-protect-retention");
 requireText("Render", render, "dockerCommand: node scripts/retention.mjs");
+for (const key of [
+  "OBJECT_STORAGE_ENDPOINT",
+  "OBJECT_STORAGE_BUCKET",
+  "OBJECT_STORAGE_ACCESS_KEY_ID",
+  "OBJECT_STORAGE_SECRET_ACCESS_KEY",
+])
+  requireText("Render retention storage", render, `envVarKey: ${key}`);
 rejectText(
   "Render retention preview",
   render,
@@ -161,6 +168,13 @@ requireText(
 );
 
 requireText("operations readiness", readiness, REQUIRED_MIGRATION);
+requireText("operations runbook", runbook, "storage-deletion queue");
+requireText("operations runbook", runbook, "latest result");
+requireText(
+  "operations runbook",
+  runbook,
+  "schema change requires a new backup",
+);
 requireText("operations runbook", runbook, "R2 does not currently implement");
 requireText("operations runbook", runbook, "second private backup bucket");
 rejectText("operations runbook", runbook, "Enable private bucket versioning");

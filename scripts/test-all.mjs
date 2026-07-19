@@ -12,6 +12,7 @@ const checks = [
   "test-operations-readiness.mjs",
   "test-security-policy.mjs",
   "test-distributed-rate-limit.mjs",
+  "test-retention-queue.mjs",
   "test-yoti-age-policy.mjs",
   "test-takedown-policy.mjs",
   "test-stripe-subscription-policy.mjs",

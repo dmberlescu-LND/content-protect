@@ -97,6 +97,31 @@ services:
           type: web
           name: content-protect-staging
           envVarKey: DATABASE_URL
+      - key: OBJECT_STORAGE_ENDPOINT
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_ENDPOINT
+      - key: OBJECT_STORAGE_BUCKET
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_BUCKET
+      - key: OBJECT_STORAGE_REGION
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_REGION
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_ACCESS_KEY_ID
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_SECRET_ACCESS_KEY
 
   - type: cron
     name: content-protect-backup

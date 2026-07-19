@@ -30,6 +30,7 @@ const complete = {
   },
   backupRestoreEvidence: {
     status: "succeeded",
+    requiredMigration: REQUIRED_MIGRATION,
     occurredAt: new Date().toISOString(),
   },
 };
@@ -84,6 +85,12 @@ for (const missingGate of [
   { yotiConfigured: false },
   { yotiMode: "sandbox" },
   { retentionEvidence: undefined },
+  {
+    retentionEvidence: {
+      status: "failed",
+      occurredAt: new Date().toISOString(),
+    },
+  },
   { monitoringEvidence: undefined },
   {
     retentionEvidence: {
@@ -100,7 +107,15 @@ for (const missingGate of [
   {
     backupRestoreEvidence: {
       status: "succeeded",
+      requiredMigration: REQUIRED_MIGRATION,
       occurredAt: "2020-01-01T00:00:00.000Z",
+    },
+  },
+  {
+    backupRestoreEvidence: {
+      status: "succeeded",
+      requiredMigration: "017_audit_integrity.sql",
+      occurredAt: new Date().toISOString(),
     },
   },
 ]) {

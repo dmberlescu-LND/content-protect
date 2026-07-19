@@ -27,6 +27,7 @@
     "test:operations": "node scripts/test-operations-readiness.mjs",
     "test:security-policy": "node scripts/test-security-policy.mjs",
     "test:rate-limit": "node scripts/test-distributed-rate-limit.mjs",
+    "test:retention": "node scripts/test-retention-queue.mjs",
     "test:yoti-policy": "node scripts/test-yoti-age-policy.mjs",
     "test:takedown-policy": "node scripts/test-takedown-policy.mjs",
     "test:stripe-policy": "node scripts/test-stripe-subscription-policy.mjs",

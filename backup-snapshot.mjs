@@ -4,10 +4,20 @@ import { REQUIRED_MIGRATION } from "./operations-readiness.mjs";
 
 export const BACKUP_TABLES = Object.freeze([
   { name: "users", key: "id" },
+  { name: "creator_profiles", key: "user_id" },
+  { name: "verification_records", key: "id" },
+  { name: "consent_records", key: "id" },
   { name: "assets", key: "id" },
+  { name: "scans", key: "id" },
+  { name: "matches", key: "id" },
   { name: "takedown_cases", key: "id" },
+  { name: "case_events", key: "id" },
   { name: "audit_events", key: "id" },
   { name: "subscriptions", key: "id" },
+  { name: "billing_consents", key: "id" },
+  { name: "accounting_records", key: "id" },
+  { name: "operational_evidence", key: "id" },
+  { name: "object_deletion_queue", key: "id" },
 ]);
 
 export function databaseIdentity(connectionString) {

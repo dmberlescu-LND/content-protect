@@ -1,6 +1,7 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import pg from "pg";
 import { protectAuditEvent, verifyAuditChain } from "./audit-integrity.mjs";
+import { drainObjectDeletionQueue } from "./retention-queue.mjs";
 
 const { Pool } = pg;
 const localRateLimits = new Map();
@@ -184,10 +185,11 @@ export async function latestOperationalEvidence() {
   if (!pool) return {};
   const result = await pool.query(
     `SELECT DISTINCT ON (evidence_type)
-       evidence_type,status,source,release,occurred_at
+       evidence_type,status,source,release,
+       details->>'requiredMigration' AS required_migration,
+       occurred_at
      FROM operational_evidence
-     WHERE status='succeeded'
-     ORDER BY evidence_type,occurred_at DESC`,
+     ORDER BY evidence_type,occurred_at DESC,id DESC`,
   );
   return Object.fromEntries(
     result.rows.map((row) => [
@@ -196,10 +198,30 @@ export async function latestOperationalEvidence() {
         status: row.status,
         source: row.source,
         release: row.release,
+        requiredMigration: row.required_migration || null,
         occurredAt: iso(row.occurred_at),
       },
     ]),
   );
+}
+
+export async function markObjectDeletionComplete(
+  objectKey,
+  completedAt = new Date(),
+) {
+  if (!pool) return false;
+  const key = String(objectKey || "");
+  if (key.length < 3 || key.length > 500)
+    throw new Error("Object deletion key is invalid.");
+  const result = await pool.query(
+    `UPDATE object_deletion_queue SET
+       deleted_at=$2,last_error=NULL,lease_owner=NULL,lease_until=NULL
+     WHERE object_key=$1`,
+    [key, completedAt],
+  );
+  if (result.rowCount !== 1)
+    throw new Error("The durable object-deletion record is missing.");
+  return true;
 }
 
 export async function consumeRateLimit({
@@ -307,80 +329,237 @@ export async function archiveAccountingRecords(userId, now = new Date()) {
   return true;
 }
 
-export async function runRetention({ execute = false, now = new Date() } = {}) {
+const RETENTION_OBJECT_CANDIDATES_SQL = `
+  SELECT DISTINCT a.object_key,
+    CASE
+      WHEN a.deleted_at IS NOT NULL THEN 'asset-deleted'
+      WHEN a.retention_until IS NOT NULL AND a.retention_until < $1
+        THEN 'asset-retention-expired'
+      ELSE 'unverified-account-expired'
+    END AS reason
+  FROM assets a
+  JOIN users u ON u.id=a.user_id
+  WHERE (
+      a.deleted_at IS NOT NULL
+      OR (a.retention_until IS NOT NULL AND a.retention_until < $1)
+      OR (
+        u.email_verified_at IS NULL
+        AND u.created_at < $2
+        AND NOT EXISTS (
+          SELECT 1 FROM billing_consents b WHERE b.user_id=u.id
+        )
+      )
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM matches m
+      JOIN takedown_cases c ON c.match_id=m.id
+      WHERE m.asset_id=a.id AND c.legal_hold=true
+    )`;
+
+const retentionEvidenceIdentity = () => ({
+  source: process.env.RENDER_SERVICE_NAME || "retention-command",
+  release: process.env.RENDER_GIT_COMMIT?.slice(0, 80) || null,
+});
+
+async function recordRetentionFailure({ phase, error, counts = {} }) {
+  const code = String(error?.code || error?.name || "RETENTION_FAILED").slice(
+    0,
+    80,
+  );
+  try {
+    await recordOperationalEvidence({
+      type: "retention",
+      status: "failed",
+      ...retentionEvidenceIdentity(),
+      details: {
+        phase,
+        code,
+        counts,
+        objectDeletion: error?.stats || undefined,
+      },
+    });
+  } catch {
+    // Preserve the original retention failure for the scheduler and alert route.
+  }
+}
+
+async function drainRetentionObjectQueue({ deleteObject, startedAt }) {
+  const owner = `retention-${randomUUID()}`;
+  return drainObjectDeletionQueue({
+    claimBatch: async (limit) => {
+      const result = await pool.query(
+        `WITH candidates AS (
+           SELECT id FROM object_deletion_queue
+           WHERE deleted_at IS NULL
+             AND (lease_until IS NULL OR lease_until < $1)
+             AND (last_attempt_at IS NULL OR last_attempt_at < $2)
+           ORDER BY queued_at,id
+           FOR UPDATE SKIP LOCKED
+           LIMIT $3
+         )
+         UPDATE object_deletion_queue q SET
+           deletion_attempts=q.deletion_attempts + 1,
+           last_attempt_at=$1,
+           lease_owner=$4,
+           lease_until=$1 + interval '15 minutes'
+         FROM candidates c
+         WHERE q.id=c.id
+         RETURNING q.id,q.object_key`,
+        [new Date(), startedAt, limit, owner],
+      );
+      return result.rows.map((row) => ({
+        id: row.id,
+        objectKey: row.object_key,
+      }));
+    },
+    deleteObject,
+    markDeleted: async (id) => {
+      const result = await pool.query(
+        `UPDATE object_deletion_queue SET
+           deleted_at=now(),last_error=NULL,lease_owner=NULL,lease_until=NULL
+         WHERE id=$1 AND lease_owner=$2`,
+        [id, owner],
+      );
+      if (result.rowCount !== 1)
+        throw new Error("Retention deletion lease was lost.");
+    },
+    markFailed: async (id, error) => {
+      await pool.query(
+        `UPDATE object_deletion_queue SET
+           last_error=$3,lease_owner=NULL,lease_until=NULL
+         WHERE id=$1 AND lease_owner=$2`,
+        [
+          id,
+          owner,
+          String(error?.message || "Object deletion failed").slice(0, 500),
+        ],
+      );
+    },
+    pendingCount: async () => {
+      const result = await pool.query(
+        "SELECT count(*)::int AS count FROM object_deletion_queue WHERE deleted_at IS NULL",
+      );
+      return result.rows[0].count;
+    },
+  });
+}
+
+export async function runRetention({
+  execute = false,
+  now = new Date(),
+  deleteObject,
+} = {}) {
   if (!pool) return { ok: true, mode: "local-json", execute, counts: {} };
-  const client = await pool.connect();
-  const cutoffs = {
-    unverified: new Date(now.getTime() - 30 * 86400000),
-    verification: new Date(now.getTime() - 90 * 86400000),
-    operational: new Date(now.getTime() - 365 * 86400000),
-    legal: new Date(now.getTime() - 6 * 365.25 * 86400000),
-  };
-  const rules = [
-    ["expiredSessions", "sessions", "expires_at < $1", now],
-    ["expiredOperatorSessions", "operator_sessions", "expires_at < $1", now],
-    [
-      "expiredTokens",
-      "one_time_tokens",
-      "expires_at < $1 OR used_at IS NOT NULL",
-      now,
-    ],
-    [
-      "failedVerifications",
-      "verification_records",
-      "status IN ('failed','expired') AND updated_at < $1",
-      cutoffs.verification,
-    ],
-    ["oldAuditEvents", "audit_events", "created_at < $1", cutoffs.operational],
-    [
-      "oldWebhookReceipts",
-      "processed_webhooks",
-      "processed_at < $1",
-      cutoffs.operational,
-    ],
-    [
-      "oldOperationalEvidence",
-      "operational_evidence",
-      "occurred_at < $1",
-      cutoffs.operational,
-    ],
-    [
-      "closedCases",
-      "takedown_cases",
-      "closed_at < $1 AND legal_hold = false",
-      cutoffs.legal,
-    ],
-    [
-      "orphanMatches",
-      "matches",
-      "discovered_at < $1 AND NOT EXISTS (SELECT 1 FROM takedown_cases c WHERE c.match_id = matches.id)",
-      cutoffs.operational,
-    ],
-    [
-      "orphanScans",
-      "scans",
-      "COALESCE(completed_at, started_at) < $1 AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.scan_id = scans.id)",
-      cutoffs.operational,
-    ],
-    [
-      "unverifiedAccounts",
-      "users",
-      "email_verified_at IS NULL AND created_at < $1 AND NOT EXISTS (SELECT 1 FROM billing_consents b WHERE b.user_id = users.id)",
-      cutoffs.unverified,
-    ],
-    [
-      "expiredAccountingRecords",
-      "accounting_records",
-      "retained_until < $1",
-      now,
-    ],
-    ["expiredRateLimits", "rate_limits", "expires_at < $1", now],
-  ];
+  if (execute && typeof deleteObject !== "function")
+    throw new Error(
+      "An object-storage deletion function is required for retention execution.",
+    );
+  const startedAt = new Date(),
+    evaluatedAt = new Date(now),
+    client = await pool.connect(),
+    cutoffs = {
+      unverified: new Date(evaluatedAt.getTime() - 30 * 86400000),
+      verification: new Date(evaluatedAt.getTime() - 90 * 86400000),
+      operational: new Date(evaluatedAt.getTime() - 365 * 86400000),
+      legal: new Date(evaluatedAt.getTime() - 6 * 365.25 * 86400000),
+    },
+    rules = [
+      ["expiredSessions", "sessions", "expires_at < $1", evaluatedAt],
+      [
+        "expiredOperatorSessions",
+        "operator_sessions",
+        "expires_at < $1",
+        evaluatedAt,
+      ],
+      [
+        "expiredTokens",
+        "one_time_tokens",
+        "expires_at < $1 OR used_at IS NOT NULL",
+        evaluatedAt,
+      ],
+      [
+        "failedVerifications",
+        "verification_records",
+        "status IN ('failed','expired') AND updated_at < $1",
+        cutoffs.verification,
+      ],
+      [
+        "expiredAssets",
+        "assets",
+        "(deleted_at IS NOT NULL OR retention_until < $1) AND NOT EXISTS (SELECT 1 FROM matches m JOIN takedown_cases c ON c.match_id=m.id WHERE m.asset_id=assets.id AND c.legal_hold=true)",
+        evaluatedAt,
+      ],
+      [
+        "oldAuditEvents",
+        "audit_events",
+        "created_at < $1",
+        cutoffs.operational,
+      ],
+      [
+        "oldWebhookReceipts",
+        "processed_webhooks",
+        "processed_at < $1",
+        cutoffs.operational,
+      ],
+      [
+        "oldOperationalEvidence",
+        "operational_evidence",
+        "occurred_at < $1",
+        cutoffs.operational,
+      ],
+      [
+        "closedCases",
+        "takedown_cases",
+        "closed_at < $1 AND legal_hold = false",
+        cutoffs.legal,
+      ],
+      [
+        "orphanMatches",
+        "matches",
+        "discovered_at < $1 AND NOT EXISTS (SELECT 1 FROM takedown_cases c WHERE c.match_id = matches.id)",
+        cutoffs.operational,
+      ],
+      [
+        "orphanScans",
+        "scans",
+        "COALESCE(completed_at, started_at) < $1 AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.scan_id = scans.id)",
+        cutoffs.operational,
+      ],
+      [
+        "unverifiedAccounts",
+        "users",
+        "email_verified_at IS NULL AND created_at < $1 AND NOT EXISTS (SELECT 1 FROM billing_consents b WHERE b.user_id = users.id)",
+        cutoffs.unverified,
+      ],
+      [
+        "expiredAccountingRecords",
+        "accounting_records",
+        "retained_until < $1",
+        evaluatedAt,
+      ],
+      ["expiredRateLimits", "rate_limits", "expires_at < $1", evaluatedAt],
+    ];
+  let counts = {};
   try {
     await client.query("BEGIN");
     await client.query("SET LOCAL content_protect.audit_retention = 'on'");
     await client.query("SELECT pg_advisory_xact_lock(824672)");
-    const counts = {};
+    const candidates = await client.query(
+      `SELECT count(*)::int AS count FROM (${RETENTION_OBJECT_CANDIDATES_SQL}) candidates`,
+      [evaluatedAt, cutoffs.unverified],
+    );
+    counts.objectDeletionCandidates = candidates.rows[0].count;
+    if (execute) {
+      const queued = await client.query(
+        `WITH candidates AS (${RETENTION_OBJECT_CANDIDATES_SQL})
+         INSERT INTO object_deletion_queue (object_key,reason,queued_at)
+         SELECT object_key,reason,$1 FROM candidates
+         ON CONFLICT (object_key) DO NOTHING
+         RETURNING id`,
+        [evaluatedAt, cutoffs.unverified],
+      );
+      counts.objectDeletionsQueuedNew = queued.rowCount;
+    }
     for (const [name, table, predicate, cutoff] of rules) {
       const result = execute
         ? await client.query(
@@ -393,38 +572,59 @@ export async function runRetention({ execute = false, now = new Date() } = {}) {
           );
       counts[name] = result.rows[0].count;
     }
-    if (execute)
-      await client.query(
-        `INSERT INTO operational_evidence
-           (evidence_type,status,source,release,details,occurred_at)
-         VALUES ('retention','succeeded',$1,$2,$3::jsonb,$4)`,
-        [
-          process.env.RENDER_SERVICE_NAME || "retention-command",
-          process.env.RENDER_GIT_COMMIT?.slice(0, 80) || null,
-          JSON.stringify({ counts, cutoffs }),
-          now,
-        ],
-      );
     await client.query(execute ? "COMMIT" : "ROLLBACK");
-    return {
-      ok: true,
-      mode: "postgresql",
-      execute,
-      evaluatedAt: now.toISOString(),
-      cutoffs: Object.fromEntries(
-        Object.entries(cutoffs).map(([name, value]) => [
-          name,
-          value.toISOString(),
-        ]),
-      ),
-      counts,
-    };
   } catch (error) {
     await client.query("ROLLBACK");
+    if (execute)
+      await recordRetentionFailure({ phase: "database", error, counts });
     throw error;
   } finally {
     client.release();
   }
+
+  const cutoffsResult = Object.fromEntries(
+    Object.entries(cutoffs).map(([name, value]) => [name, value.toISOString()]),
+  );
+  if (!execute)
+    return {
+      ok: true,
+      mode: "postgresql",
+      execute: false,
+      evaluatedAt: evaluatedAt.toISOString(),
+      cutoffs: cutoffsResult,
+      counts,
+    };
+
+  let objectDeletion;
+  try {
+    objectDeletion = await drainRetentionObjectQueue({
+      deleteObject,
+      startedAt,
+    });
+    await recordOperationalEvidence({
+      type: "retention",
+      status: "succeeded",
+      ...retentionEvidenceIdentity(),
+      details: { counts, cutoffs: cutoffsResult, objectDeletion },
+      occurredAt: evaluatedAt,
+    });
+  } catch (error) {
+    await recordRetentionFailure({
+      phase: "object-storage",
+      error,
+      counts,
+    });
+    throw error;
+  }
+  return {
+    ok: true,
+    mode: "postgresql",
+    execute: true,
+    evaluatedAt: evaluatedAt.toISOString(),
+    cutoffs: cutoffsResult,
+    counts,
+    objectDeletion,
+  };
 }
 
 export async function loadPostgresState() {
@@ -672,8 +872,14 @@ function token(row) {
   };
 }
 
-export async function savePostgresState(state) {
+export async function savePostgresState(
+  state,
+  { deletedUserIds = [], deletedAssetIds = [], objectDeletions = [] } = {},
+) {
   if (!pool) return false;
+  const deletionKeys = [...new Set(objectDeletions.map(String))];
+  if (deletionKeys.some((key) => key.length < 3 || key.length > 500))
+    throw new Error("Object deletion key is invalid.");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -715,15 +921,29 @@ export async function savePostgresState(state) {
         ],
       );
     }
-    const userIds = state.users.map((user) => user.id);
-    await client.query(
-      userIds.length
-        ? "DELETE FROM users WHERE NOT (id = ANY($1::uuid[]))"
-        : "DELETE FROM users",
-      userIds.length ? [userIds] : [],
-    );
+    if (deletedUserIds.length) {
+      const heldAccounts = await client.query(
+        `SELECT count(*)::int AS count FROM takedown_cases
+         WHERE legal_hold=true AND user_id=ANY($1::uuid[])`,
+        [deletedUserIds],
+      );
+      if (heldAccounts.rows[0].count)
+        throw new Error("An account under legal hold cannot be deleted.");
+    }
+    if (deletionKeys.length)
+      await client.query(
+        `INSERT INTO object_deletion_queue (object_key,reason,queued_at)
+         SELECT object_key,'asset-deleted',now()
+         FROM unnest($1::text[]) AS object_key
+         ON CONFLICT (object_key) DO NOTHING`,
+        [deletionKeys],
+      );
+    if (deletedUserIds.length)
+      await client.query("DELETE FROM users WHERE id=ANY($1::uuid[])", [
+        deletedUserIds,
+      ]);
     await replaceEphemeral(client, state);
-    await upsertBusinessData(client, state);
+    await upsertBusinessData(client, state, { deletedAssetIds });
     await client.query("COMMIT");
     return true;
   } catch (error) {
@@ -759,7 +979,11 @@ async function replaceEphemeral(client, state) {
       );
 }
 
-async function upsertBusinessData(client, state) {
+async function upsertBusinessData(
+  client,
+  state,
+  { deletedAssetIds = [] } = {},
+) {
   for (const item of state.verifications || [])
     await client.query(
       `INSERT INTO verification_records
@@ -801,13 +1025,25 @@ async function upsertBusinessData(client, state) {
         item.createdAt,
       ],
     );
-  const assetIds = state.assets.map((item) => item.id);
-  await client.query(
-    assetIds.length
-      ? "UPDATE assets SET deleted_at=now() WHERE deleted_at IS NULL AND NOT (id = ANY($1::uuid[]))"
-      : "UPDATE assets SET deleted_at=now() WHERE deleted_at IS NULL",
-    assetIds.length ? [assetIds] : [],
-  );
+  if (deletedAssetIds.length) {
+    const heldAssets = await client.query(
+      `SELECT count(*)::int AS count FROM assets a
+       WHERE a.id=ANY($1::uuid[])
+         AND EXISTS (
+           SELECT 1 FROM matches m
+           JOIN takedown_cases c ON c.match_id=m.id
+           WHERE m.asset_id=a.id AND c.legal_hold=true
+         )`,
+      [deletedAssetIds],
+    );
+    if (heldAssets.rows[0].count)
+      throw new Error("A reference file under legal hold cannot be deleted.");
+    await client.query(
+      `UPDATE assets SET deleted_at=now()
+       WHERE id=ANY($1::uuid[]) AND deleted_at IS NULL`,
+      [deletedAssetIds],
+    );
+  }
   for (const item of state.scans)
     await client.query(
       `INSERT INTO scans (id,user_id,status,mode,provider,sources_checked,started_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)

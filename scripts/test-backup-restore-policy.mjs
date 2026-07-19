@@ -5,7 +5,7 @@ import {
   signBackupManifest,
   verifyBackupManifest,
 } from "../backup-restore-policy.mjs";
-import { databaseIdentity } from "../backup-snapshot.mjs";
+import { BACKUP_TABLES, databaseIdentity } from "../backup-snapshot.mjs";
 import { REQUIRED_MIGRATION } from "../operations-readiness.mjs";
 
 const evidenceKey = "test-only-evidence-key-with-32-characters",
@@ -62,6 +62,23 @@ assert.notEqual(
   databaseIdentity("postgresql://one:secret@db.example/content"),
   databaseIdentity("postgresql://one:secret@restore.example/content"),
 );
+for (const requiredTable of [
+  "users",
+  "verification_records",
+  "consent_records",
+  "assets",
+  "matches",
+  "takedown_cases",
+  "billing_consents",
+  "accounting_records",
+  "audit_events",
+  "operational_evidence",
+  "object_deletion_queue",
+])
+  assert.ok(
+    BACKUP_TABLES.some((table) => table.name === requiredTable),
+    `${requiredTable} must be included in restore verification`,
+  );
 
 console.log(
   JSON.stringify({
@@ -70,5 +87,6 @@ console.log(
     tamperingRejected: true,
     isolatedTargetRequired: true,
     countsAndSamplesCompared: true,
+    durableLifecycleTablesCovered: true,
   }),
 );

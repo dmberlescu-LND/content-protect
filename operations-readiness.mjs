@@ -1,4 +1,4 @@
-export const REQUIRED_MIGRATION = "017_audit_integrity.sql";
+export const REQUIRED_MIGRATION = "018_retention_object_queue.sql";
 
 const freshEvidence = (value, maxAgeMs) => {
   const timestamp = Date.parse(value?.occurredAt || "");
@@ -44,10 +44,9 @@ export function operationsReadiness({
     ageVerification: Boolean(yotiConfigured && yotiMode === "live"),
     retentionAutomation: freshEvidence(retentionEvidence, 36 * 60 * 60 * 1000),
     monitoring: freshEvidence(monitoringEvidence, 15 * 60 * 1000),
-    backupRestore: freshEvidence(
-      backupRestoreEvidence,
-      100 * 24 * 60 * 60 * 1000,
-    ),
+    backupRestore:
+      freshEvidence(backupRestoreEvidence, 100 * 24 * 60 * 60 * 1000) &&
+      backupRestoreEvidence?.requiredMigration === REQUIRED_MIGRATION,
   };
   return {
     infrastructureReady,
