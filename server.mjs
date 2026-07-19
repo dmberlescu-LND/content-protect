@@ -37,6 +37,7 @@ import {
 } from "./billing-policy.mjs";
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
 import { operationsReadiness } from "./operations-readiness.mjs";
+import { unsafeRequestOriginAllowed } from "./security-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -675,15 +676,13 @@ const appServer = http.createServer(async (req, res) => {
       appOrigin = new URL(process.env.APP_URL || "https://content-protect.com")
         .origin;
     if (
-      ["POST", "PATCH", "DELETE"].includes(req.method) &&
-      route !== "/api/billing/webhook" &&
-      route !== "/api/takedowns/webhook" &&
-      origin &&
-      origin !== appOrigin &&
-      !(
-        process.env.NODE_ENV !== "production" &&
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-      )
+      !unsafeRequestOriginAllowed({
+        method: req.method,
+        route,
+        origin,
+        appOrigin,
+        production: process.env.NODE_ENV === "production",
+      })
     )
       return send(res, 403, { error: "Invalid request origin." });
     if (route === "/api/billing/webhook" && req.method === "POST") {

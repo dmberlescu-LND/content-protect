@@ -38,7 +38,7 @@ Help verified adult rights holders identify suspected unauthorised copies of con
 | Special-category/biometric inference | Critical | Disabled by default; separate DPIA and Article 9 approval | DPO/Counsel |
 | Cross-border processor access | High | DPA, transfer assessment and minimum-data configuration | Privacy |
 | Retention beyond need | High | Automated schedule, tombstones, quarterly deletion test | Privacy + Engineering |
-| Account takeover | High | Verification, rate limits, secure cookies, implemented TOTP/recovery codes and alerting | Security |
+| Account takeover / cross-site request abuse | High | Verification, rate limits, secure cookies, fail-closed origin validation, implemented TOTP/recovery codes and alerting | Security |
 
 ## Consultation and approval still required
 
