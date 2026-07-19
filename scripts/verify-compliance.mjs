@@ -112,7 +112,7 @@ requireText(
 );
 
 requireText("Render", render, "PAYMENTS_MODE");
-requireText("Render", render, "preDeployCommand: node scripts/migrate.mjs");
+rejectText("Render", render, "preDeployCommand:");
 requireText("Render", render, "value: test");
 requireText("Render", render, "TAKEDOWNS_MODE");
 requireText("Render", render, "value: sandbox");
@@ -130,7 +130,11 @@ requireText(
   dockerfile,
   "COPY --from=build --chown=contentprotect:contentprotect /app/*.mjs ./",
 );
-rejectText("Docker runtime", dockerfile, 'CMD ["sh", "-c"');
+requireText(
+  "Docker runtime",
+  dockerfile,
+  'CMD ["/bin/sh", "-c", "node scripts/migrate.mjs && exec node server.mjs"]',
+);
 
 requireText("operations readiness", readiness, REQUIRED_MIGRATION);
 try {
