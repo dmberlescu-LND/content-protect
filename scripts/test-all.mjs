@@ -6,6 +6,7 @@ const checks = [
   "test-backup-restore-policy.mjs",
   "test-database-backup-policy.mjs",
   "test-backup-schedule.mjs",
+  "test-isolated-restore-policy.mjs",
   "test-media-validation.mjs",
   "test-media-backup-policy.mjs",
   "test-scanner.mjs",

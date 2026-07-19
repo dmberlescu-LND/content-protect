@@ -41,6 +41,7 @@
     "backup:database": "node scripts/create-database-backup.mjs",
     "backup:run": "node scripts/run-backups.mjs",
     "backup:restore-database": "node scripts/restore-database-backup.mjs",
+    "backup:restore-isolated": "node scripts/run-isolated-restore-drill.mjs",
     "backup:verify-restore": "node scripts/verify-backup-restore.mjs",
     "backup:media": "node scripts/create-media-backup.mjs",
     "backup:verify-media": "node scripts/verify-media-backup.mjs",

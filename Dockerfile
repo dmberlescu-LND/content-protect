@@ -9,7 +9,11 @@ RUN pnpm prune --prod
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apk add --no-cache postgresql-client \
+RUN apk add --no-cache postgresql-client postgresql postgresql-contrib \
+  && command -v initdb \
+  && command -v pg_ctl \
+  && command -v createdb \
+  && command -v pg_restore \
   && addgroup -S contentprotect \
   && adduser -S contentprotect -G contentprotect
 COPY --from=build --chown=contentprotect:contentprotect /app/dist ./dist

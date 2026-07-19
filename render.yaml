@@ -134,6 +134,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: APP_URL
+        value: https://content-protect.com
       - key: DATABASE_URL
         fromService:
           type: web
@@ -169,6 +171,13 @@ services:
           type: web
           name: content-protect-staging
           envVarKey: BACKUP_EVIDENCE_KEY
+      - key: BACKUP_RESTORE_EVIDENCE_URL
+        value: https://content-protect.com/api/operations/backup-restore-evidence
+      - key: BACKUP_RESTORE_EVIDENCE_TOKEN
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: BACKUP_RESTORE_EVIDENCE_TOKEN
       - key: BACKUP_ARCHIVE_ENCRYPTION_KEY
         generateValue: true
       - key: BACKUP_OBJECT_STORAGE_ENDPOINT

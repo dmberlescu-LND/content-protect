@@ -34,6 +34,8 @@ const [
   readiness,
   mediaBackup,
   seoRunbook,
+  backupRunner,
+  isolatedRestoreRunner,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -48,6 +50,8 @@ const [
   read("operations-readiness.mjs"),
   read("media-backup-policy.mjs"),
   read("docs/SEO-LAUNCH-RUNBOOK.md"),
+  read("scripts/run-backups.mjs"),
+  read("scripts/run-isolated-restore-drill.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -136,6 +140,7 @@ rejectText(
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 rejectText("Render", render, "MONITORING_CONFIGURED");
 requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_TOKEN");
+requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_URL");
 rejectText("Render", render, "BACKUP_RESTORE_VERIFIED_AT");
 requireText("server", server, 'from "./yoti-digital-identity.mjs"');
 requireText("server", server, "/api/operations/backup-restore-evidence");
@@ -166,6 +171,15 @@ requireText(
   dockerfile,
   'CMD ["/bin/sh", "-c", "node scripts/migrate.mjs && exec node server.mjs"]',
 );
+requireText("Docker runtime", dockerfile, "postgresql-contrib");
+requireText("backup runner", backupRunner, "backupRestoreDrillDue");
+requireText("backup runner", backupRunner, "run-isolated-restore-drill.mjs");
+requireText(
+  "isolated restore runner",
+  isolatedRestoreRunner,
+  "delete restoreEnvironment.DATABASE_URL",
+);
+requireText("isolated restore runner", isolatedRestoreRunner, "pg_ctl");
 
 requireText("operations readiness", readiness, REQUIRED_MIGRATION);
 requireText("operations runbook", runbook, "storage-deletion queue");
