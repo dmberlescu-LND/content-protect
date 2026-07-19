@@ -95,3 +95,62 @@ services:
           type: web
           name: content-protect-staging
           envVarKey: DATABASE_URL
+
+  - type: cron
+    name: content-protect-backup
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node scripts/run-backups.mjs
+    schedule: "47 2 * * *"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: DATABASE_URL
+      - key: OBJECT_STORAGE_ENDPOINT
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_ENDPOINT
+      - key: OBJECT_STORAGE_BUCKET
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_BUCKET
+      - key: OBJECT_STORAGE_REGION
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_REGION
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_ACCESS_KEY_ID
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: OBJECT_STORAGE_SECRET_ACCESS_KEY
+      - key: BACKUP_EVIDENCE_KEY
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: BACKUP_EVIDENCE_KEY
+      - key: BACKUP_ARCHIVE_ENCRYPTION_KEY
+        generateValue: true
+      - key: BACKUP_OBJECT_STORAGE_ENDPOINT
+        value: https://dfb93f9f2f6bf8a6434514b26b686e57.r2.cloudflarestorage.com
+      - key: BACKUP_OBJECT_STORAGE_BUCKET
+        value: content-protect-private-backups
+      - key: BACKUP_OBJECT_STORAGE_REGION
+        value: auto
+      - key: BACKUP_OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: BACKUP_OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
