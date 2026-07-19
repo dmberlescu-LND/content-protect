@@ -26,6 +26,7 @@
     "retention:preview": "node scripts/retention.mjs",
     "retention:execute": "node scripts/retention.mjs --execute",
     "verify:production": "node scripts/verify-production.mjs",
+    "verify:compliance": "node scripts/verify-compliance.mjs",
     "verify:seo": "node scripts/verify-seo.mjs",
     "preview": "vite preview"
   },

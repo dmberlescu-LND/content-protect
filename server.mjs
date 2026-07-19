@@ -30,10 +30,7 @@ import {
   savePostgresState,
 } from "./database.mjs";
 import { scannerMode, ScanProviderError, searchImage } from "./scanner.mjs";
-import {
-  findActiveSubscription,
-  scanIntervalMs,
-} from "./billing-policy.mjs";
+import { findActiveSubscription, scanIntervalMs } from "./billing-policy.mjs";
 import { inspectMedia, MediaValidationError } from "./media-validation.mjs";
 import { operationsReadiness } from "./operations-readiness.mjs";
 import { unsafeRequestOriginAllowed } from "./security-policy.mjs";
@@ -53,6 +50,7 @@ import {
   STRIPE_SUBSCRIPTION_EVENTS,
   stripeSubscriptionId,
 } from "./stripe-subscription-policy.mjs";
+import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -95,7 +93,7 @@ const RESEND_EMAIL_CONFIGURED = Boolean(
 const RESEND_WEBHOOK_CONFIGURED = Boolean(
   process.env.RESEND_WEBHOOK_SECRET?.startsWith("whsec_"),
 );
-const TAKEDOWN_TEMPLATE_VERSION = "2026-07-18";
+const TAKEDOWN_TEMPLATE_VERSION = COMPLIANCE_VERSIONS.takedownTemplate;
 const TAKEDOWN_LEGAL_TEMPLATES_APPROVED =
   process.env.TAKEDOWN_LEGAL_APPROVED_VERSION === TAKEDOWN_TEMPLATE_VERSION;
 const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
@@ -716,9 +714,8 @@ const appServer = http.createServer(async (req, res) => {
               (customerId && item.stripeCustomerId === customerId),
           );
         if (subscriptionId) {
-          const stripeSubscription = await stripe.subscriptions.retrieve(
-              subscriptionId,
-            ),
+          const stripeSubscription =
+              await stripe.subscriptions.retrieve(subscriptionId),
             reconciled = reconcileStripeSubscription(stripeSubscription, {
               prices: STRIPE_PRICES,
               paymentsMode: PAYMENTS_MODE,
@@ -743,9 +740,7 @@ const appServer = http.createServer(async (req, res) => {
               renewalAt: reconciled.renewalAt || sub.renewalAt,
               updatedAt: new Date().toISOString(),
             });
-            const user = d.users.find(
-              (item) => item.id === reconciled.userId,
-            );
+            const user = d.users.find((item) => item.id === reconciled.userId);
             if (user) {
               user.plan = reconciled.entitled
                 ? reconciled.plan
@@ -1027,8 +1022,12 @@ const appServer = http.createServer(async (req, res) => {
           .trim()
           .toLowerCase(),
         recipientSource = safeHttpsReference(b.recipientSource),
-        jurisdiction = String(b.jurisdiction || "").trim().slice(0, 160),
-        legalBasis = String(b.legalBasis || "").trim().slice(0, 240),
+        jurisdiction = String(b.jurisdiction || "")
+          .trim()
+          .slice(0, 160),
+        legalBasis = String(b.legalBasis || "")
+          .trim()
+          .slice(0, 240),
         caseRecord = d.cases.find((item) => item.id === caseId);
       if (!caseRecord) return send(res, 404, { error: "Case not found." });
       if (caseRecord.status !== "Awaiting operator preparation")
@@ -1210,7 +1209,7 @@ const appServer = http.createServer(async (req, res) => {
           emailVerifiedAt: null,
           ageVerifiedAt: null,
           eligibilityAcceptedAt: now,
-          eligibilityVersion: "2026-07-18",
+          eligibilityVersion: COMPLIANCE_VERSIONS.eligibility,
           mfaSecretCiphertext: null,
           mfaEnabledAt: null,
           mfaRecoveryHashes: [],
@@ -1525,16 +1524,20 @@ const appServer = http.createServer(async (req, res) => {
         });
       }
       await save(d);
-      return send(res, complete ? 200 : record.status === "pending" ? 202 : 409, {
-        verified: complete,
-        status: record.status,
-        user: safe(u, d),
-        error: complete
-          ? undefined
-          : record.status === "pending"
-            ? "Age verification is still processing."
-            : "Age verification was not completed.",
-      });
+      return send(
+        res,
+        complete ? 200 : record.status === "pending" ? 202 : 409,
+        {
+          verified: complete,
+          status: record.status,
+          user: safe(u, d),
+          error: complete
+            ? undefined
+            : record.status === "pending"
+              ? "Age verification is still processing."
+              : "Age verification was not completed.",
+        },
+      );
     }
     if (route === "/api/dashboard") {
       const assets = d.assets.filter((x) => x.userId === u.id),
@@ -1650,7 +1653,7 @@ const appServer = http.createServer(async (req, res) => {
         checksum: createHash("sha256").update(raw).digest("hex"),
         status: "Protected",
         sensitiveMediaConsentAt: new Date().toISOString(),
-        sensitiveMediaConsentVersion: "2026-07-18-v1",
+        sensitiveMediaConsentVersion: COMPLIANCE_VERSIONS.sensitiveMediaConsent,
         createdAt: new Date().toISOString(),
       };
       d.assets.push(a);
@@ -1910,7 +1913,7 @@ const appServer = http.createServer(async (req, res) => {
         id: randomUUID(),
         userId: u.id,
         plan: b.plan,
-        termsVersion: "2026-07-18-v1",
+        termsVersion: COMPLIANCE_VERSIONS.serviceTerms,
         immediateServiceRequested: true,
         coolingOffAcknowledged: true,
         stripeCheckoutSessionId: session.id,
@@ -1956,9 +1959,8 @@ const appServer = http.createServer(async (req, res) => {
           typeof session.subscription === "string"
             ? session.subscription
             : session.subscription.id,
-        stripeSubscription = await stripe.subscriptions.retrieve(
-          subscriptionId,
-        ),
+        stripeSubscription =
+          await stripe.subscriptions.retrieve(subscriptionId),
         reconciled = reconcileStripeSubscription(stripeSubscription, {
           prices: STRIPE_PRICES,
           paymentsMode: PAYMENTS_MODE,
@@ -2321,7 +2323,7 @@ const appServer = http.createServer(async (req, res) => {
           },
           {
             event: "Notice draft prepared",
-            details: { noticeVersion: "2026-07-18" },
+            details: { noticeVersion: TAKEDOWN_TEMPLATE_VERSION },
             at: capturedAt,
           },
         ],

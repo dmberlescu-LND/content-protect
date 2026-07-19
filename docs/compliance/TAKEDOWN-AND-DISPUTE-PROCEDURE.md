@@ -29,7 +29,7 @@ Status: operational draft; no real notice may be sent until counsel approves jur
 
 1. Freeze automated follow-ups immediately.
 2. Notify the creator and preserve the counter-notice unchanged.
-3. Re-verify ownership/authority, licences, identity and jurisdiction.
+3. Re-verify ownership/authority, licences, claimant assurance and jurisdiction; do not claim full identity verification unless separately enabled and approved.
 4. Do not disclose private creator contact details beyond legal necessity.
 5. Route contested legal assertions to qualified counsel; Content Protect does not decide court claims.
 6. Record outcome, reasoning, communications and any reinstatement.

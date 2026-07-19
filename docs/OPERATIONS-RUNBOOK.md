@@ -14,7 +14,7 @@ The readiness endpoint checks PostgreSQL, the latest required migration, private
 
 Set `MONITORING_CONFIGURED=true` only after the alert destination receives a real test alert. Set `BACKUP_RESTORE_VERIFIED_AT` to the UTC completion timestamp only after an isolated restore has passed the checks below; readiness expires that evidence after 100 days. Set `RETENTION_EXECUTION_ENABLED=true` only when the approved scheduled job is installed and its reviewed preview matches expectations. These flags record completed evidence; they are not substitutes for completing the work.
 
-Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-18`. Never advance this value merely to make the readiness check green; a template change requires a new review and version.
+Real takedown delivery also remains disabled until specialist counsel approves the exact notice template. After approval, record the approved version in Render as `TAKEDOWN_LEGAL_APPROVED_VERSION=2026-07-19-v2`. Never advance this value merely to make the readiness check green; a template change requires a new review and version.
 
 ## Logs and correlation
 
