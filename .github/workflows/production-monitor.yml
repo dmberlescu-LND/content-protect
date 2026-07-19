@@ -1,0 +1,58 @@
+name: Production monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      simulate_failure:
+        description: "Fail after the checks to test alert delivery"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-monitor
+  cancel-in-progress: false
+
+jobs:
+  production-health:
+    name: Public health and security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APP_URL: https://content-protect.com
+      REQUIRE_PRODUCTION_READY: "false"
+    steps:
+      - name: Check out the monitored release
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify twice before alerting
+        shell: bash
+        run: |
+          for attempt in 1 2; do
+            if node scripts/verify-production.mjs && node scripts/verify-seo.mjs; then
+              exit_code=0
+              break
+            fi
+            exit_code=1
+            if [ "$attempt" -lt 2 ]; then
+              echo "First check failed; retrying in 60 seconds."
+              sleep 60
+            fi
+          done
+          exit "$exit_code"
+
+      - name: Simulate a monitor failure
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.simulate_failure }}
+        run: |
+          echo "Intentional failure used to verify the external alert route."
+          exit 1
