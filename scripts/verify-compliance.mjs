@@ -33,6 +33,7 @@ const [
   takedowns,
   readiness,
   mediaBackup,
+  seoRunbook,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -46,6 +47,7 @@ const [
   read("docs/compliance/TAKEDOWN-AND-DISPUTE-PROCEDURE.md"),
   read("operations-readiness.mjs"),
   read("media-backup-policy.mjs"),
+  read("docs/SEO-LAUNCH-RUNBOOK.md"),
 ]);
 
 for (const [name, page] of [
@@ -163,6 +165,10 @@ requireText("operations runbook", runbook, "R2 does not currently implement");
 requireText("operations runbook", runbook, "second private backup bucket");
 rejectText("operations runbook", runbook, "Enable private bucket versioning");
 requireText("media backup policy", mediaBackup, "must differ from the primary");
+requireText("SEO runbook", seoRunbook, "Google Search Console");
+requireText("SEO runbook", seoRunbook, "six discovered pages");
+requireText("SEO runbook", seoRunbook, "must remain in Porkbun");
+requireText("UK launch checklist", checklist, "SEO-LAUNCH-RUNBOOK.md");
 try {
   await access(resolve(root, "db", "migrations", REQUIRED_MIGRATION));
 } catch {

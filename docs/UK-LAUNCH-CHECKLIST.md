@@ -54,6 +54,13 @@ Status: implementation checklist, not legal advice. Company details and counsel 
 
 Live launch remains blocked until the company identity, privacy notice, terms, DPIA, provider contracts, incident plan, payment account and specialist legal review are complete.
 
+## SEO launch status
+
+- Google Search Console domain ownership was verified through Porkbun DNS on 19 July 2026.
+- The production sitemap was accepted with status **Success** and six discovered public pages.
+- Follow `docs/SEO-LAUNCH-RUNBOOK.md`; keep the Google verification TXT record and authenticated/private routes out of the index.
+- Initial indexing and performance data are still pending Google processing and must not be described as guaranteed rankings.
+
 ## Official starting points
 
 - ICO UK GDPR guidance: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/
