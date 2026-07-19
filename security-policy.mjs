@@ -3,6 +3,7 @@ const AUTHENTICATED_MACHINE_ROUTES = new Set([
   "/api/billing/webhook",
   "/api/takedowns/webhook",
   "/api/operations/monitor-heartbeat",
+  "/api/operations/backup-restore-evidence",
 ]);
 
 export function unsafeRequestOriginAllowed({

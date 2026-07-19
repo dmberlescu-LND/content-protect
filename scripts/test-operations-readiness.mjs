@@ -24,7 +24,10 @@ const complete = {
     status: "succeeded",
     occurredAt: new Date().toISOString(),
   },
-  backupRestoreVerifiedAt: new Date().toISOString(),
+  backupRestoreEvidence: {
+    status: "succeeded",
+    occurredAt: new Date().toISOString(),
+  },
 };
 
 assert.deepEqual(operationsReadiness(complete), {
@@ -78,7 +81,12 @@ for (const missingGate of [
       occurredAt: new Date(Date.now() - 16 * 60 * 1000).toISOString(),
     },
   },
-  { backupRestoreVerifiedAt: "2020-01-01T00:00:00.000Z" },
+  {
+    backupRestoreEvidence: {
+      status: "succeeded",
+      occurredAt: "2020-01-01T00:00:00.000Z",
+    },
+  },
 ]) {
   const result = operationsReadiness({ ...complete, ...missingGate });
   assert.equal(result.infrastructureReady, true);

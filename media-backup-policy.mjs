@@ -126,6 +126,8 @@ export function validateMediaBackupLifecycle(
   const expected = [
       { prefix: "content-protect-media/daily/", days: dailyDays },
       { prefix: "content-protect-media/monthly/", days: monthlyDays },
+      { prefix: "content-protect-database/daily/", days: dailyDays },
+      { prefix: "content-protect-database/monthly/", days: monthlyDays },
     ],
     discrepancies = expected
       .map((item) => ({

@@ -126,7 +126,10 @@ rejectText(
 );
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 rejectText("Render", render, "MONITORING_CONFIGURED");
+requireText("Render", render, "BACKUP_RESTORE_EVIDENCE_TOKEN");
+rejectText("Render", render, "BACKUP_RESTORE_VERIFIED_AT");
 requireText("server", server, 'from "./yoti-digital-identity.mjs"');
+requireText("server", server, "/api/operations/backup-restore-evidence");
 rejectText("server", server, "https://age.yoti.com/api/v1/sessions");
 rejectText("Render", render, "preDeployCommand:");
 requireText("Render", render, "value: test");

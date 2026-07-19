@@ -28,10 +28,15 @@ export function databaseClient(connectionString) {
   });
 }
 
-export async function collectBackupSnapshot(client, evidenceKey) {
-  await client.query(
-    "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
-  );
+export async function collectBackupSnapshot(
+  client,
+  evidenceKey,
+  { manageTransaction = true } = {},
+) {
+  if (manageTransaction)
+    await client.query(
+      "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
+    );
   try {
     const migrationResult = await client.query(
       "SELECT name FROM schema_migrations ORDER BY name DESC LIMIT 1",
@@ -63,10 +68,10 @@ export async function collectBackupSnapshot(client, evidenceKey) {
         sampleHmac: result.rows[0].sample_hmac,
       };
     }
-    await client.query("COMMIT");
+    if (manageTransaction) await client.query("COMMIT");
     return { requiredMigration: latestMigration, tables };
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (manageTransaction) await client.query("ROLLBACK");
     throw error;
   }
 }

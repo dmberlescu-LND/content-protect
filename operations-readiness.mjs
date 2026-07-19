@@ -1,11 +1,4 @@
-export const REQUIRED_MIGRATION = "015_operational_evidence.sql";
-
-const verifiedRestore = (value) => {
-  if (!value) return false;
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp) || timestamp > Date.now()) return false;
-  return Date.now() - timestamp <= 100 * 24 * 60 * 60 * 1000;
-};
+export const REQUIRED_MIGRATION = "016_backup_restore_evidence.sql";
 
 const freshEvidence = (value, maxAgeMs) => {
   const timestamp = Date.parse(value?.occurredAt || "");
@@ -27,7 +20,7 @@ export function operationsReadiness({
   yotiConfigured,
   retentionEvidence,
   monitoringEvidence,
-  backupRestoreVerifiedAt,
+  backupRestoreEvidence,
 }) {
   const infrastructureReady = Boolean(
     database?.ok &&
@@ -44,7 +37,10 @@ export function operationsReadiness({
     ageVerification: Boolean(yotiConfigured),
     retentionAutomation: freshEvidence(retentionEvidence, 36 * 60 * 60 * 1000),
     monitoring: freshEvidence(monitoringEvidence, 15 * 60 * 1000),
-    backupRestore: verifiedRestore(backupRestoreVerifiedAt),
+    backupRestore: freshEvidence(
+      backupRestoreEvidence,
+      100 * 24 * 60 * 60 * 1000,
+    ),
   };
   return {
     infrastructureReady,

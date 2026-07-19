@@ -58,7 +58,7 @@ services:
         sync: false
       - key: BACKUP_EVIDENCE_KEY
         generateValue: true
-      - key: BACKUP_RESTORE_VERIFIED_AT
+      - key: BACKUP_RESTORE_EVIDENCE_TOKEN
         sync: false
       - key: DATABASE_URL
         sync: false

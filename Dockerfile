@@ -8,7 +8,9 @@ RUN pnpm run build
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN addgroup -S contentprotect && adduser -S contentprotect -G contentprotect
+RUN apk add --no-cache postgresql-client \
+  && addgroup -S contentprotect \
+  && adduser -S contentprotect -G contentprotect
 COPY --from=build --chown=contentprotect:contentprotect /app/dist ./dist
 COPY --from=build --chown=contentprotect:contentprotect /app/*.mjs ./
 COPY --from=build --chown=contentprotect:contentprotect /app/scripts ./scripts

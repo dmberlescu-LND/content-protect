@@ -16,7 +16,7 @@ Yoti age assurance uses the official signed Digital Identity SDK. Configure both
 
 Authentication, password reset, verification, MFA, sensitive downloads, exports and operator actions use database-backed rate limits in production. Limit keys are HMAC-SHA-256 pseudonyms derived with the external master key, shared by every application instance and expired by the retention job. Login protection applies both an account limit and a broader IP limit, so distributed password attacks and shared networks are handled independently. An application restart must never clear an attacker's accumulated attempts.
 
-Monitoring and retention readiness are derived from fresh PostgreSQL evidence and have no manual override. Set `BACKUP_RESTORE_VERIFIED_AT` to the UTC completion timestamp only after an isolated restore has passed the checks below; readiness expires that evidence after 100 days. Set `RETENTION_EXECUTION_ENABLED=true` only inside the approved executing cron job after its production preview and policy are approved. Configuration values are never substitutes for completing the underlying control.
+Monitoring, retention and backup-restore readiness are derived from fresh PostgreSQL evidence and have no manual override. A successful isolated restore reports through `/api/operations/backup-restore-evidence` using a dedicated `BACKUP_RESTORE_EVIDENCE_TOKEN`; readiness expires that evidence after 100 days. Set `RETENTION_EXECUTION_ENABLED=true` only inside the approved executing cron job after its production preview and policy are approved. Configuration values are never substitutes for completing the underlying control.
 
 ### External production monitor
 
@@ -50,7 +50,7 @@ Stripe access is reconciled from the current Subscription object for checkout, s
 ## Database backup and restore gate
 
 1. Use a paid managed PostgreSQL plan with point-in-time recovery enabled.
-2. Create a separate encrypted logical backup on a daily schedule; keep 35 daily and 12 monthly recovery points.
+2. Create a separate AES-256-GCM encrypted logical backup on a daily schedule; keep 35 daily and 12 monthly recovery points.
 3. Restrict backup access to the director and named technical operator, with MFA.
 4. Every quarter, restore the newest backup into an isolated empty database.
 5. Run all migrations, compare counts for users, assets, cases, events and subscriptions, and sample integrity hashes.
@@ -58,15 +58,15 @@ Stripe access is reconciled from the current Subscription object for checkout, s
 
 A backup is not considered operational until one restore has succeeded. Never download production dumps to an unmanaged personal device.
 
-Create the non-personal, signed integrity manifest beside each logical backup by running `pnpm backup:manifest` with the production `DATABASE_URL` and a separately managed `BACKUP_EVIDENCE_KEY` of at least 32 characters. Store the JSON manifest with the encrypted backup; it contains counts and keyed integrity samples, not customer records. Capture the manifest as part of the same controlled backup operation so its timestamp identifies the recovery point.
+Create the encrypted PostgreSQL custom-format archive and its non-personal signed integrity manifest with `pnpm backup:database`. The job exports one repeatable-read PostgreSQL snapshot, uses that same snapshot for `pg_dump` and the keyed integrity samples, encrypts the dump with a separately managed `BACKUP_ARCHIVE_ENCRYPTION_KEY`, uploads the ciphertext first and publishes `manifest.json` only after the archive succeeds. Neither database credentials nor encryption keys may appear in command arguments or logs. The legacy `pnpm backup:manifest` command creates evidence only and is not itself a database backup.
 
-After restoring into an isolated empty PostgreSQL database, run `pnpm backup:verify-restore /secure/path/manifest.json` with only `RESTORE_DATABASE_URL` and the same `BACKUP_EVIDENCE_KEY`. The verifier refuses the source database, runs a repeatable-read/read-only transaction, requires the current migration, validates the manifest signature, and compares counts plus HMAC integrity samples for users, assets, takedown cases, audit events and subscriptions. A discrepancy or altered manifest exits non-zero. Review and retain its JSON evidence before setting `BACKUP_RESTORE_VERIFIED_AT` to the successful `completedAt`; never set the flag from the manifest-creation step.
+Restore with `pnpm backup:restore-database <manifest-key>` into a separately provisioned empty PostgreSQL database. The command refuses the source database and non-empty targets, validates bucket lifecycle, manifest signature, ciphertext size/checksum and AES-GCM authentication before invoking `pg_restore`, then compares counts plus HMAC integrity samples for users, assets, takedown cases, audit events and subscriptions. A discrepancy, altered archive or wrong key exits non-zero. When `BACKUP_RESTORE_EVIDENCE_URL` and its dedicated token are configured, only a completely successful restore reports authenticated evidence to production; partial configuration fails closed. The older `pnpm backup:verify-restore` command verifies an already-restored database against a local manifest but does not perform restoration.
 
 ## Media storage recovery
 
 Cloudflare R2 does not currently implement the S3 bucket-versioning operations, so R2 versioning must not be claimed as recovery evidence. Keep the primary R2 bucket private and create a second private backup bucket with separate credentials that are unavailable to the web service. Run `pnpm backup:media` from an isolated scheduled backup job with the primary read credentials, backup write credentials, PostgreSQL access and `BACKUP_EVIDENCE_KEY`. The job writes each already application-encrypted object under a unique daily or monthly snapshot prefix and publishes the signed manifest only after every object succeeds.
 
-Configure backup-bucket lifecycle rules for `content-protect-media/daily/` and `content-protect-media/monthly/` according to the approved 35-daily/12-monthly retention schedule. The backup credentials used by the web application must not exist: only the isolated backup job may write snapshots, and its normal role should not delete them. Public bucket access must remain disabled.
+Configure backup-bucket lifecycle rules for the daily and monthly prefixes under both `content-protect-media/` and `content-protect-database/`, using 35 and 400 days respectively. The backup credentials used by the web application must not exist: only isolated backup/restore jobs may access backup archives, and the normal writer role should not delete them. Public bucket access must remain disabled.
 
 Run `pnpm backup:verify-media <manifest-key>` using backup read credentials and the evidence key. This verifier needs no primary-bucket or database credentials, requires the enabled 35-day daily and 400-day monthly lifecycle rules (or the explicitly approved override values), validates the signed inventory, downloads every encrypted backup object and compares its size and SHA-256 digest. Retain the resulting JSON with the quarterly restore evidence. An absent object, altered manifest, lifecycle mismatch or checksum mismatch exits non-zero. A manifest is not valid recovery evidence until this independent read test succeeds.
 

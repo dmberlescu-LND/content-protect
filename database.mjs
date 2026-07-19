@@ -30,7 +30,11 @@ export async function closeDatabase() {
   if (pool) await pool.end();
 }
 
-const OPERATIONAL_EVIDENCE_TYPES = new Set(["monitoring", "retention"]);
+const OPERATIONAL_EVIDENCE_TYPES = new Set([
+  "monitoring",
+  "retention",
+  "backup_restore",
+]);
 
 export async function recordOperationalEvidence({
   type,

@@ -105,6 +105,16 @@ const lifecycleRules = [
     Filter: { Prefix: "content-protect-media/monthly/" },
     Expiration: { Days: 400 },
   },
+  {
+    Status: "Enabled",
+    Filter: { Prefix: "content-protect-database/daily/" },
+    Expiration: { Days: 35 },
+  },
+  {
+    Status: "Enabled",
+    Filter: { Prefix: "content-protect-database/monthly/" },
+    Expiration: { Days: 400 },
+  },
 ];
 assert.deepEqual(validateMediaBackupLifecycle(lifecycleRules), {
   ok: true,
@@ -114,6 +124,7 @@ assert.equal(
   validateMediaBackupLifecycle([
     ...lifecycleRules.slice(0, 1),
     { ...lifecycleRules[1], Expiration: { Days: 30 } },
+    ...lifecycleRules.slice(2),
   ]).ok,
   false,
 );

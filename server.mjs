@@ -57,6 +57,7 @@ import {
   stripeSubscriptionId,
 } from "./stripe-subscription-policy.mjs";
 import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
+import { BACKUP_TABLES } from "./backup-snapshot.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -564,20 +565,18 @@ function buildCopyrightNotice(user, match, caseId, capturedAt) {
   };
 }
 function operatorTokenValid(value) {
+  return secretTokenValid(value, process.env.TAKEDOWN_OPERATOR_TOKEN);
+}
+function secretTokenValid(value, expectedValue) {
   const supplied = String(value || ""),
-    expected = process.env.TAKEDOWN_OPERATOR_TOKEN || "";
+    expected = String(expectedValue || "");
   if (supplied.length < 32 || expected.length < 32) return false;
   const a = createHash("sha256").update(supplied).digest(),
     b = createHash("sha256").update(expected).digest();
   return timingSafeEqual(a, b);
 }
 function monitoringTokenValid(value) {
-  const supplied = String(value || ""),
-    expected = process.env.MONITORING_HEARTBEAT_TOKEN || "";
-  if (supplied.length < 32 || expected.length < 32) return false;
-  const a = createHash("sha256").update(supplied).digest(),
-    b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
+  return secretTokenValid(value, process.env.MONITORING_HEARTBEAT_TOKEN);
 }
 function operatorAuthorised(req, d) {
   const supplied = String(req.headers.authorization || "").replace(
@@ -901,6 +900,60 @@ const appServer = http.createServer(async (req, res) => {
       });
       return send(res, 202, { recorded: true, evidence });
     }
+    if (
+      route === "/api/operations/backup-restore-evidence" &&
+      req.method === "POST"
+    ) {
+      if (!process.env.BACKUP_RESTORE_EVIDENCE_TOKEN)
+        return send(res, 503, {
+          error: "Backup restore evidence is not configured.",
+        });
+      const supplied = String(req.headers.authorization || "").replace(
+        /^Bearer\s+/i,
+        "",
+      );
+      if (
+        !secretTokenValid(supplied, process.env.BACKUP_RESTORE_EVIDENCE_TOKEN)
+      )
+        return send(res, 401, { error: "Invalid restore credential." });
+      if (!(await allowed(req, `backup-restore:${ip}`, 6, 3600000)).allowed)
+        return send(res, 429, { error: "Too many restore evidence reports." });
+      const body = await parse(req),
+        snapshotId = String(body.snapshotId || ""),
+        manifestKey = String(body.manifestKey || ""),
+        sourceIdentity = String(body.sourceIdentity || ""),
+        restoreIdentity = String(body.restoreIdentity || ""),
+        release = String(body.release || ""),
+        tablesChecked = Array.isArray(body.tablesChecked)
+          ? [...new Set(body.tablesChecked.map(String))].sort()
+          : [],
+        requiredTables = BACKUP_TABLES.map((table) => table.name).sort();
+      if (
+        !/^[A-Za-z0-9._-]{20,120}$/.test(snapshotId) ||
+        !/^content-protect-database\/(daily|monthly)\/[A-Za-z0-9._-]{20,120}\/manifest\.json$/.test(
+          manifestKey,
+        ) ||
+        !/^[a-f0-9]{16}$/.test(sourceIdentity) ||
+        !/^[a-f0-9]{16}$/.test(restoreIdentity) ||
+        sourceIdentity === restoreIdentity ||
+        (release && !/^[a-f0-9]{7,40}$/i.test(release)) ||
+        JSON.stringify(tablesChecked) !== JSON.stringify(requiredTables)
+      )
+        return send(res, 400, { error: "Invalid restore evidence." });
+      const evidence = await recordOperationalEvidence({
+        type: "backup_restore",
+        source: "isolated-restore-job",
+        release,
+        details: {
+          snapshotId,
+          manifestKey,
+          sourceIdentity,
+          restoreIdentity,
+          tablesChecked,
+        },
+      });
+      return send(res, 202, { recorded: true, evidence });
+    }
     if (route === "/api/health/ready" || route === "/api/health") {
       const [databaseResult, storageResult, evidenceResult] =
         await Promise.allSettled([
@@ -929,7 +982,7 @@ const appServer = http.createServer(async (req, res) => {
           yotiConfigured: YOTI_CONFIGURED,
           retentionEvidence: operationalEvidence.retention,
           monitoringEvidence: operationalEvidence.monitoring,
-          backupRestoreVerifiedAt: process.env.BACKUP_RESTORE_VERIFIED_AT,
+          backupRestoreEvidence: operationalEvidence.backup_restore,
         });
       return send(res, readiness.infrastructureReady ? 200 : 503, {
         ok: readiness.infrastructureReady,
