@@ -22,6 +22,7 @@ const checks = [
   "test-distributed-rate-limit.mjs",
   "test-retention-queue.mjs",
   "test-yoti-age-policy.mjs",
+  "test-yoti-sandbox-integration.mjs",
   "test-operator-access-policy.mjs",
   "test-operator-auth-integration.mjs",
   "test-takedown-policy.mjs",

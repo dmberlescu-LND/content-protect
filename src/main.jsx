@@ -112,7 +112,9 @@ function YotiAgeButton({ onVerified }) {
     currentSessionId = useRef(null),
     completing = useRef(false),
     onVerifiedRef = useRef(onVerified),
-    [status, setStatus] = useState("loading");
+    [status, setStatus] = useState("loading"),
+    [configuration, setConfiguration] = useState(null),
+    [sandboxRunning, setSandboxRunning] = useState(false);
   onVerifiedRef.current = onVerified;
   useEffect(() => {
     let active = true,
@@ -122,6 +124,11 @@ function YotiAgeButton({ onVerified }) {
         config = await configResponse.json();
       if (!configResponse.ok) {
         if (active) setStatus("unavailable");
+        return;
+      }
+      if (active) setConfiguration(config);
+      if (config.mode === "sandbox") {
+        if (active) setStatus("sandbox");
         return;
       }
       const Yoti = await loadYotiShareClient();
@@ -185,11 +192,51 @@ function YotiAgeButton({ onVerified }) {
       widget?.destroy?.();
     };
   }, []);
+  const runSandboxTest = async () => {
+    const password = prompt(
+      "Enter the test account password to confirm this controlled sandbox check.",
+    );
+    if (!password) return;
+    setSandboxRunning(true);
+    try {
+      const response = await fetch("/api/verification/age/sandbox-complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ password }),
+        }),
+        result = await response.json();
+      if (!response.ok || !result.verified)
+        throw new Error(result.error || "Sandbox age testing failed.");
+      onVerifiedRef.current(result.user);
+      alert(
+        "Controlled sandbox test passed. This is not a real Yoti identity check and cannot enable production.",
+      );
+    } catch (error) {
+      alert(error.message || "Sandbox age testing failed.");
+    } finally {
+      setSandboxRunning(false);
+    }
+  };
   if (status === "unavailable")
     return (
       <button className="btn btn-outline" disabled>
         Provider activation pending
       </button>
+    );
+  if (status === "sandbox")
+    return (
+      <div className="yoti-age-control sandbox">
+        <button
+          className="btn btn-outline"
+          disabled={sandboxRunning || !configuration?.testOnly}
+          onClick={runSandboxTest}
+        >
+          {sandboxRunning
+            ? "Running sandbox test…"
+            : "Run approved sandbox test"}
+        </button>
+        <small>Test account only · no Yoti phone or identity check</small>
+      </div>
     );
   return (
     <div className="yoti-age-control">
@@ -1477,8 +1524,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <div>
                 <b>Complete a private 18+ age check</b>
                 <span>
-                  Yoti returns only the verification outcome and method. We do
-                  not store your document or face image.
+                  Production verification uses Yoti and retains only the outcome
+                  and method, never your document or face image.
                 </span>
               </div>
               <YotiAgeButton onVerified={onUserUpdate} />

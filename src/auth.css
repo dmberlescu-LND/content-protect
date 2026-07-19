@@ -234,6 +234,17 @@
   height: 36px;
   font-size: 10px;
 }
+.verification-banner .yoti-age-control {
+  align-items: flex-end;
+  flex: 0 0 auto;
+}
+.verification-banner .yoti-age-control small {
+  max-width: 230px;
+  color: #82734b;
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: right;
+}
 .mobile-close {
   display: none;
 }

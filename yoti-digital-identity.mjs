@@ -7,6 +7,43 @@ const {
 } = yoti;
 
 export const YOTI_SHARE_ID = /^[A-Za-z0-9_-]{16,160}$/;
+const SANDBOX_APPROVAL_REFERENCE = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,119}$/;
+
+function normalizedEmail(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+export function yotiSandboxTestConfiguration(env = process.env) {
+  const emails = [
+      ...new Set(
+        String(env.YOTI_SANDBOX_TEST_EMAILS || "")
+          .split(",")
+          .map(normalizedEmail)
+          .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)),
+      ),
+    ],
+    approvalReference = String(
+      env.YOTI_SANDBOX_TEST_APPROVAL_REFERENCE || "",
+    ).trim();
+  return {
+    configured: Boolean(
+      env.YOTI_MODE === "sandbox" &&
+      emails.length &&
+      SANDBOX_APPROVAL_REFERENCE.test(approvalReference),
+    ),
+    emails,
+    approvalReference,
+  };
+}
+
+export function yotiSandboxTestAllowed(configuration, email) {
+  return Boolean(
+    configuration?.configured &&
+    configuration.emails?.includes(normalizedEmail(email)),
+  );
+}
 
 export function normalizedYotiPrivateKey(value) {
   return String(value || "")

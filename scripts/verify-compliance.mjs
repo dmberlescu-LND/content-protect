@@ -52,6 +52,7 @@ const [
   disputePolicy,
   disputesPage,
   disputesScript,
+  yotiPolicy,
 ] = await Promise.all([
   read("public/privacy.html"),
   read("public/terms.html"),
@@ -83,6 +84,7 @@ const [
   read("dispute-policy.mjs"),
   read("public/disputes.html"),
   read("public/disputes.js"),
+  read("yoti-digital-identity.mjs"),
 ]);
 
 for (const [name, page] of [
@@ -303,6 +305,12 @@ requireText("Render", render, "value: test");
 requireText("Render", render, "TAKEDOWNS_MODE");
 requireText("Render", render, "value: sandbox");
 requireText("Render", render, "YOTI_MODE");
+requireText("Render", render, "YOTI_SANDBOX_TEST_EMAILS");
+requireText("Render", render, "YOTI_SANDBOX_TEST_APPROVAL_REFERENCE");
+requireText("server", server, "/api/verification/age/sandbox-complete");
+requireText("server", server, 'YOTI_MODE !== "live"');
+requireText("server", server, "item.evidence?.mode === YOTI_MODE");
+requireText("Yoti policy", yotiPolicy, "yotiSandboxTestAllowed");
 requireText("server", server, "TAKEDOWN_DELIVERY_LIVE");
 requireText("server", server, 'TAKEDOWNS_MODE === "live"');
 requireText("Render", render, "TAKEDOWN_LEGAL_APPROVED_VERSION");

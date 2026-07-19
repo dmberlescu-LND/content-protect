@@ -33,6 +33,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 - Restrict the service to verified adults aged 18+.
 - Use a specialist age/identity provider; do not retain raw identity documents unless strictly necessary.
 - Separate identity verification data from creator content.
+- Keep Sandbox testing restricted to the expressly approved test-account allowlist. A Sandbox result must be labelled test-only, require password reauthentication and stop counting automatically when the application changes to live Yoti mode.
 - Require explicit creator approval before the first real takedown.
 - Provide emergency paths for intimate-image abuse, doxxing, stalking and credible threats.
 - Prohibit searches for people who have not authorised the account.

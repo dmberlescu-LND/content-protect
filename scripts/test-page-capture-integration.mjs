@@ -31,6 +31,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
     CONTENT_PROTECT_DATA_DIR: dataDirectory,
     CONTENT_PROTECT_MASTER_KEY:
       "page-capture-integration-master-key-" + "m".repeat(40),
+    YOTI_MODE: "sandbox",
     PAYMENTS_MODE: "test",
     STRIPE_SECRET_KEY: "sk_test_" + "x".repeat(32),
     STRIPE_WEBHOOK_SECRET: "whsec_" + "x".repeat(32),
@@ -127,6 +128,18 @@ await writeFile(
     operatorSessions: [],
     audit: [],
     verifications: [
+      {
+        id: "77777777-7777-4777-8777-777777777777",
+        userId,
+        kind: "age",
+        provider: "content-protect-controlled-sandbox",
+        providerReference: "sandbox-page-capture-test",
+        status: "verified",
+        evidence: { mode: "sandbox", testOnly: true, threshold: 18 },
+        expiresAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
       {
         id: rightsRecordId,
         userId,

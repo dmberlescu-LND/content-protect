@@ -62,6 +62,8 @@ import {
   interpretYotiAgeReceipt,
   yotiConfiguration,
   yotiReceiptAlreadyUsed,
+  yotiSandboxTestAllowed,
+  yotiSandboxTestConfiguration,
   YOTI_SHARE_ID,
 } from "./yoti-digital-identity.mjs";
 import {
@@ -158,6 +160,7 @@ try {
   YOTI_CONFIGURATION = { configured: false };
 }
 const YOTI_CONFIGURED = YOTI_CONFIGURATION.configured;
+const YOTI_SANDBOX_TEST_CONFIGURATION = yotiSandboxTestConfiguration();
 const OPERATOR_CONFIGURATION = operatorAccessConfiguration();
 const RESEND_EMAIL_CONFIGURED = Boolean(
   process.env.RESEND_API_KEY?.startsWith("re_") &&
@@ -485,6 +488,13 @@ function userFor(req, d) {
   return d.users.find((x) => x.id === s?.userId);
 }
 function safe(u, d) {
+  const currentAgeVerification = (d?.verifications || []).find(
+    (item) =>
+      item.userId === u.id &&
+      item.kind === "age" &&
+      item.status === "verified" &&
+      item.evidence?.mode === YOTI_MODE,
+  );
   return {
     id: u.id,
     name: u.name,
@@ -495,12 +505,15 @@ function safe(u, d) {
     plan: d ? activeSubscription(d, u.id)?.plan || "Unsubscribed" : u.plan,
     onboardingComplete: u.onboardingComplete,
     emailVerifiedAt: u.emailVerifiedAt || null,
-    ageVerifiedAt: u.ageVerifiedAt || null,
+    ageVerifiedAt: currentAgeVerification ? u.ageVerifiedAt || null : null,
     eligibilityAcceptedAt: u.eligibilityAcceptedAt || null,
     mfaEnabled: Boolean(u.mfaEnabledAt),
     mfaRecoveryCodesRemaining: (u.mfaRecoveryHashes || []).length,
     createdAt: u.createdAt,
   };
+}
+function hasCurrentAgeVerification(u, d) {
+  return Boolean(safe(u, d).ageVerifiedAt);
 }
 function activeSubscription(d, userId) {
   return findActiveSubscription(d.subscriptions, userId, {
@@ -2190,14 +2203,100 @@ const appServer = http.createServer(async (req, res) => {
     }
     if (route === "/api/me") return send(res, 200, { user: safe(u, d) });
     if (route === "/api/verification/age/config" && req.method === "GET") {
+      if (YOTI_MODE === "sandbox") {
+        if (
+          !YOTI_SANDBOX_TEST_CONFIGURATION.configured ||
+          !yotiSandboxTestAllowed(YOTI_SANDBOX_TEST_CONFIGURATION, u.email)
+        )
+          return send(res, 403, {
+            error: "Sandbox age testing is not enabled for this account.",
+          });
+        return send(res, 200, {
+          provider: "content-protect-controlled-sandbox",
+          mode: "sandbox",
+          requestedAttribute: "age_over:18",
+          testOnly: true,
+        });
+      }
+      if (YOTI_MODE !== "live")
+        return send(res, 503, {
+          error: "Age verification is awaiting provider activation.",
+        });
       if (!YOTI_CONFIGURED)
         return send(res, 503, {
           error: "Age verification is awaiting provider activation.",
         });
       return send(res, 200, {
         provider: "yoti-digital-identity",
+        mode: "live",
         sdkId: YOTI_CONFIGURATION.sdkId,
         requestedAttribute: "age_over:18",
+      });
+    }
+    if (
+      route === "/api/verification/age/sandbox-complete" &&
+      req.method === "POST"
+    ) {
+      if (
+        YOTI_MODE !== "sandbox" ||
+        !YOTI_SANDBOX_TEST_CONFIGURATION.configured ||
+        !yotiSandboxTestAllowed(YOTI_SANDBOX_TEST_CONFIGURATION, u.email)
+      )
+        return send(res, 403, {
+          error: "Sandbox age testing is not enabled for this account.",
+        });
+      if (!u.emailVerifiedAt)
+        return send(res, 403, {
+          error: "Verify your email before starting sandbox age testing.",
+        });
+      if (hasCurrentAgeVerification(u, d))
+        return send(res, 200, { verified: true, user: safe(u, d) });
+      if (!(await allowed(req, `age-sandbox:${u.id}`, 5, 3600000)).allowed)
+        return send(res, 429, {
+          error: "Too many sandbox verification attempts. Try again later.",
+        });
+      const b = await parse(req);
+      if (!passwordMatches(u, b.password))
+        return send(res, 401, {
+          error: "Password confirmation failed.",
+        });
+      const now = new Date().toISOString(),
+        record = {
+          id: randomUUID(),
+          userId: u.id,
+          kind: "age",
+          provider: "content-protect-controlled-sandbox",
+          providerReference: `sandbox-${randomUUID()}`,
+          status: "verified",
+          evidence: {
+            method: "APPROVED_SANDBOX_SIMULATION",
+            threshold: 18,
+            requestedAttribute: "age_over:18",
+            mode: "sandbox",
+            testOnly: true,
+            approvalReference:
+              YOTI_SANDBOX_TEST_CONFIGURATION.approvalReference,
+          },
+          expiresAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+      d.verifications = d.verifications.filter(
+        (item) => !(item.userId === u.id && item.kind === "age"),
+      );
+      d.verifications.push(record);
+      u.ageVerifiedAt = now;
+      audit(d, u, "verification.age_sandbox_verified", {
+        provider: record.provider,
+        method: record.evidence.method,
+        approvalReference: record.evidence.approvalReference,
+      });
+      await save(d);
+      return send(res, 200, {
+        verified: true,
+        status: record.status,
+        testOnly: true,
+        user: safe(u, d),
       });
     }
     if (route === "/api/verification/age/start" && req.method === "POST") {
@@ -2205,8 +2304,12 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 403, {
           error: "Verify your email before starting age verification.",
         });
-      if (u.ageVerifiedAt)
+      if (hasCurrentAgeVerification(u, d))
         return send(res, 200, { verified: true, user: safe(u, d) });
+      if (YOTI_MODE !== "live")
+        return send(res, 409, {
+          error: "Use the approved sandbox test flow for this environment.",
+        });
       if (!YOTI_CONFIGURED)
         return send(res, 503, {
           error:
@@ -2248,7 +2351,11 @@ const appServer = http.createServer(async (req, res) => {
           provider: "yoti-digital-identity",
           providerReference: sessionId,
           status: "pending",
-          evidence: { threshold: 18, requestedAttribute: "age_over:18" },
+          evidence: {
+            threshold: 18,
+            requestedAttribute: "age_over:18",
+            mode: "live",
+          },
           expiresAt,
           createdAt: now,
           updatedAt: now,
@@ -2270,6 +2377,10 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/verification/age/complete" && req.method === "POST") {
+      if (YOTI_MODE !== "live")
+        return send(res, 409, {
+          error: "Use the approved sandbox test flow for this environment.",
+        });
       if (!YOTI_CONFIGURED)
         return send(res, 503, {
           error: "Age verification is not configured.",
@@ -2351,6 +2462,7 @@ const appServer = http.createServer(async (req, res) => {
         threshold: interpreted.threshold,
         receiptId,
         receiptTimestamp: interpreted.receiptTimestamp,
+        mode: "live",
       };
       if (complete) {
         u.ageVerifiedAt = record.updatedAt;
@@ -2475,7 +2587,11 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/assets" && req.method === "POST") {
-      if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
+      if (
+        !u.emailVerifiedAt ||
+        !u.eligibilityAcceptedAt ||
+        !hasCurrentAgeVerification(u, d)
+      )
         return send(res, 403, {
           error:
             "Verify your email, age and eligibility before uploading content.",
@@ -2580,7 +2696,11 @@ const appServer = http.createServer(async (req, res) => {
       route.match(/^\/api\/matches\/[^/]+\/page-capture$/) &&
       req.method === "POST"
     ) {
-      if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
+      if (
+        !u.emailVerifiedAt ||
+        !u.eligibilityAcceptedAt ||
+        !hasCurrentAgeVerification(u, d)
+      )
         return send(res, 403, {
           error:
             "Verify your email, age and eligibility before preserving evidence.",
@@ -2896,7 +3016,11 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/scans" && req.method === "POST") {
-      if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
+      if (
+        !u.emailVerifiedAt ||
+        !u.eligibilityAcceptedAt ||
+        !hasCurrentAgeVerification(u, d)
+      )
         return send(res, 403, {
           error: "Verify your email, age and eligibility before scanning.",
         });
@@ -3072,7 +3196,7 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "Accept the Service Terms and explicitly request immediate service before checkout.",
         });
-      if (!u.emailVerifiedAt || !u.ageVerifiedAt)
+      if (!u.emailVerifiedAt || !hasCurrentAgeVerification(u, d))
         return send(res, 403, {
           error: "Verify your email and age before purchasing a plan.",
         });
@@ -3504,7 +3628,11 @@ const appServer = http.createServer(async (req, res) => {
       );
     }
     if (route === "/api/cases" && req.method === "POST") {
-      if (!u.emailVerifiedAt || !u.eligibilityAcceptedAt || !u.ageVerifiedAt)
+      if (
+        !u.emailVerifiedAt ||
+        !u.eligibilityAcceptedAt ||
+        !hasCurrentAgeVerification(u, d)
+      )
         return send(res, 403, {
           error:
             "Verify your email, age and eligibility before opening a takedown case.",

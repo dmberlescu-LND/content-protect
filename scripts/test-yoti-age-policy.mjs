@@ -5,6 +5,8 @@ import {
   interpretYotiAgeReceipt,
   yotiConfiguration,
   yotiReceiptAlreadyUsed,
+  yotiSandboxTestAllowed,
+  yotiSandboxTestConfiguration,
   YOTI_SHARE_ID,
 } from "../yoti-digital-identity.mjs";
 
@@ -27,6 +29,41 @@ assert.throws(
       YOTI_PRIVATE_KEY: "not-a-private-key",
     }),
   /valid PEM private key/,
+);
+
+const sandboxConfiguration = yotiSandboxTestConfiguration({
+  YOTI_MODE: "sandbox",
+  YOTI_SANDBOX_TEST_EMAILS:
+    " test@example.com,SECOND@example.com,test@example.com ",
+  YOTI_SANDBOX_TEST_APPROVAL_REFERENCE: "owner-approval-2026-07-19",
+});
+assert.equal(sandboxConfiguration.configured, true);
+assert.deepEqual(sandboxConfiguration.emails, [
+  "test@example.com",
+  "second@example.com",
+]);
+assert.equal(
+  yotiSandboxTestAllowed(sandboxConfiguration, " TEST@example.com "),
+  true,
+);
+assert.equal(
+  yotiSandboxTestAllowed(sandboxConfiguration, "other@example.com"),
+  false,
+);
+assert.equal(
+  yotiSandboxTestConfiguration({
+    YOTI_MODE: "live",
+    YOTI_SANDBOX_TEST_EMAILS: "test@example.com",
+    YOTI_SANDBOX_TEST_APPROVAL_REFERENCE: "owner-approval-2026-07-19",
+  }).configured,
+  false,
+);
+assert.equal(
+  yotiSandboxTestConfiguration({
+    YOTI_MODE: "sandbox",
+    YOTI_SANDBOX_TEST_EMAILS: "test@example.com",
+  }).configured,
+  false,
 );
 
 const share = buildYotiAgeShareConfiguration({
@@ -141,5 +178,6 @@ console.log(
     sessionAndReceiptBound: true,
     receiptReplayRejected: true,
     rawIdentityNotRetained: true,
+    sandboxAllowlistFailClosed: true,
   }),
 );
