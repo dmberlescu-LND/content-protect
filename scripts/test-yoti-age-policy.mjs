@@ -30,6 +30,44 @@ assert.throws(
     }),
   /valid PEM private key/,
 );
+assert.deepEqual(
+  yotiConfiguration(
+    {
+      YOTI_MODE: "live",
+      YOTI_SDK_ID: "content_protect_sdk_123",
+      YOTI_PRIVATE_KEY: pem,
+    },
+    { secure: false },
+  ),
+  { configured: false, reason: "dependency-security-blocked" },
+);
+assert.equal(
+  yotiConfiguration({
+    YOTI_MODE: "live",
+    YOTI_SDK_ID: "content_protect_sdk_123",
+    YOTI_PRIVATE_KEY: pem,
+  }).configured,
+  true,
+);
+assert.equal(
+  yotiConfiguration({
+    YOTI_MODE: "sandbox",
+    YOTI_SDK_ID: "content_protect_sdk_123",
+    YOTI_PRIVATE_KEY: pem,
+  }).configured,
+  true,
+);
+assert.equal(
+  yotiConfiguration(
+    {
+      YOTI_MODE: "live",
+      YOTI_SDK_ID: "content_protect_sdk_123",
+      YOTI_PRIVATE_KEY: pem,
+    },
+    { secure: true },
+  ).configured,
+  true,
+);
 
 const sandboxConfiguration = yotiSandboxTestConfiguration({
   YOTI_MODE: "sandbox",

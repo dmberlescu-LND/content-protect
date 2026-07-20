@@ -191,6 +191,11 @@ try {
   YOTI_CONFIGURATION = { configured: false };
 }
 const YOTI_CONFIGURED = YOTI_CONFIGURATION.configured;
+const YOTI_STATUS = YOTI_CONFIGURED
+  ? `yoti-${YOTI_MODE}`
+  : YOTI_CONFIGURATION.reason === "dependency-security-blocked"
+    ? "dependency-security-blocked"
+    : "unconfigured";
 const YOTI_SANDBOX_TEST_CONFIGURATION = yotiSandboxTestConfiguration();
 const OPERATOR_CONFIGURATION = operatorAccessConfiguration();
 const RESEND_EMAIL_CONFIGURED = Boolean(
@@ -1390,7 +1395,7 @@ const appServer = http.createServer(async (req, res) => {
         launchGovernance,
         scanner,
         videoScanning: videoScanner,
-        ageVerification: YOTI_CONFIGURED ? `yoti-${YOTI_MODE}` : "unconfigured",
+        ageVerification: YOTI_STATUS,
         emailDelivery: RESEND_EMAIL_CONFIGURED ? "resend" : "unconfigured",
         emailWebhook: RESEND_WEBHOOK_CONFIGURED
           ? "resend-signed"

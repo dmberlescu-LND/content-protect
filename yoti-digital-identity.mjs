@@ -1,5 +1,6 @@
 import { createPrivateKey } from "node:crypto";
 import yoti from "yoti";
+import { installedYotiDependencySecurity } from "./yoti-dependency-security.mjs";
 
 const {
   DigitalIdentityClient,
@@ -51,7 +52,10 @@ export function normalizedYotiPrivateKey(value) {
     .trim();
 }
 
-export function yotiConfiguration(env = process.env) {
+export function yotiConfiguration(
+  env = process.env,
+  dependencySecurity = installedYotiDependencySecurity(),
+) {
   const sdkId = String(env.YOTI_SDK_ID || "").trim(),
     privateKey = normalizedYotiPrivateKey(env.YOTI_PRIVATE_KEY);
   if (!sdkId && !privateKey) return { configured: false };
@@ -64,6 +68,8 @@ export function yotiConfiguration(env = process.env) {
   } catch {
     throw new Error("YOTI_PRIVATE_KEY is not a valid PEM private key.");
   }
+  if (env.YOTI_MODE === "live" && !dependencySecurity?.secure)
+    return { configured: false, reason: "dependency-security-blocked" };
   return { configured: true, sdkId, privateKey };
 }
 

@@ -1,2 +1,5 @@
 allowBuilds:
   protobufjs: true
+overrides:
+  yoti>form-data: 4.0.6
+  yoti>protobufjs: 8.7.1

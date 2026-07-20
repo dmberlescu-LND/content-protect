@@ -46,6 +46,7 @@
     "test:stripe-refunds": "node scripts/test-stripe-refund-policy.mjs",
     "test:storage": "node scripts/test-storage.mjs",
     "test:storage-config": "node scripts/test-storage-config.mjs",
+    "security:audit": "pnpm audit --prod --audit-level moderate",
     "test": "node scripts/test-all.mjs",
     "storage:migrate": "node scripts/migrate-storage.mjs",
     "retention:preview": "node scripts/retention.mjs",

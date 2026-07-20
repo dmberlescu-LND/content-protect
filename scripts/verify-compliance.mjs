@@ -377,6 +377,14 @@ requireText(
   "open customer request cannot be deleted",
 );
 requireText("DPIA", dpia, "Independently retained audit exports");
+requireText("server", server, '"dependency-security-blocked"');
+requireText("UK launch checklist", checklist, "form-data` 4.0.6");
+requireText("UK launch checklist", checklist, "protobufjs` 8.7.1");
+requireText(
+  "operations runbook",
+  runbook,
+  "transitive packages actually resolved",
+);
 requireText("operations runbook", runbook, "creator-supplied JPEG");
 requireText("takedown procedure", takedowns, "evidence snapshot version 3");
 requireText("DPIA", dpia, "current page capture");

@@ -35,6 +35,7 @@ Status: implementation checklist, not legal advice. Company identity is verified
 
 - Restrict the service to verified adults aged 18+.
 - Use a specialist age/identity provider; do not retain raw identity documents unless strictly necessary.
+- The official Yoti Node SDK 4.13.2 pins vulnerable `form-data` 4.0.4 and `protobufjs` 8.2.1 releases. The frozen lockfile now safely overrides them to `form-data` 4.0.6 and `protobufjs` 8.7.1; the production dependency audit reported no known moderate/high/critical vulnerabilities on 20 July 2026. Content Protect refuses Yoti live mode if the resolved versions fall below 4.0.6 and 8.5.1 respectively, and CI now fails closed on a moderate-or-higher production-dependency advisory.
 - Separate identity verification data from creator content.
 - Keep Sandbox testing restricted to the expressly approved test-account allowlist. A Sandbox result must be labelled test-only, require password reauthentication and stop counting automatically when the application changes to live Yoti mode.
 - Require explicit creator approval before the first real takedown.
