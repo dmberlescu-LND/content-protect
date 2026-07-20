@@ -1,4 +1,4 @@
-export const REQUIRED_MIGRATION = "020_consumer_cases.sql";
+export const REQUIRED_MIGRATION = "022_subscription_consent_binding.sql";
 
 const freshEvidence = (value, maxAgeMs) => {
   const timestamp = Date.parse(value?.occurredAt || "");
@@ -15,6 +15,7 @@ export function operationsReadiness({
   storage,
   hasExternalMasterKey,
   scanner,
+  videoScanner,
   takedownDeliveryConfigured,
   takedownsMode,
   stripeConfigured,
@@ -23,6 +24,7 @@ export function operationsReadiness({
   yotiMode,
   retentionEvidence,
   monitoringEvidence,
+  currentRelease,
   backupRestoreEvidence,
   auditExportEvidence,
   launchGovernance,
@@ -38,14 +40,20 @@ export function operationsReadiness({
     hasExternalMasterKey,
   );
   const operationalGates = {
-    scanner: scanner !== "unconfigured",
+    scanner: scanner === "tineye-commercial",
+    videoScanning: videoScanner === "tineye-keyframes",
     takedownDelivery: Boolean(
       takedownDeliveryConfigured && takedownsMode === "live",
     ),
     billing: Boolean(stripeConfigured && stripeMode === "live"),
     ageVerification: Boolean(yotiConfigured && yotiMode === "live"),
-    retentionAutomation: freshEvidence(retentionEvidence, 36 * 60 * 60 * 1000),
-    monitoring: freshEvidence(monitoringEvidence, 15 * 60 * 1000),
+    retentionAutomation:
+      freshEvidence(retentionEvidence, 36 * 60 * 60 * 1000) &&
+      retentionEvidence?.requiredMigration === REQUIRED_MIGRATION,
+    monitoring:
+      freshEvidence(monitoringEvidence, 15 * 60 * 1000) &&
+      /^[a-f0-9]{12}$/i.test(String(currentRelease || "")) &&
+      monitoringEvidence?.release === currentRelease,
     backupRestore:
       freshEvidence(backupRestoreEvidence, 100 * 24 * 60 * 60 * 1000) &&
       backupRestoreEvidence?.requiredMigration === REQUIRED_MIGRATION,

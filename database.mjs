@@ -8,6 +8,7 @@ import {
 } from "node:crypto";
 import pg from "pg";
 import { protectAuditEvent, verifyAuditChain } from "./audit-integrity.mjs";
+import { REQUIRED_MIGRATION } from "./operations-readiness.mjs";
 import { drainObjectDeletionQueue } from "./retention-queue.mjs";
 
 const { Pool } = pg;
@@ -440,6 +441,7 @@ async function recordRetentionFailure({ phase, error, counts = {} }) {
       status: "failed",
       ...retentionEvidenceIdentity(),
       details: {
+        requiredMigration: REQUIRED_MIGRATION,
         phase,
         code,
         counts,
@@ -696,7 +698,12 @@ export async function runRetention({
       type: "retention",
       status: "succeeded",
       ...retentionEvidenceIdentity(),
-      details: { counts, cutoffs: cutoffsResult, objectDeletion },
+      details: {
+        requiredMigration: REQUIRED_MIGRATION,
+        counts,
+        cutoffs: cutoffsResult,
+        objectDeletion,
+      },
       occurredAt: evaluatedAt,
     });
   } catch (error) {
@@ -929,6 +936,7 @@ export async function loadPostgresState() {
         stripePriceId: row.stripe_price_id,
         stripeCustomerId: row.stripe_customer_id,
         stripeSubscriptionId: row.stripe_subscription_id,
+        billingConsentId: row.billing_consent_id,
         renewalAt: iso(row.current_period_end),
         updatedAt: iso(row.updated_at),
       })),
@@ -998,6 +1006,12 @@ export async function loadPostgresState() {
         status: row.status,
         refundDecision: row.refund_decision,
         refundAmountPence: row.refund_amount_pence,
+        refundProviderStatus: row.refund_provider_status,
+        refundProviderReference: row.refund_provider_reference,
+        refundPaymentIntentReference: row.refund_payment_intent_reference,
+        refundSubmittedAt: iso(row.refund_submitted_at),
+        refundProviderUpdatedAt: iso(row.refund_provider_updated_at),
+        refundAttempts: row.refund_attempts,
         refundCompletedAt: iso(row.refund_completed_at),
         responseDueAt: iso(row.response_due_at),
         resolutionDueAt: iso(row.resolution_due_at),
@@ -1014,8 +1028,7 @@ export async function loadPostgresState() {
             type: event.event_type,
             actorType: event.actor_type,
             actorReference: event.actor_reference,
-            restrictedDetailsCiphertext:
-              event.restricted_details_ciphertext,
+            restrictedDetailsCiphertext: event.restricted_details_ciphertext,
             at: iso(event.created_at),
           })),
       })),
@@ -1291,8 +1304,8 @@ async function upsertBusinessData(
   }
   for (const item of state.subscriptions)
     await client.query(
-      `INSERT INTO subscriptions (id,user_id,plan,status,stripe_customer_id,stripe_subscription_id,current_period_end,stripe_livemode,stripe_price_id,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now())
-     ON CONFLICT (user_id) DO UPDATE SET plan=EXCLUDED.plan,status=EXCLUDED.status,stripe_customer_id=EXCLUDED.stripe_customer_id,stripe_subscription_id=EXCLUDED.stripe_subscription_id,current_period_end=EXCLUDED.current_period_end,stripe_livemode=EXCLUDED.stripe_livemode,stripe_price_id=EXCLUDED.stripe_price_id,updated_at=now()`,
+      `INSERT INTO subscriptions (id,user_id,plan,status,stripe_customer_id,stripe_subscription_id,billing_consent_id,current_period_end,stripe_livemode,stripe_price_id,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now())
+     ON CONFLICT (user_id) DO UPDATE SET plan=EXCLUDED.plan,status=EXCLUDED.status,stripe_customer_id=EXCLUDED.stripe_customer_id,stripe_subscription_id=EXCLUDED.stripe_subscription_id,billing_consent_id=EXCLUDED.billing_consent_id,current_period_end=EXCLUDED.current_period_end,stripe_livemode=EXCLUDED.stripe_livemode,stripe_price_id=EXCLUDED.stripe_price_id,updated_at=now()`,
       [
         item.id,
         item.userId,
@@ -1300,6 +1313,7 @@ async function upsertBusinessData(
         item.status,
         item.stripeCustomerId || null,
         item.stripeSubscriptionId || null,
+        item.billingConsentId || null,
         item.renewalAt || null,
         Boolean(item.stripeLivemode),
         item.stripePriceId || null,
@@ -1396,14 +1410,22 @@ async function upsertBusinessData(
     await client.query(
       `INSERT INTO consumer_cases
          (id,reference,user_id,subject_hash,category,priority,status,
-          refund_decision,refund_amount_pence,refund_completed_at,
-          response_due_at,resolution_due_at,restricted_details_ciphertext,
-          resolved_at,closed_at,created_at,updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+          refund_decision,refund_amount_pence,refund_provider_status,
+          refund_provider_reference,refund_payment_intent_reference,
+          refund_submitted_at,refund_provider_updated_at,refund_attempts,
+          refund_completed_at,response_due_at,resolution_due_at,
+          restricted_details_ciphertext,resolved_at,closed_at,created_at,updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
        ON CONFLICT (id) DO UPDATE SET
          user_id=EXCLUDED.user_id,priority=EXCLUDED.priority,
          status=EXCLUDED.status,refund_decision=EXCLUDED.refund_decision,
          refund_amount_pence=EXCLUDED.refund_amount_pence,
+         refund_provider_status=EXCLUDED.refund_provider_status,
+         refund_provider_reference=EXCLUDED.refund_provider_reference,
+         refund_payment_intent_reference=EXCLUDED.refund_payment_intent_reference,
+         refund_submitted_at=EXCLUDED.refund_submitted_at,
+         refund_provider_updated_at=EXCLUDED.refund_provider_updated_at,
+         refund_attempts=EXCLUDED.refund_attempts,
          refund_completed_at=EXCLUDED.refund_completed_at,
          restricted_details_ciphertext=EXCLUDED.restricted_details_ciphertext,
          resolved_at=EXCLUDED.resolved_at,closed_at=EXCLUDED.closed_at,
@@ -1418,6 +1440,12 @@ async function upsertBusinessData(
         item.status,
         item.refundDecision,
         item.refundAmountPence ?? null,
+        item.refundProviderStatus || "not-requested",
+        item.refundProviderReference || null,
+        item.refundPaymentIntentReference || null,
+        item.refundSubmittedAt || null,
+        item.refundProviderUpdatedAt || null,
+        item.refundAttempts || 0,
         item.refundCompletedAt || null,
         item.responseDueAt,
         item.resolutionDueAt,

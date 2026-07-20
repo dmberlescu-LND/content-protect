@@ -25,6 +25,14 @@ assert.equal(scannerMode({ TINEYE_API_KEY: "key" }), "compliance-blocked");
 assert.equal(
   scannerMode({
     TINEYE_API_KEY: "key",
+    TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "true",
+    TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "https://example.com/ticket",
+  }),
+  "compliance-blocked",
+);
+assert.equal(
+  scannerMode({
+    TINEYE_API_KEY: "key",
     TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "privacy-review-1",
     TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
   }),
@@ -54,6 +62,15 @@ assert.equal(
     TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE: "video-privacy-review-1",
   }),
   "tineye-keyframes",
+);
+assert.equal(
+  videoScannerMode({
+    TINEYE_API_KEY: "key",
+    TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE: "privacy-review-1",
+    TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE: "vendor-ticket-1",
+    TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE: "approved",
+  }),
+  "privacy-blocked",
 );
 
 let request;
@@ -221,6 +238,22 @@ await assert.rejects(
     error.status === 503 &&
     error.message.includes("vendor and privacy approval"),
 );
+await assert.rejects(
+  () =>
+    searchMedia(Buffer.from("video"), {
+      mime: "video/mp4",
+      assetId: "video-asset-placeholder",
+      apiKey: "test-key",
+      videoFrameApprovalReference: "true",
+      extractFramesImpl: async () => {
+        throw new Error("must not be called");
+      },
+    }),
+  (error) =>
+    error instanceof ScanProviderError &&
+    error.status === 503 &&
+    error.message.includes("vendor and privacy approval"),
+);
 
 console.log(
   JSON.stringify({
@@ -232,6 +265,7 @@ console.log(
     metadataPreserved: true,
     errorMapping: true,
     complianceActivationGate: true,
+    opaqueApprovalReferencesRequired: true,
     providerEndpointPinned: true,
     privacyMinimisedVideoFrames: true,
     videoBacklinkDeduplication: true,

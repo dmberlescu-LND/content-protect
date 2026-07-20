@@ -47,6 +47,9 @@ export function findActiveSubscription(
       ["active", "trialing"].includes(item.status) &&
       item.mode === `stripe_${paymentsMode}` &&
       Boolean(item.stripeLivemode) === (paymentsMode === "live") &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        String(item.billingConsentId || ""),
+      ) &&
       Object.prototype.hasOwnProperty.call(prices, item.plan) &&
       item.stripePriceId === prices[item.plan],
   );

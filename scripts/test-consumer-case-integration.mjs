@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -9,9 +10,13 @@ import { fileURLToPath } from "node:url";
 import { totpAt } from "../totp.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
-  dataDirectory = await mkdtemp(join(tmpdir(), "content-protect-consumer-test-")),
+  dataDirectory = await mkdtemp(
+    join(tmpdir(), "content-protect-consumer-test-"),
+  ),
   port = 22000 + (process.pid % 1000),
+  stripePort = 23000 + (process.pid % 1000),
   origin = `http://127.0.0.1:${port}`,
+  stripeOrigin = `http://127.0.0.1:${stripePort}`,
   userId = "11111111-1111-4111-8111-111111111111",
   customerToken = "consumer-test-customer-session",
   operatorToken = "consumer-test-operator-session",
@@ -21,7 +26,15 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
     PORT: String(port),
     NODE_ENV: "test",
     CONTENT_PROTECT_DATA_DIR: dataDirectory,
-    CONTENT_PROTECT_MASTER_KEY: "consumer-integration-master-key-" + "m".repeat(40),
+    CONTENT_PROTECT_MASTER_KEY:
+      "consumer-integration-master-key-" + "m".repeat(40),
+    PAYMENTS_MODE: "test",
+    STRIPE_SECRET_KEY: "sk_test_consumer_refund_integration",
+    STRIPE_WEBHOOK_SECRET: "whsec_consumer_refund_integration",
+    STRIPE_PRICE_MONITOR: "price_monitorTest123",
+    STRIPE_PRICE_PROTECT: "price_protectTest123",
+    STRIPE_PRICE_PRO: "price_proTest123",
+    STRIPE_TEST_API_BASE: `${stripeOrigin}/`,
     YOTI_MODE: "sandbox",
     TAKEDOWN_OPERATOR_ID: "support-director",
     TAKEDOWN_OPERATOR_TOKEN: "consumer-operator-token-" + "x".repeat(40),
@@ -63,8 +76,35 @@ await writeFile(
     cases: [],
     matches: [],
     scans: [],
-    subscriptions: [],
-    billingConsents: [],
+    subscriptions: [
+      {
+        id: "22222222-2222-4222-8222-222222222222",
+        userId,
+        plan: "Protect",
+        status: "active",
+        mode: "stripe_test",
+        stripeLivemode: false,
+        stripePriceId: "price_protectTest123",
+        stripeCustomerId: "cus_consumerrefund123",
+        stripeSubscriptionId: "sub_consumerrefund123",
+        billingConsentId: "33333333-3333-4333-8333-333333333333",
+        renewalAt: "2026-08-20T00:00:00.000Z",
+        createdAt: "2026-07-20T00:00:00.000Z",
+        updatedAt: "2026-07-20T00:00:00.000Z",
+      },
+    ],
+    billingConsents: [
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        userId,
+        plan: "Protect",
+        termsVersion: "2026-07-19-v1.1",
+        immediateServiceRequested: true,
+        coolingOffAcknowledged: true,
+        stripeCheckoutSessionId: "cs_test_consumerrefund123",
+        createdAt: "2026-07-20T00:00:00.000Z",
+      },
+    ],
     audit: [],
     sessions: [
       {
@@ -88,6 +128,107 @@ await writeFile(
     ],
   }),
 );
+
+let stripeRefundRequests = 0,
+  stripeInvoiceBindingRequests = 0,
+  stripeIdempotencyKey = null,
+  stripeRefundBody = "";
+const stripeServer = createServer(async (req, res) => {
+  const url = new URL(req.url, stripeOrigin);
+  res.setHeader("content-type", "application/json");
+  res.setHeader("request-id", "req_consumer_refund_test");
+  if (
+    req.method === "GET" &&
+    url.pathname === "/v1/payment_intents/pi_consumerpayment123"
+  ) {
+    res.end(
+      JSON.stringify({
+        id: "pi_consumerpayment123",
+        object: "payment_intent",
+        customer: "cus_consumerrefund123",
+        livemode: false,
+        status: "succeeded",
+        currency: "gbp",
+        amount_received: 2400,
+        latest_charge: {
+          id: "ch_consumerpayment123",
+          object: "charge",
+          amount_refunded: 0,
+        },
+      }),
+    );
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/v1/invoice_payments") {
+    stripeInvoiceBindingRequests += 1;
+    res.end(
+      JSON.stringify({
+        object: "list",
+        has_more: false,
+        url: "/v1/invoice_payments",
+        data: [
+          {
+            id: "inpay_consumerpayment123",
+            object: "invoice_payment",
+            amount_paid: 2400,
+            currency: "gbp",
+            livemode: false,
+            status: "paid",
+            payment: {
+              type: "payment_intent",
+              payment_intent: "pi_consumerpayment123",
+            },
+            invoice: {
+              id: "in_consumerpayment123",
+              object: "invoice",
+              customer: "cus_consumerrefund123",
+              currency: "gbp",
+              livemode: false,
+              status: "paid",
+              parent: {
+                type: "subscription_details",
+                subscription_details: {
+                  subscription: "sub_consumerrefund123",
+                  metadata: {
+                    userId,
+                    mode: "test",
+                    priceId: "price_protectTest123",
+                  },
+                },
+              },
+            },
+          },
+        ],
+      }),
+    );
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/v1/refunds") {
+    stripeRefundRequests += 1;
+    stripeIdempotencyKey = req.headers["idempotency-key"] || null;
+    for await (const chunk of req) stripeRefundBody += chunk.toString();
+    res.end(
+      JSON.stringify({
+        id: "re_consumerrefund123",
+        object: "refund",
+        payment_intent: "pi_consumerpayment123",
+        amount: 1900,
+        currency: "gbp",
+        status: "succeeded",
+        failure_reason: null,
+      }),
+    );
+    return;
+  }
+  res.statusCode = 404;
+  res.end(
+    JSON.stringify({ error: { message: "Unexpected test Stripe route" } }),
+  );
+});
+await new Promise((resolveListen, rejectListen) => {
+  stripeServer.once("error", rejectListen);
+  stripeServer.listen(stripePort, "127.0.0.1", resolveListen);
+});
 
 const child = spawn(process.execPath, ["server.mjs"], {
     cwd: root,
@@ -156,25 +297,31 @@ try {
 
   const access = await post(
     `/api/operator/consumer-cases/${created.id}/access`,
-    { confirmNeedToReview: true, mfaCode: totpAt(operatorSecret) },
+    {
+      confirmNeedToReview: true,
+      mfaCode: totpAt(operatorSecret, Date.now() - 30_000),
+    },
     operatorHeaders,
   );
   if (access.status !== 200)
     throw new Error(`Case access failed: ${await access.text()}`);
   assert.equal((await access.json()).case.subject, created.subject);
 
-  const acknowledged = await post(
+  const decision = await post(
     `/api/operator/consumer-cases/${created.id}/actions`,
     {
-      action: "acknowledge",
-      note: "The request is assigned for billing review.",
-      mfaCode: totpAt(operatorSecret, Date.now() + 30_000),
+      action: "refund-decision",
+      note: "The payment and service record support the approved refund.",
+      refundDecision: "approved",
+      refundAmountPence: 1900,
+      decisionReference: "billing/refund-decision-test-001",
+      mfaCode: totpAt(operatorSecret),
     },
     operatorHeaders,
   );
-  if (acknowledged.status !== 200)
-    throw new Error(`Case acknowledgement failed: ${await acknowledged.text()}`);
-  assert.equal((await acknowledged.json()).case.status, "acknowledged");
+  if (decision.status !== 200)
+    throw new Error(`Refund decision failed: ${await decision.text()}`);
+  assert.equal((await decision.json()).case.refundDecision, "approved");
 
   const message = await post(`/api/support/cases/${created.id}/messages`, {
     message: "Please also confirm the exact payment timestamp in your reply.",
@@ -183,16 +330,42 @@ try {
   assert.equal(message.status, 201);
   assert.equal((await message.json()).case.status, "in-review");
 
+  const refund = await post(
+    `/api/operator/consumer-cases/${created.id}/refund`,
+    {
+      paymentIntentReference: "pi_consumerpayment123",
+      note: "The approved customer refund is executed to the original payment.",
+      confirmRefundExecution: true,
+      mfaCode: totpAt(operatorSecret, Date.now() + 30_000),
+    },
+    operatorHeaders,
+  );
+  if (refund.status !== 200)
+    throw new Error(`Verified Stripe refund failed: ${await refund.text()}`);
+  const refundedCase = (await refund.json()).case;
+  assert.equal(refundedCase.refundProviderStatus, "succeeded");
+  assert.match(refundedCase.refundCompletedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(stripeRefundRequests, 1);
+  assert.equal(stripeInvoiceBindingRequests, 1);
+  assert.match(stripeIdempotencyKey, /^content-protect-refund:/);
+  assert.match(stripeRefundBody, /payment_intent=pi_consumerpayment123/);
+  assert.match(stripeRefundBody, /amount=1900/);
+
   const stateText = await readFile(join(dataDirectory, "db.json"), "utf8"),
     state = JSON.parse(stateText);
   assert.equal(state.consumerCases.length, 1);
-  assert.equal(state.consumerCases[0].events.length, 3);
+  assert.equal(state.consumerCases[0].events.length, 4);
+  assert.equal(state.consumerCases[0].refundProviderStatus, "succeeded");
+  assert.equal(
+    state.consumerCases[0].refundProviderReference,
+    "re_consumerrefund123",
+  );
   assert.ok(!stateText.includes("Unexpected subscription payment"));
   assert.ok(!stateText.includes("exact payment timestamp"));
   assert.ok(
     state.audit.some((event) => event.action === "consumer_case.created") &&
       state.audit.some(
-        (event) => event.action === "consumer_case.acknowledged",
+        (event) => event.action === "consumer_case.refund_submitted",
       ),
   );
 
@@ -204,13 +377,20 @@ try {
       operatorMfaAccess: true,
       metadataOnlyQueue: true,
       appendOnlyTimeline: true,
+      stripeCustomerOwnershipVerified: true,
+      stripeSubscriptionInvoiceVerified: true,
+      stripeRefundIdempotent: true,
+      stripeCompletionProviderVerified: true,
     }),
   );
 } finally {
   if (child.exitCode === null) {
-    const exited = new Promise((resolveWait) => child.once("exit", resolveWait));
+    const exited = new Promise((resolveWait) =>
+      child.once("exit", resolveWait),
+    );
     child.kill("SIGTERM");
     await exited;
   }
+  await new Promise((resolveClose) => stripeServer.close(resolveClose));
   await rm(dataDirectory, { recursive: true, force: true });
 }

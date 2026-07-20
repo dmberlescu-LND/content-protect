@@ -51,7 +51,7 @@ Production still-image scanning becomes available only when all three Render sec
 - `TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE`
 - `TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE`
 
-The latter two values must be opaque references to approved, retained evidence. Missing either reference keeps the application in `compliance-blocked` and no image is transmitted.
+The latter two values must be 12–160 character opaque references to approved, retained evidence, using only letters, numbers, `.`, `_`, `:`, `/` or `-`. Boolean placeholders, URLs and email addresses are rejected. Missing or invalid references keep the application in `compliance-blocked` and no image is transmitted.
 
 Video-frame scanning has an additional independent gate:
 

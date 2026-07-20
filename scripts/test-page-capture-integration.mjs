@@ -110,11 +110,23 @@ await writeFile(
         mode: "stripe_test",
         stripeLivemode: false,
         stripePriceId: priceId,
+        billingConsentId: "99999999-9999-4999-8999-999999999999",
         createdAt: now,
         updatedAt: now,
       },
     ],
-    billingConsents: [],
+    billingConsents: [
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        userId,
+        plan: "Protect",
+        termsVersion: "2026-07-19-v1.1",
+        immediateServiceRequested: true,
+        coolingOffAcknowledged: true,
+        stripeCheckoutSessionId: "cs_test_pagecapture123",
+        createdAt: now,
+      },
+    ],
     sessions: [
       {
         tokenHash: createHash("sha256").update(sessionToken).digest("hex"),

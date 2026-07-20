@@ -1105,8 +1105,10 @@ function HelpSafety() {
                 </div>
                 <strong>{item.subject}</strong>
                 <small>
-                  Response target: {new Date(item.responseDueAt).toLocaleDateString()} ·
-                  Resolution target: {new Date(item.resolutionDueAt).toLocaleDateString()}
+                  Response target:{" "}
+                  {new Date(item.responseDueAt).toLocaleDateString()} ·
+                  Resolution target:{" "}
+                  {new Date(item.resolutionDueAt).toLocaleDateString()}
                 </small>
                 <p>{item.statement}</p>
                 {!["resolved", "closed"].includes(item.status) && (
@@ -3662,14 +3664,58 @@ function OperatorConsole() {
       );
       return;
     }
+    const stripeRefund = form.action === "stripe-refund";
+    if (
+      stripeRefund &&
+      (form.confirmRefundExecution !== true ||
+        (!["pending", "requires-action"].includes(item.refundProviderStatus) &&
+          !/^pi_[A-Za-z0-9]+$/.test(String(form.paymentIntentReference || ""))))
+    ) {
+      setError(
+        "Confirm the Stripe action and enter the customer payment intent beginning pi_.",
+      );
+      return;
+    }
+    if (
+      stripeRefund &&
+      item.refundProviderStatus === "legacy-recorded" &&
+      !/^re_[A-Za-z0-9]+$/.test(String(form.legacyRefundReference || ""))
+    ) {
+      setError(
+        "Enter the historical Stripe refund reference beginning re_ so it can be verified, not repeated.",
+      );
+      return;
+    }
+    if (
+      stripeRefund &&
+      ["failed", "canceled"].includes(item.refundProviderStatus) &&
+      form.confirmRetryFailed !== true
+    ) {
+      setError("Explicitly confirm creation of a new refund attempt.");
+      return;
+    }
     if (
       !confirm(
-        "Record this customer-case action? Refund completion must match the Stripe record.",
+        stripeRefund
+          ? item.refundProviderStatus === "legacy-recorded"
+            ? `Verify the historical £${(
+                Number(item.refundAmountPence || 0) / 100
+              ).toFixed(
+                2,
+              )} refund against Stripe? No new refund will be created.`
+            : `Send or reconcile the approved £${(
+                Number(item.refundAmountPence || 0) / 100
+              ).toFixed(
+                2,
+              )} refund with Stripe? A new refund is an external financial action.`
+          : "Record this customer-case action?",
       )
     )
       return;
     const response = await fetch(
-        `/api/operator/consumer-cases/${item.id}/actions`,
+        `/api/operator/consumer-cases/${item.id}/${
+          stripeRefund ? "refund" : "actions"
+        }`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -3985,7 +4031,8 @@ function OperatorConsole() {
             <h1>Customer requests and refunds</h1>
           </div>
           <strong>
-            {consumerCases.filter((item) => item.status !== "closed").length} open
+            {consumerCases.filter((item) => item.status !== "closed").length}{" "}
+            open
           </strong>
         </div>
         {consumerCases.length ? (
@@ -4019,7 +4066,9 @@ function OperatorConsole() {
                   </div>
                   <div>
                     <dt>Refund status</dt>
-                    <dd>{item.refundDecision}</dd>
+                    <dd>
+                      {item.refundDecision} · {item.refundProviderStatus}
+                    </dd>
                   </div>
                 </dl>
                 {(item.responseOverdue || item.resolutionOverdue) && (
@@ -4048,8 +4097,16 @@ function OperatorConsole() {
                         <b>Order reference:</b> {detail.orderReference}
                       </p>
                     )}
+                    {detail.refundProvider?.reference && (
+                      <p>
+                        <b>Stripe refund:</b> {detail.refundProvider.reference}{" "}
+                        · {detail.refundProvider.status}
+                      </p>
+                    )}
                     <details>
-                      <summary>Restricted timeline ({detail.timeline.length})</summary>
+                      <summary>
+                        Restricted timeline ({detail.timeline.length})
+                      </summary>
                       {detail.timeline.map((event) => (
                         <div className="consumer-timeline-event" key={event.id}>
                           <b>{event.type.replace(/-/g, " ")}</b>
@@ -4081,9 +4138,14 @@ function OperatorConsole() {
                             <option value="refund-decision">
                               Record refund decision
                             </option>
-                            <option value="refund-completed">
-                              Record completed Stripe refund
-                            </option>
+                            {["approved", "partial"].includes(
+                              item.refundDecision,
+                            ) &&
+                              item.refundProviderStatus !== "succeeded" && (
+                                <option value="stripe-refund">
+                                  Execute or reconcile Stripe refund
+                                </option>
+                              )}
                             <option value="resolve">Resolve</option>
                             <option value="close">Close</option>
                           </select>
@@ -4105,7 +4167,9 @@ function OperatorConsole() {
                               <select
                                 value={form.refundDecision || ""}
                                 onChange={(event) =>
-                                  setForm({ refundDecision: event.target.value })
+                                  setForm({
+                                    refundDecision: event.target.value,
+                                  })
                                 }
                               >
                                 <option value="">Choose…</option>
@@ -4121,7 +4185,9 @@ function OperatorConsole() {
                                 min="1"
                                 value={form.refundAmountPence || ""}
                                 onChange={(event) =>
-                                  setForm({ refundAmountPence: event.target.value })
+                                  setForm({
+                                    refundAmountPence: event.target.value,
+                                  })
                                 }
                               />
                             </label>
@@ -4130,23 +4196,84 @@ function OperatorConsole() {
                               <input
                                 value={form.decisionReference || ""}
                                 onChange={(event) =>
-                                  setForm({ decisionReference: event.target.value })
+                                  setForm({
+                                    decisionReference: event.target.value,
+                                  })
                                 }
                               />
                             </label>
                           </>
                         )}
-                        {form.action === "refund-completed" && (
-                          <label>
-                            Stripe refund reference
-                            <input
-                              placeholder="re_…"
-                              value={form.providerReference || ""}
-                              onChange={(event) =>
-                                setForm({ providerReference: event.target.value })
-                              }
-                            />
-                          </label>
+                        {form.action === "stripe-refund" && (
+                          <>
+                            {!["pending", "requires-action"].includes(
+                              item.refundProviderStatus,
+                            ) && (
+                              <label>
+                                Customer Stripe payment intent
+                                <input
+                                  placeholder="pi_…"
+                                  value={form.paymentIntentReference || ""}
+                                  onChange={(event) =>
+                                    setForm({
+                                      paymentIntentReference:
+                                        event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                            )}
+                            {item.refundProviderStatus ===
+                              "legacy-recorded" && (
+                              <label>
+                                Historical Stripe refund reference
+                                <input
+                                  placeholder="re_…"
+                                  value={form.legacyRefundReference || ""}
+                                  onChange={(event) =>
+                                    setForm({
+                                      legacyRefundReference: event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                            )}
+                            <label className="operator-confirmation">
+                              <input
+                                type="checkbox"
+                                checked={form.confirmRefundExecution === true}
+                                onChange={(event) =>
+                                  setForm({
+                                    confirmRefundExecution:
+                                      event.target.checked,
+                                  })
+                                }
+                              />
+                              <span>
+                                I verified the customer, approved GBP amount and
+                                irreversible Stripe action.
+                              </span>
+                            </label>
+                            {["failed", "canceled"].includes(
+                              item.refundProviderStatus,
+                            ) && (
+                              <label className="operator-confirmation">
+                                <input
+                                  type="checkbox"
+                                  checked={form.confirmRetryFailed === true}
+                                  onChange={(event) =>
+                                    setForm({
+                                      confirmRetryFailed: event.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>
+                                  I reviewed the failed/canceled refund and
+                                  approve a new idempotent attempt.
+                                </span>
+                              </label>
+                            )}
+                          </>
                         )}
                         {form.action === "resolve" && (
                           <>
@@ -4186,7 +4313,9 @@ function OperatorConsole() {
                           className="btn btn-primary"
                           onClick={() => applyConsumerAction(item)}
                         >
-                          Record action
+                          {form.action === "stripe-refund"
+                            ? "Send / verify with Stripe"
+                            : "Record action"}
                         </button>
                       </div>
                     )}

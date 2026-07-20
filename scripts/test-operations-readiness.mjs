@@ -14,6 +14,7 @@ const complete = {
   storage: { ok: true, mode: "private-object-storage" },
   hasExternalMasterKey: true,
   scanner: "tineye-commercial",
+  videoScanner: "tineye-keyframes",
   takedownDeliveryConfigured: true,
   takedownsMode: "live",
   stripeConfigured: true,
@@ -22,12 +23,15 @@ const complete = {
   yotiMode: "live",
   retentionEvidence: {
     status: "succeeded",
+    requiredMigration: REQUIRED_MIGRATION,
     occurredAt: new Date().toISOString(),
   },
   monitoringEvidence: {
     status: "succeeded",
+    release: "abcdef123456",
     occurredAt: new Date().toISOString(),
   },
+  currentRelease: "abcdef123456",
   backupRestoreEvidence: {
     status: "succeeded",
     requiredMigration: REQUIRED_MIGRATION,
@@ -49,6 +53,7 @@ assert.deepEqual(operationsReadiness(complete), {
   productionReady: true,
   operationalGates: {
     scanner: true,
+    videoScanning: true,
     takedownDelivery: true,
     billing: true,
     ageVerification: true,
@@ -89,6 +94,9 @@ for (const unsafe of [
 
 for (const missingGate of [
   { scanner: "unconfigured" },
+  { scanner: "compliance-blocked" },
+  { videoScanner: "privacy-blocked" },
+  { videoScanner: "unconfigured" },
   { takedownDeliveryConfigured: false },
   { takedownsMode: "sandbox" },
   { stripeConfigured: false },
@@ -99,19 +107,36 @@ for (const missingGate of [
   {
     retentionEvidence: {
       status: "failed",
+      requiredMigration: REQUIRED_MIGRATION,
       occurredAt: new Date().toISOString(),
     },
   },
   { monitoringEvidence: undefined },
   {
+    monitoringEvidence: {
+      status: "succeeded",
+      release: "111111111111",
+      occurredAt: new Date().toISOString(),
+    },
+  },
+  {
     retentionEvidence: {
       status: "succeeded",
+      requiredMigration: REQUIRED_MIGRATION,
       occurredAt: new Date(Date.now() - 37 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    retentionEvidence: {
+      status: "succeeded",
+      requiredMigration: "020_consumer_cases.sql",
+      occurredAt: new Date().toISOString(),
     },
   },
   {
     monitoringEvidence: {
       status: "succeeded",
+      release: "abcdef123456",
       occurredAt: new Date(Date.now() - 16 * 60 * 1000).toISOString(),
     },
   },
@@ -164,6 +189,9 @@ console.log(
     ok: true,
     failClosedInfrastructure: true,
     completeCommercialGate: true,
+    approvedCommercialImageAndVideoScanningRequired: true,
+    retentionEvidenceSchemaBound: true,
+    monitoringEvidenceReleaseBound: true,
     restoreEvidenceExpiry: true,
     auditExportEvidenceRequired: true,
     signedLaunchGovernanceRequired: true,

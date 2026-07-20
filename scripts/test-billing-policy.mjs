@@ -20,6 +20,7 @@ const base = {
   mode: "stripe_test",
   stripeLivemode: false,
   stripePriceId: "price_protect",
+  billingConsentId: "11111111-1111-4111-8111-111111111111",
 };
 
 assert.equal(
@@ -35,6 +36,8 @@ for (const invalid of [
   { ...base, mode: "stripe_live" },
   { ...base, stripeLivemode: true },
   { ...base, stripePriceId: "price_other" },
+  { ...base, billingConsentId: null },
+  { ...base, billingConsentId: "not-a-consent-id" },
   { ...base, plan: "Unknown" },
 ])
   assert.equal(

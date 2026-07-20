@@ -99,6 +99,18 @@ const [launchGovernance, launchGovernanceSigner, launchGovernanceDocument] =
     read("scripts/create-launch-governance-manifest.mjs"),
     read("docs/compliance/UK-LAUNCH-GOVERNANCE.md"),
   ]);
+const [stripeRefundPolicy, verifiedRefundMigration] = await Promise.all([
+  read("stripe-refund-policy.mjs"),
+  read("db/migrations/021_verified_stripe_refunds.sql"),
+]);
+const subscriptionConsentMigration = await read(
+  "db/migrations/022_subscription_consent_binding.sql",
+);
+const billingPolicy = await read("billing-policy.mjs");
+const productionVerifier = await read("scripts/verify-production.mjs");
+const productionVerificationPolicy = await read(
+  "production-verification-policy.mjs",
+);
 
 for (const [name, page] of [
   ["privacy notice", privacy],
@@ -245,9 +257,125 @@ requireText(
 );
 requireText("audit export job", auditExportJob, 'type: "audit_export"');
 requireText("operations readiness", readiness, "auditExportEvidence");
+requireText(
+  "operations readiness",
+  readiness,
+  "retentionEvidence?.requiredMigration === REQUIRED_MIGRATION",
+);
+requireText("database", database, "requiredMigration: REQUIRED_MIGRATION");
+requireText(
+  "operations readiness",
+  readiness,
+  'scanner === "tineye-commercial"',
+);
+requireText(
+  "operations readiness",
+  readiness,
+  'videoScanner === "tineye-keyframes"',
+);
 requireText("operations runbook", runbook, "pnpm audit:export");
 requireText("operations runbook", runbook, "no delete permission");
 requireText("UK launch checklist", checklist, "auditExport");
+requireText("Stripe refund policy", stripeRefundPolicy, "expectedCustomerId");
+requireText("Stripe refund policy", stripeRefundPolicy, "refundablePence");
+requireText(
+  "Stripe refund policy",
+  stripeRefundPolicy,
+  "paymentIntentReference",
+);
+requireText("Stripe refund policy", stripeRefundPolicy, "invoicePayments");
+requireText("Stripe refund policy", stripeRefundPolicy, "subscription_details");
+requireText("server", server, "/refund");
+requireText("server", server, "stripeRefundIdempotencyKey");
+requireText("server", server, "stripe.invoicePayments.list");
+requireText("server", server, "confirmRefundExecution");
+requireText("server", server, "reconcilingLegacy");
+requireText("server", server, "legacyRefundReference");
+requireText("server", server, "customerConsumerCaseExport");
+requireText(
+  "server",
+  server,
+  "details: openConsumerCaseEvent(caseRecord, event)",
+);
+requireText("server", server, ".map(customerConsumerCaseExport)");
+requireText("server", server, "existingConsentBinding");
+requireText("server", server, "billingConsentId: reconciled.consentId");
+requireText(
+  "server",
+  server,
+  "checkoutAuthorised = checkoutSessionAuthorizesSubscription(",
+);
+requireText("server", server, "invoice_now: false");
+requireText("server", server, "prorate: false");
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "SET status = 'in-review'",
+);
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "AND refund_decision = 'pending'",
+);
+requireText(
+  "billing policy",
+  billingPolicy,
+  'String(item.billingConsentId || "")',
+);
+requireText(
+  "subscription consent migration",
+  subscriptionConsentMigration,
+  "subscriptions_entitled_consent_check",
+);
+requireText(
+  "subscription consent migration",
+  subscriptionConsentMigration,
+  "DEFERRABLE INITIALLY DEFERRED",
+);
+rejectText("server", server, 'action: "refund-completed"');
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "refund_provider_status",
+);
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "refund-status-changed",
+);
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "consumer_cases_refund_decision_state_check",
+);
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "consumer_cases_unsubmitted_refund_check",
+);
+requireText(
+  "verified refund migration",
+  verifiedRefundMigration,
+  "(refund_completed_at IS NOT NULL)",
+);
+requireText(
+  "operations runbook",
+  runbook,
+  "A completion can no longer be entered manually",
+);
+requireText("UK launch checklist", checklist, "idempotent numbered attempt");
+requireText("retention policy", retentionPolicy, "consumerCases");
+requireText("retention policy", retentionPolicy, '"approved", "partial"');
+requireText(
+  "retention policy",
+  retentionPolicy,
+  'refundProviderStatus !== "succeeded"',
+);
+requireText(
+  "operations runbook",
+  runbook,
+  "open customer request cannot be deleted",
+);
 requireText("DPIA", dpia, "Independently retained audit exports");
 requireText("operations runbook", runbook, "creator-supplied JPEG");
 requireText("takedown procedure", takedowns, "evidence snapshot version 3");
@@ -315,6 +443,22 @@ requireText(
   "Never configure the private key",
 );
 requireText("operations readiness", readiness, "launchGovernance");
+requireText(
+  "production verifier",
+  productionVerifier,
+  'ready.launchGovernance?.status === "approved"',
+);
+requireText(
+  "production verifier",
+  productionVerifier,
+  'ready.videoScanning === "tineye-keyframes"',
+);
+requireText("production verifier", productionVerifier, "monitoringBootstrap");
+requireText(
+  "production verification policy",
+  productionVerificationPolicy,
+  'gate === "monitoring" || value === true',
+);
 
 requireText("Render", render, "PAYMENTS_MODE");
 requireText("Render", render, "YOTI_SDK_ID");
@@ -327,6 +471,8 @@ for (const key of [
   requireText("Render", render, key);
   requireText("scanner", scanner, key);
 }
+requireText("scanner", scanner, "approvedReference");
+requireText("scanner", scanner, '!reference.includes("@")');
 requireText("Render", render, "TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE");
 requireText("scanner", scanner, "TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE");
 requireText("scanner", scanner, "videoScannerReadiness");

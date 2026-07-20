@@ -72,10 +72,16 @@ import {
   textDigest,
 } from "./takedown-policy.mjs";
 import {
+  billingConsentAuthorizesSubscription,
+  checkoutSessionAuthorizesSubscription,
   checkoutIdempotencyKey,
   reconcileStripeSubscription,
   STRIPE_SUBSCRIPTION_EVENTS,
+  StripeSubscriptionPolicyError,
+  stripeSubscriptionBlocksCheckout,
   stripeSubscriptionId,
+  validateStripePostCancellationBillingState,
+  validateStripeSubscriptionForAccount,
 } from "./stripe-subscription-policy.mjs";
 import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
 import { BACKUP_TABLES } from "./backup-snapshot.mjs";
@@ -124,11 +130,19 @@ import {
 import { launchGovernanceStatus } from "./launch-governance.mjs";
 import {
   addConsumerMessage,
+  applyConsumerRefundProviderResult,
   applyConsumerCaseAction,
   consumerCaseSummary,
   ConsumerCasePolicyError,
   createConsumerCase,
 } from "./consumer-case-policy.mjs";
+import {
+  StripeRefundPolicyError,
+  stripeRefundIdempotencyKey,
+  validateStripeRefundInvoiceBinding,
+  validateStripeRefundPaymentIntent,
+  validateStripeRefundResult,
+} from "./stripe-refund-policy.mjs";
 
 const PORT = Number(process.env.PORT || 8787),
   STARTED_AT = Date.now(),
@@ -206,6 +220,22 @@ function emailFromAddress(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
     match?.[1] || String(value || "").trim(),
   );
+}
+function stripeClient() {
+  const testBase =
+    process.env.NODE_ENV === "test" ? process.env.STRIPE_TEST_API_BASE : null;
+  if (!testBase) return new Stripe(STRIPE_KEY);
+  const endpoint = new URL(testBase);
+  if (
+    !["127.0.0.1", "localhost", "::1"].includes(endpoint.hostname) ||
+    endpoint.pathname !== "/"
+  )
+    throw new Error("STRIPE_TEST_API_BASE must be a local test endpoint.");
+  return new Stripe(STRIPE_KEY, {
+    host: endpoint.hostname,
+    port: endpoint.port,
+    protocol: endpoint.protocol.replace(":", ""),
+  });
 }
 async function load() {
   await mkdir(VAULT, { recursive: true });
@@ -705,6 +735,18 @@ function customerConsumerCase(caseRecord) {
     })),
   };
 }
+function customerConsumerCaseExport(caseRecord) {
+  return {
+    ...customerConsumerCase(caseRecord),
+    timeline: (caseRecord.events || []).map((event) => ({
+      id: event.id,
+      type: event.type,
+      actorType: event.actorType,
+      at: event.at,
+      details: openConsumerCaseEvent(caseRecord, event),
+    })),
+  };
+}
 function audit(d, u, action, details = {}, { actorSubject = null } = {}) {
   d.audit.unshift({
     id: randomUUID(),
@@ -995,14 +1037,11 @@ const appServer = http.createServer(async (req, res) => {
       if (STRIPE_SUBSCRIPTION_EVENTS.has(event.type)) {
         const object = event.data.object,
           subscriptionId = stripeSubscriptionId(object),
-          customerId =
-            typeof object.customer === "string" ? object.customer : null,
-          existing = d.subscriptions.find(
-            (item) =>
-              (subscriptionId &&
-                item.stripeSubscriptionId === subscriptionId) ||
-              (customerId && item.stripeCustomerId === customerId),
-          );
+          existing = subscriptionId
+            ? d.subscriptions.find(
+                (item) => item.stripeSubscriptionId === subscriptionId,
+              )
+            : null;
         if (subscriptionId) {
           const stripeSubscription =
               await stripe.subscriptions.retrieve(subscriptionId),
@@ -1010,8 +1049,53 @@ const appServer = http.createServer(async (req, res) => {
               prices: STRIPE_PRICES,
               paymentsMode: PAYMENTS_MODE,
               fallbackUserId: object.metadata?.userId || existing?.userId,
+            }),
+            consent = (d.billingConsents || []).find(
+              (item) => item.id === reconciled.consentId,
+            ),
+            checkoutSessionId =
+              event.type === "checkout.session.completed" &&
+              object.object === "checkout.session"
+                ? object.id
+                : null,
+            consentAuthorised = billingConsentAuthorizesSubscription(consent, {
+              consentId: reconciled.consentId,
+              userId: reconciled.userId,
+              plan: reconciled.plan,
+              termsVersion: reconciled.consentTermsVersion,
+              checkoutSessionId,
+            }),
+            checkoutAuthorised = checkoutSessionId
+              ? checkoutSessionAuthorizesSubscription(object, reconciled)
+              : false,
+            existingConsentBinding = Boolean(
+              existing?.stripeSubscriptionId ===
+                reconciled.stripeSubscriptionId &&
+              existing?.billingConsentId === reconciled.consentId,
+            ),
+            providerBindingAuthorised = checkoutSessionId
+              ? checkoutAuthorised
+              : existingConsentBinding;
+          if (reconciled.valid && reconciled.consentId && !consent)
+            return send(res, 409, {
+              error:
+                "The retained billing consent is not available yet; Stripe should retry this webhook.",
             });
-          if (reconciled.valid) {
+          if (
+            reconciled.valid &&
+            consentAuthorised &&
+            !checkoutSessionId &&
+            !existingConsentBinding
+          )
+            return send(res, 409, {
+              error:
+                "The subscription is awaiting its retained Checkout consent binding; Stripe should retry this webhook.",
+            });
+          if (
+            reconciled.valid &&
+            consentAuthorised &&
+            providerBindingAuthorised
+          ) {
             let sub =
               existing ||
               d.subscriptions.find((item) => item.userId === reconciled.userId);
@@ -1027,6 +1111,7 @@ const appServer = http.createServer(async (req, res) => {
               stripePriceId: reconciled.stripePriceId,
               stripeCustomerId: reconciled.stripeCustomerId,
               stripeSubscriptionId: reconciled.stripeSubscriptionId,
+              billingConsentId: reconciled.consentId,
               renewalAt: reconciled.renewalAt || sub.renewalAt,
               updatedAt: new Date().toISOString(),
             });
@@ -1040,6 +1125,20 @@ const appServer = http.createServer(async (req, res) => {
                 status: reconciled.status,
                 entitled: reconciled.entitled,
                 mode: PAYMENTS_MODE,
+              });
+            }
+          } else if (existing) {
+            existing.status = "unverified";
+            existing.updatedAt = new Date().toISOString();
+            const user = d.users.find((item) => item.id === existing.userId);
+            if (user) {
+              user.plan = "Unsubscribed";
+              audit(d, user, "billing.webhook_binding_rejected", {
+                type: event.type,
+                mode: PAYMENTS_MODE,
+                reason: reconciled.valid
+                  ? "retained-consent-mismatch"
+                  : "subscription-metadata-invalid",
               });
             }
           }
@@ -1252,6 +1351,7 @@ const appServer = http.createServer(async (req, res) => {
         operationalEvidence =
           evidenceResult.status === "fulfilled" ? evidenceResult.value : {},
         scanner = scannerMode(),
+        videoScanner = videoScannerMode(),
         launchGovernance = launchGovernanceStatus(process.env, {
           expectedMigration: REQUIRED_MIGRATION,
         }),
@@ -1260,6 +1360,7 @@ const appServer = http.createServer(async (req, res) => {
           storage,
           hasExternalMasterKey: Boolean(process.env.CONTENT_PROTECT_MASTER_KEY),
           scanner,
+          videoScanner,
           takedownDeliveryConfigured: TAKEDOWN_DELIVERY_CONFIGURED,
           takedownsMode: TAKEDOWNS_MODE,
           stripeConfigured: STRIPE_CONFIGURED,
@@ -1268,6 +1369,7 @@ const appServer = http.createServer(async (req, res) => {
           yotiMode: YOTI_MODE,
           retentionEvidence: operationalEvidence.retention,
           monitoringEvidence: operationalEvidence.monitoring,
+          currentRelease: process.env.RENDER_GIT_COMMIT?.slice(0, 12) || null,
           backupRestoreEvidence: operationalEvidence.backup_restore,
           auditExportEvidence: operationalEvidence.audit_export,
           launchGovernance,
@@ -1287,7 +1389,7 @@ const appServer = http.createServer(async (req, res) => {
         operationalGates: readiness.operationalGates,
         launchGovernance,
         scanner,
-        videoScanning: videoScannerMode(),
+        videoScanning: videoScanner,
         ageVerification: YOTI_CONFIGURED ? `yoti-${YOTI_MODE}` : "unconfigured",
         emailDelivery: RESEND_EMAIL_CONFIGURED ? "resend" : "unconfigured",
         emailWebhook: RESEND_WEBHOOK_CONFIGURED
@@ -1748,9 +1850,7 @@ const appServer = http.createServer(async (req, res) => {
           error: "Too many consumer-case access attempts.",
         });
       const caseId = route.split("/")[4],
-        caseRecord = (d.consumerCases || []).find(
-          (item) => item.id === caseId,
-        ),
+        caseRecord = (d.consumerCases || []).find((item) => item.id === caseId),
         b = await parse(req);
       if (!caseRecord)
         return send(res, 404, { error: "Consumer case not found." });
@@ -1777,7 +1877,21 @@ const appServer = http.createServer(async (req, res) => {
         );
         await save(d);
         return send(res, 200, {
-          case: { ...consumerCaseSummary(caseRecord), ...details, timeline },
+          case: {
+            ...consumerCaseSummary(caseRecord),
+            ...details,
+            timeline,
+            refundProvider: {
+              status: caseRecord.refundProviderStatus,
+              reference: caseRecord.refundProviderReference,
+              paymentIntentReference: caseRecord.refundPaymentIntentReference,
+              submittedAt: caseRecord.refundSubmittedAt,
+              updatedAt: caseRecord.refundProviderUpdatedAt,
+              attempts: caseRecord.refundAttempts || 0,
+              stripeMode: PAYMENTS_MODE,
+              stripeConfigured: STRIPE_CONFIGURED,
+            },
+          },
         });
       } catch (error) {
         if (
@@ -1802,9 +1916,7 @@ const appServer = http.createServer(async (req, res) => {
           error: "Too many consumer-case actions.",
         });
       const caseId = route.split("/")[4],
-        caseRecord = (d.consumerCases || []).find(
-          (item) => item.id === caseId,
-        ),
+        caseRecord = (d.consumerCases || []).find((item) => item.id === caseId),
         b = await parse(req);
       if (!caseRecord)
         return send(res, 404, { error: "Consumer case not found." });
@@ -1836,6 +1948,223 @@ const appServer = http.createServer(async (req, res) => {
           error instanceof IncidentPolicyError
         )
           return send(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    if (
+      route.match(/^\/api\/operator\/consumer-cases\/[^/]+\/refund$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (
+        !(await allowed(req, `operator-consumer-refund:${ip}`, 20, 3600000))
+          .allowed
+      )
+        return send(res, 429, {
+          error: "Too many Stripe refund attempts.",
+        });
+      if (!STRIPE_CONFIGURED)
+        return send(res, 503, {
+          error:
+            "Stripe billing is not configured. No refund request was sent.",
+        });
+      const caseId = route.split("/")[4],
+        caseRecord = (d.consumerCases || []).find((item) => item.id === caseId),
+        b = await parse(req);
+      if (!caseRecord)
+        return send(res, 404, { error: "Consumer case not found." });
+      if (!["approved", "partial"].includes(caseRecord.refundDecision))
+        return send(res, 409, {
+          error: "Record an approved refund decision before contacting Stripe.",
+        });
+      if (
+        !Number.isSafeInteger(caseRecord.refundAmountPence) ||
+        caseRecord.refundAmountPence < 1
+      )
+        return send(res, 409, {
+          error: "The refund decision has no valid approved amount.",
+        });
+      if (caseRecord.refundProviderStatus === "succeeded")
+        return send(res, 409, {
+          error: "This refund is already verified as completed.",
+        });
+      const note = String(b.note || "").trim();
+      if (note.length < 10 || note.length > 2000)
+        return send(res, 400, {
+          error: "Operator note must contain between 10 and 2000 characters.",
+        });
+      if (b.confirmRefundExecution !== true)
+        return send(res, 400, {
+          error:
+            "Confirm the customer, approved amount and irreversible Stripe action.",
+        });
+      const currentProviderStatus =
+          caseRecord.refundProviderStatus || "not-submitted",
+        reconcilingLegacy = currentProviderStatus === "legacy-recorded",
+        reconciling = Boolean(
+          reconcilingLegacy ||
+          (caseRecord.refundProviderReference &&
+            ["pending", "requires-action"].includes(currentProviderStatus)),
+        ),
+        retrying = Boolean(
+          caseRecord.refundProviderReference &&
+          ["failed", "canceled"].includes(currentProviderStatus) &&
+          b.confirmRetryFailed === true,
+        ),
+        creating =
+          (!caseRecord.refundProviderReference && !reconcilingLegacy) ||
+          retrying;
+      if (!creating && !reconciling)
+        return send(res, 409, {
+          error:
+            "This refund cannot be submitted again without a failed/canceled Stripe result and explicit retry confirmation.",
+        });
+      const paymentIntentReference =
+        creating || reconcilingLegacy
+          ? String(b.paymentIntentReference || "")
+          : String(caseRecord.refundPaymentIntentReference || "");
+      if (!/^pi_[A-Za-z0-9]+$/.test(paymentIntentReference))
+        return send(res, 400, {
+          error: "Enter the Stripe payment intent reference beginning pi_.",
+        });
+      const legacyRefundReference = reconcilingLegacy
+        ? String(b.legacyRefundReference || "")
+        : null;
+      if (reconcilingLegacy && !/^re_[A-Za-z0-9]+$/.test(legacyRefundReference))
+        return send(res, 400, {
+          error:
+            "Enter the historical Stripe refund reference beginning re_ for provider reconciliation.",
+        });
+      const customer = d.users.find((item) => item.id === caseRecord.userId),
+        subscription = d.subscriptions.find(
+          (item) => item.userId === caseRecord.userId,
+        );
+      if (!customer || !subscription?.stripeCustomerId)
+        return send(res, 409, {
+          error:
+            "The case is not bound to a current Content Protect Stripe customer.",
+        });
+      const decisionEvent = [...(caseRecord.events || [])]
+        .reverse()
+        .find((item) => item.type === "refund-decision");
+      if (!decisionEvent)
+        return send(res, 409, {
+          error: "A retained refund decision event is required.",
+        });
+      try {
+        await operatorStepUp(req, b.mfaCode, "consumer-refund-execution");
+        const stripe = stripeClient(),
+          [paymentIntent, invoicePayments] = await Promise.all([
+            stripe.paymentIntents.retrieve(paymentIntentReference, {
+              expand: ["latest_charge"],
+            }),
+            stripe.invoicePayments.list({
+              payment: {
+                type: "payment_intent",
+                payment_intent: paymentIntentReference,
+              },
+              status: "paid",
+              limit: 10,
+              expand: ["data.invoice"],
+            }),
+          ]);
+        validateStripeRefundPaymentIntent(paymentIntent, {
+          expectedCustomerId: subscription.stripeCustomerId,
+          paymentsMode: PAYMENTS_MODE,
+          amountPence: caseRecord.refundAmountPence,
+          existingRefundPence: reconciling ? caseRecord.refundAmountPence : 0,
+        });
+        const invoiceBinding = validateStripeRefundInvoiceBinding(
+            invoicePayments,
+            {
+              paymentIntentReference,
+              expectedCustomerId: subscription.stripeCustomerId,
+              expectedUserId: caseRecord.userId,
+              expectedPriceIds: Object.values(STRIPE_PRICES),
+              paymentsMode: PAYMENTS_MODE,
+              amountPence: caseRecord.refundAmountPence,
+            },
+          ),
+          attempt =
+            creating || reconcilingLegacy
+              ? Number(caseRecord.refundAttempts || 0) + 1
+              : Number(caseRecord.refundAttempts || 0),
+          refund = creating
+            ? await stripe.refunds.create(
+                {
+                  payment_intent: paymentIntentReference,
+                  amount: caseRecord.refundAmountPence,
+                  reason: "requested_by_customer",
+                  metadata: {
+                    consumerCaseId: caseRecord.id,
+                    consumerCaseReference: caseRecord.reference,
+                    approvedDecisionEvent: decisionEvent.id,
+                  },
+                },
+                {
+                  idempotencyKey: stripeRefundIdempotencyKey(
+                    caseRecord.id,
+                    decisionEvent.id,
+                    attempt,
+                  ),
+                },
+              )
+            : await stripe.refunds.retrieve(
+                reconcilingLegacy
+                  ? legacyRefundReference
+                  : caseRecord.refundProviderReference,
+              ),
+          verified = validateStripeRefundResult(refund, {
+            paymentIntentReference,
+            amountPence: caseRecord.refundAmountPence,
+          }),
+          event = applyConsumerRefundProviderResult(
+            caseRecord,
+            { ...verified, ...invoiceBinding, attempt, note },
+            { operatorReference: OPERATOR_CONFIGURATION.id },
+          );
+        caseRecord.events ||= [];
+        caseRecord.events.push(protectConsumerCaseEvent(caseRecord.id, event));
+        audit(
+          d,
+          null,
+          `consumer_case.${event.type.replace(/-/g, "_")}`,
+          {
+            caseId,
+            eventId: event.id,
+            amountPence: verified.amountPence,
+            providerStatus: verified.providerStatus,
+            providerReference: verified.providerReference,
+            invoiceReference: invoiceBinding.invoiceReference,
+            attempt,
+            mode: PAYMENTS_MODE,
+          },
+          { actorSubject: currentOperatorSubject() },
+        );
+        await save(d);
+        return send(
+          res,
+          ["pending", "requires-action"].includes(verified.providerStatus)
+            ? 202
+            : 200,
+          {
+            case: consumerCaseSummary(caseRecord),
+            refund: verified,
+          },
+        );
+      } catch (error) {
+        if (
+          error instanceof ConsumerCasePolicyError ||
+          error instanceof IncidentPolicyError ||
+          error instanceof StripeRefundPolicyError
+        )
+          return send(res, error.status, { error: error.message });
+        if (error?.type || error?.raw)
+          return send(res, 502, {
+            error:
+              "Stripe could not complete or verify the refund. No completion was recorded; retry is protected by idempotency.",
+          });
         throw error;
       }
     }
@@ -2691,8 +3020,10 @@ const appServer = http.createServer(async (req, res) => {
     }
     if (route === "/api/me") return send(res, 200, { user: safe(u, d) });
     if (route === "/api/support/cases" && req.method === "GET") {
-      if (!(await allowed(req, `consumer-cases-list:${u.id}`, 60, 3600000))
-        .allowed)
+      if (
+        !(await allowed(req, `consumer-cases-list:${u.id}`, 60, 3600000))
+          .allowed
+      )
         return send(res, 429, { error: "Too many support requests." });
       return send(res, 200, {
         cases: (d.consumerCases || [])
@@ -2702,10 +3033,13 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/support/cases" && req.method === "POST") {
-      if (!(await allowed(req, `consumer-case-create:${u.id}`, 5, 86400000))
-        .allowed)
+      if (
+        !(await allowed(req, `consumer-case-create:${u.id}`, 5, 86400000))
+          .allowed
+      )
         return send(res, 429, {
-          error: "Too many new support cases. Add a message to an open case instead.",
+          error:
+            "Too many new support cases. Add a message to an open case instead.",
         });
       const b = await parse(req),
         id = randomUUID(),
@@ -2747,8 +3081,10 @@ const appServer = http.createServer(async (req, res) => {
       route.match(/^\/api\/support\/cases\/[^/]+\/messages$/) &&
       req.method === "POST"
     ) {
-      if (!(await allowed(req, `consumer-case-message:${u.id}`, 20, 86400000))
-        .allowed)
+      if (
+        !(await allowed(req, `consumer-case-message:${u.id}`, 20, 86400000))
+          .allowed
+      )
         return send(res, 429, { error: "Too many support messages." });
       const caseId = route.split("/")[4],
         caseRecord = (d.consumerCases || []).find(
@@ -3779,10 +4115,7 @@ const appServer = http.createServer(async (req, res) => {
             "Billing is not configured. No subscription was created and no payment was taken.",
         });
       const current = d.subscriptions.find((x) => x.userId === u.id);
-      if (
-        current?.stripeSubscriptionId &&
-        ["active", "trialing", "past_due"].includes(current.status)
-      )
+      if (stripeSubscriptionBlocksCheckout(current))
         return send(res, 409, {
           error:
             "An existing subscription must be managed from the billing portal.",
@@ -3792,11 +4125,14 @@ const appServer = http.createServer(async (req, res) => {
           /\/$/,
           "",
         ),
+        consentId = randomUUID(),
         metadata = {
           userId: u.id,
           plan: b.plan,
           priceId: STRIPE_PRICES[b.plan],
           mode: PAYMENTS_MODE,
+          consentId,
+          termsVersion: COMPLIANCE_VERSIONS.serviceTerms,
         },
         session = await stripe.checkout.sessions.create(
           {
@@ -3818,7 +4154,7 @@ const appServer = http.createServer(async (req, res) => {
           { idempotencyKey: checkoutIdempotencyKey(u.id, b.plan) },
         );
       const consent = {
-        id: randomUUID(),
+        id: consentId,
         userId: u.id,
         plan: b.plan,
         termsVersion: COMPLIANCE_VERSIONS.serviceTerms,
@@ -3873,13 +4209,28 @@ const appServer = http.createServer(async (req, res) => {
           prices: STRIPE_PRICES,
           paymentsMode: PAYMENTS_MODE,
           fallbackUserId: u.id,
-        });
+        }),
+        consent = (d.billingConsents || []).find(
+          (item) => item.id === reconciled.consentId,
+        ),
+        consentAuthorised = billingConsentAuthorizesSubscription(consent, {
+          consentId: reconciled.consentId,
+          userId: u.id,
+          plan: reconciled.plan,
+          termsVersion: reconciled.consentTermsVersion,
+          checkoutSessionId: id,
+        }),
+        checkoutAuthorised = checkoutSessionAuthorizesSubscription(
+          session,
+          reconciled,
+        );
       if (
         !reconciled.valid ||
         !reconciled.entitled ||
+        !consentAuthorised ||
+        !checkoutAuthorised ||
         reconciled.userId !== u.id ||
-        session.metadata?.plan !== reconciled.plan ||
-        session.metadata?.priceId !== reconciled.stripePriceId
+        session.client_reference_id !== u.id
       )
         return send(res, 409, {
           error:
@@ -3898,6 +4249,7 @@ const appServer = http.createServer(async (req, res) => {
         stripePriceId: reconciled.stripePriceId,
         stripeCustomerId: reconciled.stripeCustomerId,
         stripeSubscriptionId: reconciled.stripeSubscriptionId,
+        billingConsentId: reconciled.consentId,
         renewalAt: reconciled.renewalAt,
         updatedAt: new Date().toISOString(),
       });
@@ -4102,7 +4454,7 @@ const appServer = http.createServer(async (req, res) => {
           .map(({ userId, ...item }) => item),
         supportCases: (d.consumerCases || [])
           .filter((item) => item.userId === u.id)
-          .map(customerConsumerCase),
+          .map(customerConsumerCaseExport),
         auditEvents: d.audit
           .filter((item) => item.userId === u.id)
           .map(({ userId, ...item }) => item),
@@ -4123,8 +4475,104 @@ const appServer = http.createServer(async (req, res) => {
       if (accountDeletionBlockedByLegalHold(d, u.id))
         return send(res, 409, {
           error:
-            "This account has records under a documented legal hold. Contact support before deletion.",
+            "This account has an open customer request, an unverified refund or records under a documented legal hold. Complete the restricted process or contact support before deletion.",
         });
+      const recurringSubscription = d.subscriptions.find(
+        (item) => item.userId === u.id && item.stripeSubscriptionId,
+      );
+      if (recurringSubscription) {
+        if (!STRIPE_CONFIGURED)
+          return send(res, 503, {
+            error:
+              "Stripe cancellation is unavailable. The account was not deleted and recurring billing was not changed.",
+          });
+        let recurringBillingEnded = false;
+        try {
+          const stripe = stripeClient(),
+            remote = await stripe.subscriptions.retrieve(
+              recurringSubscription.stripeSubscriptionId,
+            ),
+            binding = validateStripeSubscriptionForAccount(remote, {
+              expectedSubscriptionId:
+                recurringSubscription.stripeSubscriptionId,
+              expectedCustomerId: recurringSubscription.stripeCustomerId,
+              paymentsMode: PAYMENTS_MODE,
+            }),
+            canceled = binding.ended
+              ? remote
+              : await stripe.subscriptions.cancel(
+                  recurringSubscription.stripeSubscriptionId,
+                  {
+                    invoice_now: false,
+                    prorate: false,
+                    cancellation_details: {
+                      comment:
+                        "Immediate cancellation requested with Content Protect account deletion.",
+                    },
+                  },
+                );
+          const endedBinding = validateStripeSubscriptionForAccount(canceled, {
+            expectedSubscriptionId: recurringSubscription.stripeSubscriptionId,
+            expectedCustomerId: recurringSubscription.stripeCustomerId,
+            paymentsMode: PAYMENTS_MODE,
+            requireEnded: true,
+          });
+          recurringBillingEnded = true;
+          recurringSubscription.status = endedBinding.status;
+          recurringSubscription.updatedAt = new Date().toISOString();
+          u.plan = "Unsubscribed";
+          audit(d, u, "billing.subscription_canceled_for_account_deletion", {
+            mode: PAYMENTS_MODE,
+          });
+          await save(d);
+          const [pendingInvoiceItems, openInvoices, draftInvoices] =
+              await Promise.all([
+                stripe.invoiceItems.list({
+                  customer: endedBinding.customerId,
+                  pending: true,
+                  limit: 100,
+                }),
+                stripe.invoices.list({
+                  customer: endedBinding.customerId,
+                  subscription: endedBinding.subscriptionId,
+                  status: "open",
+                  limit: 100,
+                }),
+                stripe.invoices.list({
+                  customer: endedBinding.customerId,
+                  subscription: endedBinding.subscriptionId,
+                  status: "draft",
+                  limit: 100,
+                }),
+              ]),
+            postCancellation = validateStripePostCancellationBillingState(
+              { pendingInvoiceItems, openInvoices, draftInvoices },
+              {
+                expectedSubscriptionId: endedBinding.subscriptionId,
+                expectedCustomerId: endedBinding.customerId,
+                paymentsMode: PAYMENTS_MODE,
+              },
+            );
+          audit(d, u, "billing.post_cancellation_state_verified", {
+            mode: PAYMENTS_MODE,
+            ...postCancellation,
+          });
+        } catch (error) {
+          if (error instanceof StripeSubscriptionPolicyError)
+            return send(res, error.status, {
+              error: recurringBillingEnded
+                ? `${error.message} Recurring billing was ended, but the account was not deleted; contact support before retrying.`
+                : `${error.message} The account was not deleted.`,
+            });
+          if (error?.type || error?.raw)
+            return send(res, 502, {
+              error: recurringBillingEnded
+                ? "Recurring billing ended, but Stripe could not verify the remaining billing state. The account was not deleted; contact support."
+                : "Stripe did not confirm subscription cancellation. The account was not deleted; retry or contact support.",
+            });
+          throw error;
+        }
+      }
       const assets = d.assets.filter((x) => x.userId === u.id);
       const accountingArchived = await archiveAccountingRecords(u.id);
       if (!accountingArchived) {
@@ -4159,6 +4607,9 @@ const appServer = http.createServer(async (req, res) => {
       d.billingConsents = (d.billingConsents || []).filter(
         (x) => x.userId !== u.id,
       );
+      for (const caseRecord of d.consumerCases || [])
+        if (caseRecord.userId === u.id && caseRecord.status === "closed")
+          caseRecord.userId = null;
       d.audit = d.audit.filter((x) => x.userId !== u.id);
       d.sessions = d.sessions.filter((x) => x.userId !== u.id);
       d.passwordResets = d.passwordResets.filter((x) => x.userId !== u.id);
@@ -4193,8 +4644,8 @@ const appServer = http.createServer(async (req, res) => {
         {
           ok: true,
           notice: deletionPending
-            ? "Account and service data removed from active use. Encrypted object deletion is queued for automatic retry. Minimum billing records remain restricted for the statutory retention period."
-            : "Account and service data deleted. Minimum billing records remain restricted for the statutory retention period.",
+            ? "Account and service data removed from active use. Encrypted object deletion is queued for automatic retry. Minimum billing records and closed support records remain restricted for their declared retention periods."
+            : "Account and service data deleted. Minimum billing records and closed support records remain restricted for their declared retention periods.",
           deletionStatus: deletionPending ? "queued" : "deleted",
         },
         {

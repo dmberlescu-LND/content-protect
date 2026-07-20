@@ -1,6 +1,15 @@
 export function accountDeletionBlockedByLegalHold(state, userId) {
-  return (state.cases || []).some(
-    (item) => item.userId === userId && item.legalHold === true,
+  return (
+    (state.cases || []).some(
+      (item) => item.userId === userId && item.legalHold === true,
+    ) ||
+    (state.consumerCases || []).some(
+      (item) =>
+        item.userId === userId &&
+        (item.status !== "closed" ||
+          (["approved", "partial"].includes(item.refundDecision) &&
+            item.refundProviderStatus !== "succeeded")),
+    )
   );
 }
 

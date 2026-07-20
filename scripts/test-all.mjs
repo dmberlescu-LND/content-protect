@@ -18,6 +18,7 @@ const checks = [
   "test-media-backup-policy.mjs",
   "test-scanner.mjs",
   "test-operations-readiness.mjs",
+  "test-production-verification-policy.mjs",
   "test-launch-governance.mjs",
   "test-security-policy.mjs",
   "test-distributed-rate-limit.mjs",
@@ -32,6 +33,8 @@ const checks = [
   "test-consumer-case-integration.mjs",
   "test-takedown-policy.mjs",
   "test-stripe-subscription-policy.mjs",
+  "test-account-deletion-billing-integration.mjs",
+  "test-stripe-refund-policy.mjs",
   "test-storage-config.mjs",
   "verify-compliance.mjs",
 ];

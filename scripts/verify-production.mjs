@@ -1,4 +1,8 @@
 import { REQUIRED_MIGRATION } from "../operations-readiness.mjs";
+import {
+  commercialVerificationRequired,
+  monitoringBootstrapAllowed,
+} from "../production-verification-policy.mjs";
 
 const base = (process.env.APP_URL || "https://content-protect.com").replace(
   /\/$/,
@@ -59,9 +63,17 @@ expect(
   ready.keyManagement === "external-secret",
   "external master key is not active",
 );
-if (requireProductionReady) {
+const enforceProductionReady = commercialVerificationRequired(
+    requireProductionReady,
+    ready,
+  ),
+  monitoringBootstrap = monitoringBootstrapAllowed(
+    enforceProductionReady,
+    ready,
+  );
+if (enforceProductionReady) {
   expect(
-    ready.productionReady === true,
+    ready.productionReady === true || monitoringBootstrap,
     "production release gate is not green",
   );
   expect(
@@ -89,7 +101,7 @@ if (requireProductionReady) {
     "approved retention automation is not active",
   );
   expect(
-    ready.monitoring === "configured",
+    ready.monitoring === "configured" || monitoringBootstrap,
     "external monitoring is not active",
   );
   expect(
@@ -105,7 +117,14 @@ if (requireProductionReady) {
       ready.operationalGates?.launchGovernance === true,
     "signed UK launch governance approval is missing, invalid or expired",
   );
-  expect(ready.scanner !== "unconfigured", "scanner is not configured");
+  expect(
+    ready.scanner === "tineye-commercial",
+    "approved commercial image scanning is not active",
+  );
+  expect(
+    ready.videoScanning === "tineye-keyframes",
+    "approved video-frame scanning is not active",
+  );
   expect(
     ready.takedownDelivery === "operator-reviewed-live",
     "live takedown delivery is not active",

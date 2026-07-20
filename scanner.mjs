@@ -6,13 +6,24 @@ const TINEYE_ENDPOINT =
 
 const TINEYE_HOST = "api.tineye.com";
 
+function approvedReference(value) {
+  const reference = String(value || "").trim();
+  return Boolean(
+    reference.length >= 12 &&
+    reference.length <= 160 &&
+    /^[A-Za-z0-9][A-Za-z0-9._:/-]+$/.test(reference) &&
+    !/^https?:/i.test(reference) &&
+    !reference.includes("@"),
+  );
+}
+
 export function scannerReadiness(environment = process.env) {
   const hasApiKey = Boolean(environment.TINEYE_API_KEY?.trim());
-  const hasDataProtectionApproval = Boolean(
-    environment.TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE?.trim(),
+  const hasDataProtectionApproval = approvedReference(
+    environment.TINEYE_DATA_PROTECTION_APPROVAL_REFERENCE,
   );
-  const hasAdultContentApproval = Boolean(
-    environment.TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE?.trim(),
+  const hasAdultContentApproval = approvedReference(
+    environment.TINEYE_ADULT_CONTENT_APPROVAL_REFERENCE,
   );
   const missingApprovals = [
     !hasDataProtectionApproval && "data-protection-and-transfer-review",
@@ -38,8 +49,8 @@ export function scannerMode(environment = process.env) {
 
 export function videoScannerReadiness(environment = process.env) {
   const imageScanner = scannerReadiness(environment),
-    hasVideoFrameApproval = Boolean(
-      environment.TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE?.trim(),
+    hasVideoFrameApproval = approvedReference(
+      environment.TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE,
     );
   return {
     ready: imageScanner.ready && hasVideoFrameApproval,
@@ -266,7 +277,7 @@ export async function searchVideo(
       .TINEYE_VIDEO_FRAME_APPROVAL_REFERENCE,
   },
 ) {
-  if (!videoFrameApprovalReference?.trim())
+  if (!approvedReference(videoFrameApprovalReference))
     throw new ScanProviderError(
       "Video frame scanning is awaiting documented vendor and privacy approval.",
       503,

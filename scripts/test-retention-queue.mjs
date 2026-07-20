@@ -99,6 +99,7 @@ assert.match(migration, /object_deletion_queue/);
 assert.match(migration, /WHERE deleted_at IS NULL/);
 assert.match(databaseSource, /FOR UPDATE SKIP LOCKED/);
 assert.match(databaseSource, /status: "failed"/);
+assert.match(databaseSource, /requiredMigration: REQUIRED_MIGRATION/);
 assert.doesNotMatch(
   databaseSource,
   /FROM operational_evidence\s+WHERE status='succeeded'/,
@@ -127,6 +128,63 @@ const heldState = {
 assert.equal(accountDeletionBlockedByLegalHold(heldState, "user-1"), true);
 assert.equal(accountDeletionBlockedByLegalHold(heldState, "user-2"), false);
 assert.equal(
+  accountDeletionBlockedByLegalHold(
+    {
+      cases: [],
+      consumerCases: [
+        { userId: "user-2", status: "awaiting-customer" },
+        { userId: "user-3", status: "closed" },
+      ],
+    },
+    "user-2",
+  ),
+  true,
+);
+assert.equal(
+  accountDeletionBlockedByLegalHold(
+    {
+      cases: [],
+      consumerCases: [{ userId: "user-3", status: "closed" }],
+    },
+    "user-3",
+  ),
+  false,
+);
+assert.equal(
+  accountDeletionBlockedByLegalHold(
+    {
+      cases: [],
+      consumerCases: [
+        {
+          userId: "user-4",
+          status: "closed",
+          refundDecision: "approved",
+          refundProviderStatus: "legacy-recorded",
+        },
+      ],
+    },
+    "user-4",
+  ),
+  true,
+);
+assert.equal(
+  accountDeletionBlockedByLegalHold(
+    {
+      cases: [],
+      consumerCases: [
+        {
+          userId: "user-5",
+          status: "closed",
+          refundDecision: "partial",
+          refundProviderStatus: "succeeded",
+        },
+      ],
+    },
+    "user-5",
+  ),
+  false,
+);
+assert.equal(
   assetDeletionBlockedByLegalHold(heldState, "user-1", "asset-1"),
   true,
 );
@@ -145,7 +203,9 @@ console.log(
     persistentQueueRetryVerified: true,
     partialFailureFailsClosed: true,
     latestFailureClosesReadiness: true,
+    retentionEvidenceSchemaBound: true,
     legalHoldBlocksDeletion: true,
+    unverifiedRefundBlocksAccountDetachment: true,
     pageCaptureLegalHoldSupported: true,
     explicitDeletionIntentRequired: true,
   }),
