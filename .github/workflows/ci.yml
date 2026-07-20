@@ -35,6 +35,9 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Reject vulnerable production dependencies
+        run: pnpm run security:audit
+
       - name: Run policy and unit checks
         run: pnpm test
 
