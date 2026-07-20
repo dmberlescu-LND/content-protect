@@ -2,6 +2,8 @@
 
 Status: implementation checklist, not legal advice. Company identity is verified; overdue statutory filings, counsel approval and provider approvals remain release gates.
 
+Use [the launch-gate register](LAUNCH-GATE-REGISTER.md) as the single operational view of ownership, evidence and approval status. This checklist remains the detailed implementation record.
+
 ## Company and tax
 
 - Companies House was checked on 19 July 2026 and confirms **WHITE EAGLES DIGITAL MARKETING LTD**, company **14978662**, as an active private limited company incorporated on 4 July 2023. The registered office is **The Spaceworks, Flat 7, Plumbers Row, London, England, E1 1AG**. Evidence: [official Companies House record](https://find-and-update.company-information.service.gov.uk/company/14978662).

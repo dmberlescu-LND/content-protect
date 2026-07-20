@@ -30,6 +30,7 @@ const [
   dockerfile,
   runbook,
   checklist,
+  launchGateRegister,
   processors,
   ropa,
   takedowns,
@@ -62,6 +63,7 @@ const [
   read("Dockerfile"),
   read("docs/OPERATIONS-RUNBOOK.md"),
   read("docs/UK-LAUNCH-CHECKLIST.md"),
+  read("docs/LAUNCH-GATE-REGISTER.md"),
   read("docs/compliance/PROCESSOR-REGISTER.md"),
   read("docs/compliance/ROPA.md"),
   read("docs/compliance/TAKEDOWN-AND-DISPUTE-PROCEDURE.md"),
@@ -276,6 +278,17 @@ requireText(
 requireText("operations runbook", runbook, "pnpm audit:export");
 requireText("operations runbook", runbook, "no delete permission");
 requireText("UK launch checklist", checklist, "auditExport");
+requireText(
+  "launch-gate register",
+  launchGateRegister,
+  "Signed UK launch governance",
+);
+requireText(
+  "launch-gate register",
+  launchGateRegister,
+  "productionReady: false",
+);
+requireText("launch-gate register", launchGateRegister, "workflow scope");
 requireText("Stripe refund policy", stripeRefundPolicy, "expectedCustomerId");
 requireText("Stripe refund policy", stripeRefundPolicy, "refundablePence");
 requireText(
