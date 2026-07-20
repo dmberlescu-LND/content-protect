@@ -514,11 +514,11 @@ rejectText(
 requireText(
   "operations runbook",
   runbook,
-  "866888dfdfbe6a8f685d8058c718ce17ce4de799",
+  "41c375aa4c1b8d38d1f855e5ba1be596f9e6ff5c",
 );
-requireText("operations runbook", runbook, "2026-07-19T23:12:04.025Z");
+requireText("operations runbook", runbook, "2026-07-20T02:39:40.929Z");
 requireText("operations runbook", runbook, "closed security incidents");
-requireText("operations runbook", runbook, "29 expired rate-limit entries");
+requireText("operations runbook", runbook, "37 expired rate-limit entries");
 requireText(
   "operations runbook",
   runbook,
@@ -529,7 +529,7 @@ requireText(
   checklist,
   "migration `019_incident_register.sql`",
 );
-requireText("UK launch checklist", checklist, "29 expired rate-limit entries");
+requireText("UK launch checklist", checklist, "37 expired rate-limit entries");
 requireText("Render", render, "MONITORING_HEARTBEAT_TOKEN");
 requireText("Render", render, "UK_LAUNCH_GOVERNANCE_PUBLIC_KEY");
 requireText("Render", render, "UK_LAUNCH_GOVERNANCE_MANIFEST");
