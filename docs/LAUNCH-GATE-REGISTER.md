@@ -6,10 +6,10 @@ Status: working operational register — 20 July 2026. This register is not lega
 
 | Control                     | Current status        | Evidence                                                                                                                                                         |
 | --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production release          | deployed, pre-launch  | Render release `6ebf7ae8b4da` is healthy with PostgreSQL, private storage, external key management and a valid audit chain.                                      |
+| Production release          | deployed, pre-launch  | Render release `17681074b8dd` is healthy with PostgreSQL, private storage, external key management and a valid audit chain.                                      |
 | Dependency security         | completed             | Production dependency audit returned no known moderate/high/critical vulnerabilities after the Yoti transitive dependency overrides; 37 automated checks passed. |
 | Backup and isolated restore | completed and current | Authenticated restore evidence is bound to `022_subscription_consent_binding.sql`.                                                                               |
-| External monitoring         | completed and current | GitHub monitor evidence is bound to release `6ebf7ae8b4da`.                                                                                                      |
+| External monitoring         | completed and current | GitHub monitor evidence is bound to release `17681074b8dd`.                                                                                                      |
 | Retention execution         | deliberately disabled | A schema-bound preview completed without deleting data; executing lifecycle automation is not approved.                                                          |
 | Launch governance           | blocked               | No signed approval manifest exists.                                                                                                                              |
 
@@ -36,7 +36,7 @@ Status: working operational register — 20 July 2026. This register is not lega
 
 | Item                            | Status                     | Next action                                                                                                                   |
 | ------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| GitHub dependency-audit CI rule | awaiting GitHub permission | Re-authorise the repository push credential with workflow scope, then publish the prepared `.github/workflows/ci.yml` change. |
+| GitHub dependency-audit CI rule | completed                  | GitHub workflow scope was re-authorised; the rule was published in commit `17681074b8dd` and audits production dependencies before tests and build. |
 | Commercial production flags     | intentionally off          | Do not set live provider flags until the corresponding gate above is approved and evidenced.                                  |
 | Public launch claim             | prohibited                 | Do not claim the product is commercially live while `/api/health/ready` reports `productionReady: false`.                     |
 
