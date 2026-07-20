@@ -2,6 +2,8 @@
 
 Status: working operational register — 20 July 2026. This register is not legal advice and does not itself approve a gate. A control is complete only when the stated evidence exists, has been reviewed and is included in the signed launch-governance manifest.
 
+For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXTERNAL-APPROVAL-PACK.md`](EXTERNAL-APPROVAL-PACK.md).
+
 ## Current technical baseline
 
 | Control                     | Current status        | Evidence                                                                                                                                                         |
