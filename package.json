@@ -67,11 +67,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1090.0",
+    "@aws-sdk/client-s3": "^3.1095.0",
     "pg": "^8.22.0",
     "sharp": "^0.35.3",
     "stripe": "^22.3.2",
-    "svix": "^1.98.0",
+    "svix": "^1.99.1",
     "yoti": "4.13.2"
   },
   "devDependencies": {
