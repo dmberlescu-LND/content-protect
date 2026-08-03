@@ -75,12 +75,12 @@
     "yoti": "4.13.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "6.0.3",
-    "lucide-react": "1.25.0",
-    "prettier": "^3.9.5",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.0.5",
+    "lucide-react": "1.28.0",
+    "prettier": "^3.9.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "typescript": "7.0.2",
-    "vite": "8.1.5"
+    "vite": "8.2.0"
   }
 }
