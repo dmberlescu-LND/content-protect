@@ -43,6 +43,7 @@ import {
   videoScannerMode,
   videoScannerReadiness,
 } from "./scanner.mjs";
+import { discoverySourceSummary } from "./discovery-source-registry.mjs";
 import {
   assetAllowance,
   assetLimitForPlan,
@@ -1594,6 +1595,47 @@ const appServer = http.createServer(async (req, res) => {
             operatorId: OPERATOR_CONFIGURATION.id,
           })
         : send(res, 401, { error: "Operator authentication required." });
+    if (route === "/api/operator/overview" && req.method === "GET") {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (!(await allowed(req, `operator-overview:${ip}`, 60, 3600000)).allowed)
+        return send(res, 429, { error: "Too many operations overview requests." });
+      const cases = d.cases || [];
+      const openStatuses = new Set([
+        "Awaiting operator preparation",
+        "Approved — delivery pending",
+        "Disputed — review required",
+        "Dispute — counsel review required",
+        "Delivered — monitoring",
+      ]);
+      const deliveredStatuses = new Set([
+        "Delivered — monitoring",
+        "Closed — dispute accepted",
+      ]);
+      const sourceSummary = discoverySourceSummary();
+      return send(res, 200, {
+        generatedAt: new Date().toISOString(),
+        discovery: {
+          ...sourceSummary,
+          scansRecorded: (d.scans || []).length,
+          matchesRecorded: (d.matches || []).length,
+        },
+        enforcement: {
+          casesRecorded: cases.length,
+          openCases: cases.filter((item) => openStatuses.has(item.status)).length,
+          awaitingPreparation: cases.filter(
+            (item) => item.status === "Awaiting operator preparation",
+          ).length,
+          awaitingDelivery: cases.filter(
+            (item) => item.status === "Approved — delivery pending",
+          ).length,
+          disputed: cases.filter((item) => item.status?.includes("Dispute")).length,
+          delivered: cases.filter((item) => deliveredStatuses.has(item.status)).length,
+        },
+        disclaimer:
+          "Operational counts only. They do not prove source coverage, removal, deindexing or a platform relationship.",
+      });
+    }
     if (route === "/api/operator/incidents" && req.method === "GET") {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });

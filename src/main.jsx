@@ -3580,6 +3580,16 @@ function OperatorConsole() {
   const [consumerCases, setConsumerCases] = useState([]);
   const [consumerDetails, setConsumerDetails] = useState({});
   const [consumerForms, setConsumerForms] = useState({});
+  const [overview, setOverview] = useState(null);
+  const loadOverview = async () => {
+    const response = await fetch("/api/operator/overview");
+    if (!response.ok) {
+      setReady(false);
+      return;
+    }
+    setOverview(await response.json());
+    setReady(true);
+  };
   const loadCases = async () => {
     const response = await fetch("/api/operator/cases");
     if (!response.ok) {
@@ -3603,7 +3613,7 @@ function OperatorConsole() {
       if (response.ok) {
         const result = await response.json();
         setOperatorId(result.operatorId || "operator");
-        await Promise.all([loadCases(), loadConsumerCases()]);
+        await Promise.all([loadCases(), loadConsumerCases(), loadOverview()]);
       } else setReady(false);
     });
   }, []);
@@ -3623,7 +3633,7 @@ function OperatorConsole() {
     setToken("");
     setMfaCode("");
     setOperatorId(result.operatorId || "operator");
-    await Promise.all([loadCases(), loadConsumerCases()]);
+    await Promise.all([loadCases(), loadConsumerCases(), loadOverview()]);
   };
   const accessConsumerCase = async (item) => {
     if (
@@ -3948,6 +3958,7 @@ function OperatorConsole() {
     setConsumerCases([]);
     setConsumerDetails({});
     setConsumerForms({});
+    setOverview(null);
     setOperatorView("cases");
   };
   if (!ready)
@@ -4001,6 +4012,12 @@ function OperatorConsole() {
         </div>
         <nav className="operator-nav">
           <button
+            className={operatorView === "overview" ? "active" : ""}
+            onClick={() => setOperatorView("overview")}
+          >
+            Operations overview
+          </button>
+          <button
             className={operatorView === "cases" ? "active" : ""}
             onClick={() => setOperatorView("cases")}
           >
@@ -4026,6 +4043,69 @@ function OperatorConsole() {
       {error && (
         <div className="operator-global-error operator-error">{error}</div>
       )}
+      <section hidden={operatorView !== "overview"}>
+        <div className="operator-heading">
+          <div>
+            <p>INTERNAL OPERATIONS ONLY</p>
+            <h1>Discovery and enforcement overview</h1>
+          </div>
+          <button className="btn btn-outline" onClick={loadOverview}>
+            Refresh
+          </button>
+        </div>
+        {overview ? (
+          <>
+            <div className="operations-metrics">
+              <article>
+                <span>Approved discovery routes</span>
+                <strong>{overview.discovery.enabled}</strong>
+                <small>{overview.discovery.blocked} awaiting approval</small>
+              </article>
+              <article>
+                <span>Recorded scans</span>
+                <strong>{overview.discovery.scansRecorded}</strong>
+                <small>Not a coverage claim</small>
+              </article>
+              <article>
+                <span>Open enforcement cases</span>
+                <strong>{overview.enforcement.openCases}</strong>
+                <small>{overview.enforcement.casesRecorded} total cases</small>
+              </article>
+              <article>
+                <span>Delivery review queue</span>
+                <strong>{overview.enforcement.awaitingDelivery}</strong>
+                <small>{overview.enforcement.awaitingPreparation} to prepare</small>
+              </article>
+            </div>
+            <section className="operations-panel">
+              <h2>Discovery source register</h2>
+              {overview.discovery.sources.map((source) => (
+                <article className="operations-source" key={source.id}>
+                  <div>
+                    <b>{source.name}</b>
+                    <span>{source.access.replace(/-/g, " ")} · {source.dataClass.replace(/-/g, " ")}</span>
+                  </div>
+                  <div>
+                    <strong className={source.enabled ? "operations-live" : "operations-blocked"}>
+                      {source.enabled ? "Approved" : "Blocked"}
+                    </strong>
+                    {!source.enabled && (
+                      <small>Needs: {source.missingApprovals.join(", ").replaceAll("-", " ")}</small>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </section>
+            <section className="operations-panel operations-enforcement">
+              <h2>Enforcement queue</h2>
+              <p>{overview.enforcement.disputed} disputed/counsel-review cases · {overview.enforcement.delivered} delivered or closed records.</p>
+              <small>{overview.disclaimer}</small>
+            </section>
+          </>
+        ) : (
+          <div className="operator-empty"><Clock3 /><h2>Loading operations status</h2></div>
+        )}
+      </section>
       <IncidentRegister
         active={operatorView === "incidents"}
         setGlobalError={setError}
