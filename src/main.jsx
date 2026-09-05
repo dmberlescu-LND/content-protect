@@ -262,24 +262,36 @@ function Logo({ dark = false }) {
   );
 }
 
-function Landing({ onStart, onLogin }) {
+const LANDING_COPY = {
+  en: { nav:["How it works","Safety","Pricing","FAQ"], login:"Log in", start:"Start protecting", eyebrow:"Built for creators, not platforms", hero:["Your content.","Your control."], lead:"Search supported images for likely public copies, preserve evidence and manage reviewed takedown notices from one private workspace. Video matching will be enabled only with a named compatible provider.", account:"Create secure account", see:"See how it works", trust:"Private UK-built workspace", trustTail:"for creator-led protection", simple:"Simple protection", howTitle:"From stolen to removed, without the chaos.", howLead:"A clear workflow that keeps you informed and in control at every step.", privacy:"Privacy first", safetyTitle:"Intimate content deserves serious protection.", pricing:"Planned launch pricing", pricingTitle:"Choose the level of operational support.", footer:"Protecting the people behind the content." },
+  es: { nav:["Cómo funciona","Seguridad","Precios","Preguntas"], login:"Iniciar sesión", start:"Empezar a proteger", eyebrow:"Creado para creadores, no para plataformas", hero:["Tu contenido.","Tu control."], lead:"Busca imágenes compatibles para detectar posibles copias públicas, conserva pruebas y gestiona avisos de retirada revisados desde un espacio privado. La coincidencia de vídeo solo se activará con un proveedor compatible identificado.", account:"Crear cuenta segura", see:"Ver cómo funciona", trust:"Espacio privado creado en Reino Unido", trustTail:"para protección dirigida por creadores", simple:"Protección sencilla", howTitle:"De contenido robado a retirado, sin caos.", howLead:"Un flujo claro que te mantiene informado y en control en cada paso.", privacy:"Privacidad primero", safetyTitle:"El contenido íntimo merece una protección seria.", pricing:"Precios previstos para el lanzamiento", pricingTitle:"Elige el nivel de soporte operativo.", footer:"Protegiendo a las personas detrás del contenido." },
+  ro: { nav:["Cum funcționează","Siguranță","Prețuri","Întrebări"], login:"Autentificare", start:"Începe protecția", eyebrow:"Creat pentru creatori, nu pentru platforme", hero:["Conținutul tău.","Controlul tău."], lead:"Caută imagini compatibile pentru posibile copii publice, păstrează dovezi și gestionează notificări de eliminare verificate dintr-un spațiu privat. Potrivirea video va fi activată numai cu un furnizor compatibil identificat.", account:"Creează un cont securizat", see:"Vezi cum funcționează", trust:"Spațiu privat construit în UK", trustTail:"pentru protecție condusă de creatori", simple:"Protecție simplă", howTitle:"De la conținut furat la eliminat, fără haos.", howLead:"Un flux clar care te ține informat și în control la fiecare pas.", privacy:"Confidențialitate înainte de toate", safetyTitle:"Conținutul intim merită protecție serioasă.", pricing:"Prețuri planificate pentru lansare", pricingTitle:"Alege nivelul de suport operațional.", footer:"Protejăm oamenii din spatele conținutului." }
+};
+
+function LanguagePicker({ language, onChange }) {
+  return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
+}
+
+function Landing({ onStart, onLogin, language, setLanguage }) {
   const [menu, setMenu] = useState(false);
+  const copy = LANDING_COPY[language] || LANDING_COPY.en;
   return (
-    <div className="landing">
+    <div className="landing" lang={language}>
       <nav className="nav wrap">
         <Logo />
         <div className={`nav-links ${menu ? "open" : ""}`}>
-          <a href="#how">How it works</a>
-          <a href="#safety">Safety</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#faq">FAQ</a>
+          <a href="#how">{copy.nav[0]}</a>
+          <a href="#safety">{copy.nav[1]}</a>
+          <a href="#pricing">{copy.nav[2]}</a>
+          <a href="#faq">{copy.nav[3]}</a>
         </div>
         <div className="nav-actions">
+          <LanguagePicker language={language} onChange={setLanguage} />
           <button className="text-btn" onClick={onLogin}>
-            Log in
+            {copy.login}
           </button>
           <button className="btn btn-dark" onClick={onStart}>
-            Start protecting <ArrowRight size={16} />
+            {copy.start} <ArrowRight size={16} />
           </button>
         </div>
         <button className="menu-btn" onClick={() => setMenu(!menu)}>
@@ -291,22 +303,19 @@ function Landing({ onStart, onLogin }) {
         <section className="hero wrap">
           <div className="hero-copy">
             <div className="eyebrow">
-              <span></span> Built for creators, not platforms
+              <span></span> {copy.eyebrow}
             </div>
             <h1>
-              Your content.
+              {copy.hero[0]}
               <br />
-              <em>Your control.</em>
+              <em>{copy.hero[1]}</em>
             </h1>
             <p className="hero-sub">
-              Search supported images for likely public copies, preserve
-              evidence and manage reviewed takedown notices from one private
-              workspace. Video matching will be enabled only with a named
-              compatible provider.
+              {copy.lead}
             </p>
             <div className="hero-actions">
               <button className="btn btn-primary btn-large" onClick={onStart}>
-                Create secure account <ArrowRight size={18} />
+                {copy.account} <ArrowRight size={18} />
               </button>
               <button
                 className="play-btn"
@@ -316,7 +325,7 @@ function Landing({ onStart, onLogin }) {
                     .scrollIntoView({ behavior: "smooth" })
                 }
               >
-                <span>▶</span> See how it works
+                <span>▶</span> {copy.see}
               </button>
             </div>
             <div className="trust-line">
@@ -329,7 +338,7 @@ function Landing({ onStart, onLogin }) {
                 </i>
               </div>
               <span>
-                <b>Private UK-built workspace</b> for creator-led protection
+                <b>{copy.trust}</b> {copy.trustTail}
               </span>
             </div>
           </div>
@@ -410,15 +419,12 @@ function Landing({ onStart, onLogin }) {
         </section>
 
         <section id="how" className="how wrap section">
-          <div className="section-label">Simple protection</div>
+          <div className="section-label">{copy.simple}</div>
           <h2>
-            From stolen to removed,
-            <br />
-            without the chaos.
+            {copy.howTitle}
           </h2>
           <p className="section-lead">
-            A clear workflow that keeps you informed and in control at every
-            step.
+            {copy.howLead}
           </p>
           <div className="steps">
             <div className="step">
@@ -471,8 +477,8 @@ function Landing({ onStart, onLogin }) {
               </span>
             </div>
             <div>
-              <div className="section-label">Privacy first</div>
-              <h2>Intimate content deserves serious protection.</h2>
+              <div className="section-label">{copy.privacy}</div>
+              <h2>{copy.safetyTitle}</h2>
               <p>
                 We designed Content Protect for people whose safety, identity,
                 and livelihood depend on discretion. Reference files are
@@ -496,8 +502,8 @@ function Landing({ onStart, onLogin }) {
         </section>
 
         <section id="pricing" className="pricing wrap section">
-          <div className="section-label">Planned launch pricing</div>
-          <h2>Choose the level of operational support.</h2>
+          <div className="section-label">{copy.pricing}</div>
+          <h2>{copy.pricingTitle}</h2>
           <div className="price-cards">
             <div className="price-card">
               <h3>Monitor</h3>
@@ -633,7 +639,7 @@ function Landing({ onStart, onLogin }) {
       <footer>
         <div className="wrap footer-inner">
           <Logo dark />
-          <p>Protecting the people behind the content.</p>
+          <p>{copy.footer}</p>
           <div>
             <a href="/privacy.html">Privacy</a>
             <a href="/terms.html">Terms</a>
@@ -4872,6 +4878,13 @@ function App() {
   const [view, setView] = useState("loading");
   const [auth, setAuth] = useState(resetToken ? "reset" : null);
   const [user, setUser] = useState(null);
+  const [language, setLanguage] = useState(
+    () => localStorage.getItem("content-protect-language") || "en",
+  );
+  useEffect(() => {
+    localStorage.setItem("content-protect-language", language);
+    document.documentElement.lang = language;
+  }, [language]);
   useEffect(() => {
     const boot = async () => {
       if (operatorPath) return;
@@ -4976,6 +4989,8 @@ function App() {
         <Landing
           onStart={() => setAuth("register")}
           onLogin={() => setAuth("login")}
+          language={language}
+          setLanguage={setLanguage}
         />
       )}{" "}
       {auth === "forgot" && (
