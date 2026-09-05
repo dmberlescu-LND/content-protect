@@ -17,6 +17,7 @@ const checks = [
   "test-video-frames.mjs",
   "test-media-backup-policy.mjs",
   "test-scanner.mjs",
+  "test-discovery-source-registry.mjs",
   "test-operations-readiness.mjs",
   "test-production-verification-policy.mjs",
   "test-launch-governance.mjs",
