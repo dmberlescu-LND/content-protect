@@ -1613,6 +1613,9 @@ const appServer = http.createServer(async (req, res) => {
         "Closed — dispute accepted",
       ]);
       const sourceSummary = discoverySourceSummary();
+      const qualityReviews = (d.matches || []).map(
+        (item) => item.evidence?.qualityReview?.verdict,
+      );
       return send(res, 200, {
         generatedAt: new Date().toISOString(),
         discovery: {
@@ -1632,8 +1635,92 @@ const appServer = http.createServer(async (req, res) => {
           disputed: cases.filter((item) => item.status?.includes("Dispute")).length,
           delivered: cases.filter((item) => deliveredStatuses.has(item.status)).length,
         },
+        quality: {
+          reviewed: qualityReviews.filter(Boolean).length,
+          confirmedInfringement: qualityReviews.filter(
+            (value) => value === "confirmed-infringement",
+          ).length,
+          authorisedUse: qualityReviews.filter(
+            (value) => value === "authorised-use",
+          ).length,
+          falsePositive: qualityReviews.filter(
+            (value) => value === "false-positive",
+          ).length,
+          uncertain: qualityReviews.filter((value) => value === "uncertain")
+            .length,
+        },
         disclaimer:
           "Operational counts only. They do not prove source coverage, removal, deindexing or a platform relationship.",
+      });
+    }
+    if (route === "/api/operator/matches" && req.method === "GET") {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (!(await allowed(req, `operator-matches:${ip}`, 60, 3600000)).allowed)
+        return send(res, 429, { error: "Too many match-review requests." });
+      const providers = new Map((d.scans || []).map((scan) => [scan.id, scan.provider]));
+      return send(res, 200, {
+        matches: [...(d.matches || [])]
+          .sort((a, b) => new Date(b.age) - new Date(a.age))
+          .slice(0, 100)
+          .map((item) => ({
+            id: item.id,
+            sourceUrl: item.sourceUrl,
+            sourceHost: item.site,
+            mediaType: item.type,
+            matchScore: item.confidence,
+            discoveredAt: item.age,
+            provider: providers.get(item.scanId) || "unknown",
+            verdict: item.evidence?.qualityReview?.verdict || null,
+            reviewedAt: item.evidence?.qualityReview?.reviewedAt || null,
+          })),
+      });
+    }
+    if (
+      route.match(/^\/api\/operator\/matches\/[^/]+\/quality-review$/) &&
+      req.method === "POST"
+    ) {
+      if (!operatorAuthorised(req, d))
+        return send(res, 401, { error: "Operator authentication required." });
+      if (!(await allowed(req, `operator-match-review:${ip}`, 120, 3600000)).allowed)
+        return send(res, 429, { error: "Too many match-review updates." });
+      const matchId = route.split("/")[4],
+        match = (d.matches || []).find((item) => item.id === matchId),
+        b = await parse(req),
+        allowedVerdicts = new Set([
+          "confirmed-infringement",
+          "authorised-use",
+          "false-positive",
+          "uncertain",
+        ]),
+        note = String(b.note || "").trim();
+      if (!match) return send(res, 404, { error: "Match not found." });
+      if (!allowedVerdicts.has(b.verdict))
+        return send(res, 400, { error: "Choose a valid quality verdict." });
+      if (note.length > 500)
+        return send(res, 400, { error: "Review note must be 500 characters or fewer." });
+      const reviewedAt = new Date().toISOString();
+      match.evidence ||= {};
+      match.evidence.qualityReview = {
+        verdict: b.verdict,
+        note: note || null,
+        reviewedAt,
+        operatorReference: OPERATOR_CONFIGURATION.id,
+      };
+      audit(
+        d,
+        null,
+        "match.quality_reviewed",
+        { matchId, verdict: b.verdict, hasNote: Boolean(note) },
+        { actorSubject: currentOperatorSubject() },
+      );
+      await save(d);
+      return send(res, 200, {
+        match: {
+          id: match.id,
+          verdict: b.verdict,
+          reviewedAt,
+        },
       });
     }
     if (route === "/api/operator/incidents" && req.method === "GET") {

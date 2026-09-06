@@ -3581,6 +3581,8 @@ function OperatorConsole() {
   const [consumerDetails, setConsumerDetails] = useState({});
   const [consumerForms, setConsumerForms] = useState({});
   const [overview, setOverview] = useState(null);
+  const [qualityMatches, setQualityMatches] = useState([]);
+  const [qualityForms, setQualityForms] = useState({});
   const loadOverview = async () => {
     const response = await fetch("/api/operator/overview");
     if (!response.ok) {
@@ -3588,6 +3590,15 @@ function OperatorConsole() {
       return;
     }
     setOverview(await response.json());
+    setReady(true);
+  };
+  const loadQualityMatches = async () => {
+    const response = await fetch("/api/operator/matches");
+    if (!response.ok) {
+      setReady(false);
+      return;
+    }
+    setQualityMatches((await response.json()).matches || []);
     setReady(true);
   };
   const loadCases = async () => {
@@ -3613,7 +3624,7 @@ function OperatorConsole() {
       if (response.ok) {
         const result = await response.json();
         setOperatorId(result.operatorId || "operator");
-        await Promise.all([loadCases(), loadConsumerCases(), loadOverview()]);
+        await Promise.all([loadCases(), loadConsumerCases(), loadOverview(), loadQualityMatches()]);
       } else setReady(false);
     });
   }, []);
@@ -3633,7 +3644,7 @@ function OperatorConsole() {
     setToken("");
     setMfaCode("");
     setOperatorId(result.operatorId || "operator");
-    await Promise.all([loadCases(), loadConsumerCases(), loadOverview()]);
+    await Promise.all([loadCases(), loadConsumerCases(), loadOverview(), loadQualityMatches()]);
   };
   const accessConsumerCase = async (item) => {
     if (
@@ -3959,6 +3970,8 @@ function OperatorConsole() {
     setConsumerDetails({});
     setConsumerForms({});
     setOverview(null);
+    setQualityMatches([]);
+    setQualityForms({});
     setOperatorView("cases");
   };
   if (!ready)
@@ -4016,6 +4029,12 @@ function OperatorConsole() {
             onClick={() => setOperatorView("overview")}
           >
             Operations overview
+          </button>
+          <button
+            className={operatorView === "quality" ? "active" : ""}
+            onClick={() => setOperatorView("quality")}
+          >
+            Match quality
           </button>
           <button
             className={operatorView === "cases" ? "active" : ""}
@@ -4076,6 +4095,11 @@ function OperatorConsole() {
                 <strong>{overview.enforcement.awaitingDelivery}</strong>
                 <small>{overview.enforcement.awaitingPreparation} to prepare</small>
               </article>
+              <article>
+                <span>Quality-reviewed matches</span>
+                <strong>{overview.quality.reviewed}</strong>
+                <small>{overview.quality.confirmedInfringement} confirmed</small>
+              </article>
             </div>
             <section className="operations-panel">
               <h2>Discovery source register</h2>
@@ -4105,6 +4129,35 @@ function OperatorConsole() {
         ) : (
           <div className="operator-empty"><Clock3 /><h2>Loading operations status</h2></div>
         )}
+      </section>
+      <section hidden={operatorView !== "quality"}>
+        <div className="operator-heading">
+          <div>
+            <p>HUMAN QUALITY CONTROL</p>
+            <h1>Match review</h1>
+          </div>
+          <button className="btn btn-outline" onClick={loadQualityMatches}>Refresh</button>
+        </div>
+        <p className="operations-guidance">A match is only a lead. Record a verdict after reviewing the source and the creator’s rights evidence. This does not send a notice or change a customer’s case.</p>
+        {qualityMatches.length ? qualityMatches.map((item) => {
+          const form = qualityForms[item.id] || {};
+          const recordVerdict = async () => {
+            if (!form.verdict) { setError("Choose a quality verdict before recording the review."); return; }
+            const response = await fetch(`/api/operator/matches/${item.id}/quality-review`, {
+              method: "POST", headers: { "content-type": "application/json" },
+              body: JSON.stringify({ verdict: form.verdict, note: form.note || "" }),
+            });
+            const result = await response.json();
+            if (!response.ok) { setError(result.error || "The quality review could not be recorded."); return; }
+            setError(""); await Promise.all([loadQualityMatches(), loadOverview()]);
+          };
+          return <article className="quality-match" key={item.id}>
+            <div className="quality-match-title"><div><b>{item.sourceHost}</b><span>{item.provider} · {item.mediaType} · score {item.matchScore ?? "—"}</span></div><strong>{item.verdict ? item.verdict.replaceAll("-", " ") : "Unreviewed"}</strong></div>
+            <a href={item.sourceUrl} target="_blank" rel="noreferrer">Review source URL</a>
+            <small>Discovered {new Date(item.discoveredAt).toLocaleString()}</small>
+            <div className="quality-review-form"><select value={form.verdict || item.verdict || ""} onChange={(event) => setQualityForms({ ...qualityForms, [item.id]: { ...form, verdict: event.target.value } })}><option value="">Choose verdict…</option><option value="confirmed-infringement">Confirmed infringement</option><option value="authorised-use">Authorised use</option><option value="false-positive">False positive</option><option value="uncertain">Uncertain — needs more evidence</option></select><input maxLength="500" placeholder="Internal review note (optional)" value={form.note || ""} onChange={(event) => setQualityForms({ ...qualityForms, [item.id]: { ...form, note: event.target.value } })}/><button className="btn btn-primary" onClick={recordVerdict}>Record verdict</button></div>
+          </article>;
+        }) : <div className="operator-empty"><CircleCheck /><h2>No matches to review</h2><p>Approved discovery results will appear here after commercial activation.</p></div>}
       </section>
       <IncidentRegister
         active={operatorView === "incidents"}
