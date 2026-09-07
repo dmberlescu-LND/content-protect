@@ -1,17 +1,33 @@
 # TinEye production activation record
 
-Status: **blocked pending vendor and privacy approval**  
+Status: **vendor permission received; blocked pending contract, privacy and launch approval**
 Owner: White Eagles Digital Marketing LTD  
-Last technical review: 19 July 2026
+Last technical review: 7 September 2026
 
 ## Verified technical facts
 
 - TinEye API searches its web index; MatchEngine searches only a customer's private collection and is not a substitute for this product.
 - The commercial API accepts HTTPS JSON responses and authenticates with `x-api-key`. The application uploads a resized, EXIF/GPS-stripped JPEG under 1 MB only from the server. For a separately approved video feature, the server can derive at most three resized, metadata-stripped JPEG frames from a video no longer than ten minutes; it never sends the full video or audio.
 - TinEye says uploaded images are not added to its index and are deleted within 24 hours. Its security statement says client data is processed and stored in three TinEye-controlled data centres in Toronto, Canada.
-- The current API terms prohibit illegal use and infringement of privacy, personality and intellectual-property rights. They do not expressly prohibit lawful adult material, but they also do not expressly approve this use case.
-- TinEye publishes a DPA, but its opening clause says it forms part of the Services License Agreement. The TinEye API is governed by a separately named API Customer Agreement. Coverage of the API must therefore be confirmed rather than assumed.
+- The current API terms prohibit illegal use and infringement of privacy, personality and intellectual-property rights.
+- TinEye publishes a DPA. Its opening clause says it forms part of the Services License Agreement, while the API is governed by a separately named API Customer Agreement.
 - A generated-image sandbox request completed successfully on 19 July 2026. The sandbox returns fixed demonstration matches and does not prove live index quality.
+
+## Written vendor response — 7 September 2026
+
+**Restricted evidence reference:** `TINEYE-EMAIL-2026-09-07-3442129711-164694`
+**Sender:** TinEye API team (`hi@tineye.com`)
+**Scope:** written response to White Eagles Digital Marketing LTD's pre-purchase use-case questions.
+
+TinEye confirmed in writing that:
+
+1. There are no content-category restrictions for legal searches under its API Customer Agreement.
+2. Still images extracted from videos may be searched if the source material was legally obtained and the customer has the appropriate rights or authorisation. TinEye is image-search optimised and does not analyse a submitted video frame-by-frame; extracted frames may match where the same or a substantially similar still exists in its index.
+3. Its published DPA applies to TinEye API customers.
+4. Idée Inc. (TinEye) is a commercial organisation subject to PIPEDA.
+5. Query images, including images retrieved from submitted URLs, are held on TinEye's internal servers for a maximum of 24 hours for repeat-search efficiency, then deleted. TinEye stated that it uses no third-party processors for image processing.
+
+This closes the **vendor-permission evidence** portion of both the still-image and derived-video-frame gates. It does **not** approve production activation: the company must still execute/review the contract and DPA, complete the UK privacy/transfer decision and DPIA, approve pricing/query limits, configure safe credentials, and perform a consented live acceptance test.
 
 Official sources reviewed:
 
@@ -28,14 +44,13 @@ Official sources reviewed:
 
 ## Evidence required before purchase or production use
 
-1. Obtain written TinEye confirmation that the commercial TinEye API may process lawful, consensually submitted images of verified adults that can include nudity or sexually explicit content for copyright and abuse-protection matching. The confirmation must expressly cover still frames derived from creator-submitted videos if video-frame matching will be enabled.
-2. Obtain written confirmation that the published DPA applies to the TinEye API account, or execute an API-specific DPA.
-3. Obtain written confirmation that TinEye's processing of this customer data is subject to PIPEDA. Privacy counsel must record whether UK partial adequacy can be relied on; otherwise execute an appropriate UK safeguard and assessment.
-4. Record retention, deletion, incident-notification, subprocessor/onward-transfer and support commitments. Reconcile the privacy statement's maximum 24-hour upload retention with any account-specific terms.
-5. Approve the Article 6 basis, Article 9 condition, DPIA, privacy wording and explicit upload consent for adult/intimate reference media. Before video-frame activation, publish a counsel-approved Privacy Notice and Service Terms version that describes local frame extraction, the maximum of three provider queries per video and the absence of full-video/audio transfer.
-6. Revalidate the approved launch limits (Monitor 10 files/30 days, Protect 25 files/day, Pro 50 files/day) against the current per-search price before every pricing or provider change. Each still image consumes one paid search and each approved video can consume up to three paid searches. Automatic retry must not silently exceed this allowance.
-7. Purchase the smallest approved commercial bundle with automatic top-up disabled initially. Record the invoice, contract version, API account owner and renewal/expiry date in the restricted vendor file.
-8. Store only opaque evidence references in Render. Never paste the legal correspondence itself into an environment variable.
+1. Review and accept the API Customer Agreement and DPA in the company contract file; record the versions and effective date.
+2. Privacy counsel must record whether UK partial adequacy can be relied on for this processing; otherwise execute an appropriate UK safeguard and transfer assessment.
+3. Record the provider's retention, deletion, incident-notification, subprocessor/onward-transfer and support commitments in the processor register. Reconcile the written maximum 24-hour upload retention with the contract terms.
+4. Approve the Article 6 basis, Article 9 condition, DPIA, privacy wording and explicit upload consent for adult/intimate reference media. Before video-frame activation, publish counsel-approved Privacy Notice and Service Terms wording describing local frame extraction, the maximum of three provider queries per video and the absence of full-video/audio transfer.
+5. Revalidate the approved launch limits (Monitor 10 files/30 days, Protect 25 files/day, Pro 50 files/day) against the current per-search price before every pricing or provider change. Each still image consumes one paid search and each approved video can consume up to three paid searches. Automatic retry must not silently exceed this allowance.
+6. Purchase the smallest approved commercial bundle with automatic top-up disabled initially. Record the invoice, contract version, API account owner and renewal/expiry date in the restricted vendor file.
+7. Store only opaque evidence references in Render. Never paste the legal correspondence itself into an environment variable.
 
 ## Required vendor questions
 
