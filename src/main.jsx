@@ -268,6 +268,33 @@ const LANDING_COPY = {
   ro: { nav:["Cum funcționează","Siguranță","Prețuri","Întrebări"], login:"Autentificare", start:"Începe protecția", eyebrow:"Creat pentru creatori, nu pentru platforme", hero:["Conținutul tău.","Controlul tău."], lead:"Caută imagini compatibile pentru posibile copii publice, păstrează dovezi și gestionează notificări de eliminare verificate dintr-un spațiu privat. Potrivirea video va fi activată numai cu un furnizor compatibil identificat.", account:"Creează un cont securizat", see:"Vezi cum funcționează", trust:"Spațiu privat construit în UK", trustTail:"pentru protecție condusă de creatori", simple:"Protecție simplă", howTitle:"De la conținut furat la eliminat, fără haos.", howLead:"Un flux clar care te ține informat și în control la fiecare pas.", privacy:"Confidențialitate înainte de toate", safetyTitle:"Conținutul intim merită protecție serioasă.", pricing:"Prețuri planificate pentru lansare", pricingTitle:"Alege nivelul de suport operațional.", footer:"Protejăm oamenii din spatele conținutului." }
 };
 
+const LANDING_DETAIL = {
+  en: {
+    workflow: [["Add your content", "Upload supported reference media securely. You choose what is processed, explicitly consent per file and can delete it."], ["We find copies", "Visual matching surfaces likely copies and preserves the URL, date, and page evidence for your review."], ["Take action", "Approve a prepared notice, track its status, and escalate stubborn cases with specialist support."]],
+    safety: ["We designed Content Protect for people whose safety, identity, and livelihood depend on discretion. Reference files are private, encrypted, and never used for advertising or public profiles.", "Delete your content and account whenever you choose", "Review every match before any action is taken", "No contact with uploaders in your name without approval"],
+    plans: [["Monitor", "Know where your content appears.", "Choose Monitor"], ["Protect", "Find copies and act quickly.", "Start protecting"], ["Pro", "High-volume, priority protection.", "Choose Pro"]],
+    faqLabel: "Clear answers", faqTitle: "Questions creators ask before trusting a protection service.",
+    faq: [["Does Content Protect automatically remove content?", "No. A similarity result is reviewed, evidence is preserved and you must approve the required declarations before a trained operator can send a notice."], ["Is uploaded content public?", "No. Reference media is private and encrypted, is not used for advertising or public profiles, and can be deleted by you."], ["Who can use Content Protect?", "Verified adults aged 18 or over who own the relevant rights or are authorised to act for the rights holder."], ["Does a match prove copyright infringement?", "No. Matching is an evidence lead, not a legal conclusion. Ownership, licence, context and jurisdiction must be reviewed."], ["Can you guarantee removal?", "No service can guarantee an outcome. Platforms, hosts and search engines make their own decisions, and contested cases may require specialist legal advice."], ["Do you store card details?", "No. Stripe processes card information. Content Protect stores only the subscription and billing references needed to manage your account."]],
+    legal: ["Privacy", "Terms", "Safety", "Cookies", "Disputes"]
+  },
+  es: {
+    workflow: [["Añade tu contenido", "Sube archivos de referencia compatibles de forma segura. Tú eliges qué se procesa, das consentimiento explícito por archivo y puedes eliminarlo."], ["Buscamos copias", "La coincidencia visual muestra posibles copias y conserva la URL, fecha y evidencia de la página para tu revisión."], ["Actúa", "Aprueba un aviso preparado, sigue su estado y escala los casos difíciles con apoyo especializado."]],
+    safety: ["Diseñamos Content Protect para personas cuya seguridad, identidad y trabajo dependen de la discreción. Los archivos de referencia son privados, cifrados y nunca se usan para publicidad ni perfiles públicos.", "Elimina tu contenido y tu cuenta cuando quieras", "Revisa cada coincidencia antes de que se tome cualquier acción", "Nunca contactamos a quien sube contenido en tu nombre sin aprobación"],
+    plans: [["Monitor", "Sabe dónde aparece tu contenido.", "Elegir Monitor"], ["Protect", "Encuentra copias y actúa rápido.", "Empezar a proteger"], ["Pro", "Protección prioritaria y de mayor volumen.", "Elegir Pro"]],
+    faqLabel: "Respuestas claras", faqTitle: "Preguntas que los creadores hacen antes de confiar en un servicio de protección.",
+    faq: [["¿Content Protect elimina contenido automáticamente?", "No. Se revisa cada resultado de similitud, se conservan las pruebas y debes aprobar las declaraciones necesarias antes de que un operador formado pueda enviar un aviso."], ["¿El contenido subido es público?", "No. El material de referencia es privado y cifrado, no se usa para publicidad ni perfiles públicos, y puedes eliminarlo."], ["¿Quién puede usar Content Protect?", "Adultos verificados de 18 años o más que sean titulares de los derechos relevantes o estén autorizados para actuar por el titular."], ["¿Una coincidencia prueba una infracción de derechos de autor?", "No. Una coincidencia es una pista de evidencia, no una conclusión legal. Deben revisarse propiedad, licencia, contexto y jurisdicción."], ["¿Podéis garantizar la eliminación?", "Ningún servicio puede garantizar un resultado. Las plataformas, los hosts y los buscadores toman sus propias decisiones, y los casos disputados pueden requerir asesoramiento legal especializado."], ["¿Guardáis los datos de la tarjeta?", "No. Stripe procesa la información de la tarjeta. Content Protect solo conserva las referencias de suscripción y facturación necesarias para gestionar tu cuenta."]],
+    legal: ["Privacidad", "Términos", "Seguridad", "Cookies", "Disputas"]
+  },
+  ro: {
+    workflow: [["Adaugă conținutul", "Încarcă în siguranță fișiere de referință compatibile. Alegi ce este procesat, îți dai consimțământul explicit pentru fiecare fișier și îl poți șterge."], ["Găsim copii", "Potrivirea vizuală scoate la iveală posibile copii și păstrează URL-ul, data și dovada paginii pentru verificarea ta."], ["Acționezi", "Aprobă o notificare pregătită, urmărește-i starea și trimite cazurile dificile către suport specializat."]],
+    safety: ["Am creat Content Protect pentru oamenii a căror siguranță, identitate și activitate depind de discreție. Fișierele de referință sunt private, criptate și nu sunt utilizate niciodată pentru publicitate sau profiluri publice.", "Șterge-ți conținutul și contul oricând dorești", "Verifică fiecare potrivire înainte de orice acțiune", "Nu contactăm persoanele care încarcă materialul în numele tău fără aprobare"],
+    plans: [["Monitor", "Află unde apare conținutul tău.", "Alege Monitor"], ["Protect", "Găsește copii și acționează rapid.", "Începe protecția"], ["Pro", "Protecție prioritară, pentru volum mare.", "Alege Pro"]],
+    faqLabel: "Răspunsuri clare", faqTitle: "Întrebări puse de creatori înainte de a avea încredere într-un serviciu de protecție.",
+    faq: [["Content Protect elimină automat conținutul?", "Nu. Fiecare rezultat de similitudine este verificat, dovezile sunt păstrate și trebuie să aprobi declarațiile necesare înainte ca un operator instruit să poată trimite o notificare."], ["Conținutul încărcat devine public?", "Nu. Materialul de referință este privat și criptat, nu este utilizat pentru publicitate sau profiluri publice și îl poți șterge."], ["Cine poate folosi Content Protect?", "Adulți verificați, de minimum 18 ani, care dețin drepturile relevante sau sunt autorizați să acționeze pentru titularul drepturilor."], ["O potrivire dovedește încălcarea drepturilor de autor?", "Nu. O potrivire este o pistă de dovezi, nu o concluzie juridică. Trebuie verificate proprietatea, licența, contextul și jurisdicția."], ["Puteți garanta eliminarea?", "Niciun serviciu nu poate garanta un rezultat. Platformele, hosturile și motoarele de căutare decid independent, iar cazurile contestate pot necesita consultanță juridică specializată."], ["Stocați datele cardului?", "Nu. Stripe procesează datele cardului. Content Protect păstrează doar referințele de abonament și facturare necesare pentru gestionarea contului."]],
+    legal: ["Confidențialitate", "Termeni", "Siguranță", "Cookie-uri", "Contestații"]
+  }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -275,6 +302,7 @@ function LanguagePicker({ language, onChange }) {
 function Landing({ onStart, onLogin, language, setLanguage }) {
   const [menu, setMenu] = useState(false);
   const copy = LANDING_COPY[language] || LANDING_COPY.en;
+  const detail = LANDING_DETAIL[language] || LANDING_DETAIL.en;
   return (
     <div className="landing" lang={language}>
       <nav className="nav wrap">
@@ -432,33 +460,24 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
               <div className="step-icon">
                 <Upload />
               </div>
-              <h3>Add your content</h3>
-              <p>
-                Upload supported reference media securely. You choose what is
-                processed, explicitly consent per file and can delete it.
-              </p>
+              <h3>{detail.workflow[0][0]}</h3>
+              <p>{detail.workflow[0][1]}</p>
             </div>
             <div className="step">
               <span className="step-num">02</span>
               <div className="step-icon">
                 <Search />
               </div>
-              <h3>We find copies</h3>
-              <p>
-                Visual matching surfaces likely copies and preserves the URL,
-                date, and page evidence for your review.
-              </p>
+              <h3>{detail.workflow[1][0]}</h3>
+              <p>{detail.workflow[1][1]}</p>
             </div>
             <div className="step">
               <span className="step-num">03</span>
               <div className="step-icon">
                 <FileCheck2 />
               </div>
-              <h3>Take action</h3>
-              <p>
-                Approve a prepared notice, track its status, and escalate
-                stubborn cases with specialist support.
-              </p>
+              <h3>{detail.workflow[2][0]}</h3>
+              <p>{detail.workflow[2][1]}</p>
             </div>
           </div>
         </section>
@@ -479,22 +498,16 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
             <div>
               <div className="section-label">{copy.privacy}</div>
               <h2>{copy.safetyTitle}</h2>
-              <p>
-                We designed Content Protect for people whose safety, identity,
-                and livelihood depend on discretion. Reference files are
-                private, encrypted, and never used for advertising or public
-                profiles.
-              </p>
+              <p>{detail.safety[0]}</p>
               <ul>
                 <li>
-                  <Check /> Delete your content and account whenever you choose
+                  <Check /> {detail.safety[1]}
                 </li>
                 <li>
-                  <Check /> Review every match before any action is taken
+                  <Check /> {detail.safety[2]}
                 </li>
                 <li>
-                  <Check /> No contact with uploaders in your name without
-                  approval
+                  <Check /> {detail.safety[3]}
                 </li>
               </ul>
             </div>
@@ -506,8 +519,8 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
           <h2>{copy.pricingTitle}</h2>
           <div className="price-cards">
             <div className="price-card">
-              <h3>Monitor</h3>
-              <p>Know where your content appears.</p>
+              <h3>{detail.plans[0][0]}</h3>
+              <p>{detail.plans[0][1]}</p>
               <div className="price">
                 <strong>£19</strong>
                 <span>/ month</span>
@@ -525,13 +538,13 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
                 </li>
               </ul>
               <button className="btn btn-outline" onClick={onStart}>
-                Choose Monitor
+                {detail.plans[0][2]}
               </button>
             </div>
             <div className="price-card featured">
               <span className="popular">MOST POPULAR</span>
-              <h3>Protect</h3>
-              <p>Find copies and act quickly.</p>
+              <h3>{detail.plans[1][0]}</h3>
+              <p>{detail.plans[1][1]}</p>
               <div className="price">
                 <strong>£49</strong>
                 <span>/ month</span>
@@ -549,12 +562,12 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
                 </li>
               </ul>
               <button className="btn btn-primary" onClick={onStart}>
-                Start protecting
+                {detail.plans[1][2]}
               </button>
             </div>
             <div className="price-card">
-              <h3>Pro</h3>
-              <p>High-volume, priority protection.</p>
+              <h3>{detail.plans[2][0]}</h3>
+              <p>{detail.plans[2][1]}</p>
               <div className="price">
                 <strong>£99</strong>
                 <span>/ month</span>
@@ -572,7 +585,7 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
                 </li>
               </ul>
               <button className="btn btn-outline" onClick={onStart}>
-                Choose Pro
+                {detail.plans[2][2]}
               </button>
             </div>
           </div>
@@ -585,54 +598,10 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
         </section>
 
         <section id="faq" className="faq wrap section">
-          <div className="section-label">Clear answers</div>
-          <h2>Questions creators ask before trusting a protection service.</h2>
+          <div className="section-label">{detail.faqLabel}</div>
+          <h2>{detail.faqTitle}</h2>
           <div className="faq-grid">
-            <article>
-              <h3>Does Content Protect automatically remove content?</h3>
-              <p>
-                No. A similarity result is reviewed, evidence is preserved and
-                you must approve the required declarations before a trained
-                operator can send a notice.
-              </p>
-            </article>
-            <article>
-              <h3>Is uploaded content public?</h3>
-              <p>
-                No. Reference media is private and encrypted, is not used for
-                advertising or public profiles, and can be deleted by you.
-              </p>
-            </article>
-            <article>
-              <h3>Who can use Content Protect?</h3>
-              <p>
-                Verified adults aged 18 or over who own the relevant rights or
-                are authorised to act for the rights holder.
-              </p>
-            </article>
-            <article>
-              <h3>Does a match prove copyright infringement?</h3>
-              <p>
-                No. Matching is an evidence lead, not a legal conclusion.
-                Ownership, licence, context and jurisdiction must be reviewed.
-              </p>
-            </article>
-            <article>
-              <h3>Can you guarantee removal?</h3>
-              <p>
-                No service can guarantee an outcome. Platforms, hosts and search
-                engines make their own decisions, and contested cases may
-                require specialist legal advice.
-              </p>
-            </article>
-            <article>
-              <h3>Do you store card details?</h3>
-              <p>
-                No. Stripe processes card information. Content Protect stores
-                only the subscription and billing references needed to manage
-                your account.
-              </p>
-            </article>
+            {detail.faq.map(([question, answer]) => <article key={question}><h3>{question}</h3><p>{answer}</p></article>)}
           </div>
         </section>
       </main>
@@ -641,11 +610,11 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
           <Logo dark />
           <p>{copy.footer}</p>
           <div>
-            <a href="/privacy.html">Privacy</a>
-            <a href="/terms.html">Terms</a>
-            <a href="/safety.html">Safety</a>
-            <a href="/cookies.html">Cookies</a>
-            <a href="/disputes.html">Disputes</a>
+            <a href="/privacy.html">{detail.legal[0]}</a>
+            <a href="/terms.html">{detail.legal[1]}</a>
+            <a href="/safety.html">{detail.legal[2]}</a>
+            <a href="/cookies.html">{detail.legal[3]}</a>
+            <a href="/disputes.html">{detail.legal[4]}</a>
           </div>
         </div>
       </footer>
