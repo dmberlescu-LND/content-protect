@@ -275,7 +275,11 @@ const LANDING_DETAIL = {
     plans: [["Monitor", "Know where your content appears.", "Choose Monitor"], ["Protect", "Find copies and act quickly.", "Start protecting"], ["Pro", "High-volume, priority protection.", "Choose Pro"]],
     faqLabel: "Clear answers", faqTitle: "Questions creators ask before trusting a protection service.",
     faq: [["Does Content Protect automatically remove content?", "No. A similarity result is reviewed, evidence is preserved and you must approve the required declarations before a trained operator can send a notice."], ["Is uploaded content public?", "No. Reference media is private and encrypted, is not used for advertising or public profiles, and can be deleted by you."], ["Who can use Content Protect?", "Verified adults aged 18 or over who own the relevant rights or are authorised to act for the rights holder."], ["Does a match prove copyright infringement?", "No. Matching is an evidence lead, not a legal conclusion. Ownership, licence, context and jurisdiction must be reviewed."], ["Can you guarantee removal?", "No service can guarantee an outcome. Platforms, hosts and search engines make their own decisions, and contested cases may require specialist legal advice."], ["Do you store card details?", "No. Stripe processes card information. Content Protect stores only the subscription and billing references needed to manage your account."]],
-    legal: ["Privacy", "Terms", "Safety", "Cookies", "Disputes"]
+    legal: ["Privacy", "Terms", "Safety", "Cookies", "Disputes"],
+    visual: ["PRODUCT WORKFLOW PREVIEW", "Review", "PROTECTED ASSET", "8 reference images", "Sources checked", "Provider-dependent", "Potential matches", "Human-reviewed", "Match verified", "Similarity lead — review required", "Private by design", "Encrypted & deleted anytime"],
+    proof: [["Private", "encrypted reference vault"], ["Creator-led", "approval before action"], ["Transparent", "clear evidence and status"], ["UK", "company and GBP billing"]],
+    chips: ["Encrypted storage", "You control access"],
+    pricing: ["/ month", "MOST POPULAR", "Up to", "private reference files", "One supported-image scan every 30 days", "Match alerts & evidence", "One supported-image scan every 24 hours", "Evidence and guided takedown cases", "Priority specialist review", "Checkout remains unavailable until provider, verification and billing controls are active. Features and recurring price are confirmed again before purchase. Outcomes are not guaranteed; court orders and legal representation are not included."]
   },
   es: {
     workflow: [["Añade tu contenido", "Sube archivos de referencia compatibles de forma segura. Tú eliges qué se procesa, das consentimiento explícito por archivo y puedes eliminarlo."], ["Buscamos copias", "La coincidencia visual muestra posibles copias y conserva la URL, fecha y evidencia de la página para tu revisión."], ["Actúa", "Aprueba un aviso preparado, sigue su estado y escala los casos difíciles con apoyo especializado."]],
@@ -283,7 +287,11 @@ const LANDING_DETAIL = {
     plans: [["Monitor", "Sabe dónde aparece tu contenido.", "Elegir Monitor"], ["Protect", "Encuentra copias y actúa rápido.", "Empezar a proteger"], ["Pro", "Protección prioritaria y de mayor volumen.", "Elegir Pro"]],
     faqLabel: "Respuestas claras", faqTitle: "Preguntas que los creadores hacen antes de confiar en un servicio de protección.",
     faq: [["¿Content Protect elimina contenido automáticamente?", "No. Se revisa cada resultado de similitud, se conservan las pruebas y debes aprobar las declaraciones necesarias antes de que un operador formado pueda enviar un aviso."], ["¿El contenido subido es público?", "No. El material de referencia es privado y cifrado, no se usa para publicidad ni perfiles públicos, y puedes eliminarlo."], ["¿Quién puede usar Content Protect?", "Adultos verificados de 18 años o más que sean titulares de los derechos relevantes o estén autorizados para actuar por el titular."], ["¿Una coincidencia prueba una infracción de derechos de autor?", "No. Una coincidencia es una pista de evidencia, no una conclusión legal. Deben revisarse propiedad, licencia, contexto y jurisdicción."], ["¿Podéis garantizar la eliminación?", "Ningún servicio puede garantizar un resultado. Las plataformas, los hosts y los buscadores toman sus propias decisiones, y los casos disputados pueden requerir asesoramiento legal especializado."], ["¿Guardáis los datos de la tarjeta?", "No. Stripe procesa la información de la tarjeta. Content Protect solo conserva las referencias de suscripción y facturación necesarias para gestionar tu cuenta."]],
-    legal: ["Privacidad", "Términos", "Seguridad", "Cookies", "Disputas"]
+    legal: ["Privacidad", "Términos", "Seguridad", "Cookies", "Disputas"],
+    visual: ["VISTA PREVIA DEL FLUJO", "Revisión", "ARCHIVO PROTEGIDO", "8 imágenes de referencia", "Fuentes comprobadas", "Depende del proveedor", "Posibles coincidencias", "Revisadas por personas", "Coincidencia verificada", "Indicio de similitud — requiere revisión", "Privado por diseño", "Cifrado y eliminable en cualquier momento"],
+    proof: [["Privado", "bóveda cifrada de referencias"], ["Dirigido por el creador", "aprobación antes de actuar"], ["Transparente", "pruebas y estado claros"], ["Reino Unido", "empresa y facturación en GBP"]],
+    chips: ["Almacenamiento cifrado", "Tú controlas el acceso"],
+    pricing: ["/ mes", "MÁS ELEGIDO", "Hasta", "archivos de referencia privados", "Un escaneo de imagen compatible cada 30 días", "Alertas de coincidencias y pruebas", "Un escaneo de imagen compatible cada 24 horas", "Pruebas y casos guiados de retirada", "Revisión especializada prioritaria", "El pago seguirá inactivo hasta que estén activos los controles de proveedor, verificación y facturación. Las funciones y el precio recurrente se confirman de nuevo antes de comprar. Los resultados no están garantizados; no se incluyen órdenes judiciales ni representación legal."]
   },
   ro: {
     workflow: [["Adaugă conținutul", "Încarcă în siguranță fișiere de referință compatibile. Alegi ce este procesat, îți dai consimțământul explicit pentru fiecare fișier și îl poți șterge."], ["Găsim copii", "Potrivirea vizuală scoate la iveală posibile copii și păstrează URL-ul, data și dovada paginii pentru verificarea ta."], ["Acționezi", "Aprobă o notificare pregătită, urmărește-i starea și trimite cazurile dificile către suport specializat."]],
@@ -291,7 +299,11 @@ const LANDING_DETAIL = {
     plans: [["Monitor", "Află unde apare conținutul tău.", "Alege Monitor"], ["Protect", "Găsește copii și acționează rapid.", "Începe protecția"], ["Pro", "Protecție prioritară, pentru volum mare.", "Alege Pro"]],
     faqLabel: "Răspunsuri clare", faqTitle: "Întrebări puse de creatori înainte de a avea încredere într-un serviciu de protecție.",
     faq: [["Content Protect elimină automat conținutul?", "Nu. Fiecare rezultat de similitudine este verificat, dovezile sunt păstrate și trebuie să aprobi declarațiile necesare înainte ca un operator instruit să poată trimite o notificare."], ["Conținutul încărcat devine public?", "Nu. Materialul de referință este privat și criptat, nu este utilizat pentru publicitate sau profiluri publice și îl poți șterge."], ["Cine poate folosi Content Protect?", "Adulți verificați, de minimum 18 ani, care dețin drepturile relevante sau sunt autorizați să acționeze pentru titularul drepturilor."], ["O potrivire dovedește încălcarea drepturilor de autor?", "Nu. O potrivire este o pistă de dovezi, nu o concluzie juridică. Trebuie verificate proprietatea, licența, contextul și jurisdicția."], ["Puteți garanta eliminarea?", "Niciun serviciu nu poate garanta un rezultat. Platformele, hosturile și motoarele de căutare decid independent, iar cazurile contestate pot necesita consultanță juridică specializată."], ["Stocați datele cardului?", "Nu. Stripe procesează datele cardului. Content Protect păstrează doar referințele de abonament și facturare necesare pentru gestionarea contului."]],
-    legal: ["Confidențialitate", "Termeni", "Siguranță", "Cookie-uri", "Contestații"]
+    legal: ["Confidențialitate", "Termeni", "Siguranță", "Cookie-uri", "Contestații"],
+    visual: ["PREVIZUALIZARE FLUX PRODUS", "Verificare", "FIȘIER PROTEJAT", "8 imagini de referință", "Surse verificate", "Depinde de furnizor", "Posibile potriviri", "Verificate de oameni", "Potrivire verificată", "Indiciu de similitudine — necesită verificare", "Privat prin design", "Criptat și ștergibil oricând"],
+    proof: [["Privat", "seif criptat pentru referințe"], ["Condus de creator", "aprobare înainte de acțiune"], ["Transparent", "dovezi și status clar"], ["UK", "companie și facturare în GBP"]],
+    chips: ["Stocare criptată", "Tu controlezi accesul"],
+    pricing: ["/ lună", "CEL MAI ALES", "Până la", "fișiere private de referință", "O scanare compatibilă la fiecare 30 de zile", "Alerte de potrivire și dovezi", "O scanare compatibilă la fiecare 24 de ore", "Dovezi și cazuri ghidate de eliminare", "Verificare prioritară de specialitate", "Plata rămâne indisponibilă până devin active controalele furnizorului, verificării și facturării. Funcțiile și prețul recurent sunt confirmate din nou înainte de cumpărare. Rezultatele nu sunt garantate; nu sunt incluse ordine judecătorești sau reprezentare juridică."]
   }
 };
 
@@ -376,8 +388,8 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
             <div className="scan-card main-scan">
               <div className="scan-top">
                 <span className="pulse-dot"></span>
-                <span>PRODUCT WORKFLOW PREVIEW</span>
-                <b>Review</b>
+                <span>{detail.visual[0]}</span>
+                <b>{detail.visual[1]}</b>
               </div>
               <div className="scan-progress">
                 <i></i>
@@ -387,39 +399,39 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
                   <span></span>
                 </div>
                 <div className="preview-info">
-                  <small>PROTECTED ASSET</small>
+                  <small>{detail.visual[2]}</small>
                   <strong>Summer Campaign 04</strong>
                   <span>
-                    <Image size={14} /> 8 reference images
+                    <Image size={14} /> {detail.visual[3]}
                   </span>
                 </div>
                 <ShieldCheck className="shield" size={31} />
               </div>
               <div className="found-row">
                 <span>
-                  <Globe2 size={17} /> Sources checked
+                  <Globe2 size={17} /> {detail.visual[4]}
                 </span>
-                <b>Provider-dependent</b>
+                <b>{detail.visual[5]}</b>
               </div>
               <div className="found-row danger">
                 <span>
-                  <Zap size={17} /> Potential matches
+                  <Zap size={17} /> {detail.visual[6]}
                 </span>
-                <b>Human-reviewed</b>
+                <b>{detail.visual[7]}</b>
               </div>
             </div>
             <div className="floating-card verified">
               <CircleCheck size={25} />
               <div>
-                <b>Match verified</b>
-                <span>Similarity lead — review required</span>
+                <b>{detail.visual[8]}</b>
+                <span>{detail.visual[9]}</span>
               </div>
             </div>
             <div className="floating-card private">
               <LockKeyhole size={21} />
               <div>
-                <b>Private by design</b>
-                <span>Encrypted & deleted anytime</span>
+                <b>{detail.visual[10]}</b>
+                <span>{detail.visual[11]}</span>
               </div>
             </div>
           </div>
@@ -428,20 +440,20 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
         <section className="proof-strip">
           <div className="wrap proof-grid">
             <div>
-              <strong>Private</strong>
-              <span>encrypted reference vault</span>
+              <strong>{detail.proof[0][0]}</strong>
+              <span>{detail.proof[0][1]}</span>
             </div>
             <div>
-              <strong>Creator-led</strong>
-              <span>approval before action</span>
+              <strong>{detail.proof[1][0]}</strong>
+              <span>{detail.proof[1][1]}</span>
             </div>
             <div>
-              <strong>Transparent</strong>
-              <span>clear evidence and status</span>
+              <strong>{detail.proof[2][0]}</strong>
+              <span>{detail.proof[2][1]}</span>
             </div>
             <div>
-              <strong>UK</strong>
-              <span>company and GBP billing</span>
+              <strong>{detail.proof[3][0]}</strong>
+              <span>{detail.proof[3][1]}</span>
             </div>
           </div>
         </section>
@@ -489,10 +501,10 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
                 <LockKeyhole size={54} />
               </div>
               <span className="safe-chip chip-a">
-                <Check size={14} /> Encrypted storage
+                <Check size={14} /> {detail.chips[0]}
               </span>
               <span className="safe-chip chip-b">
-                <Eye size={14} /> You control access
+                <Eye size={14} /> {detail.chips[1]}
               </span>
             </div>
             <div>
@@ -523,18 +535,17 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
               <p>{detail.plans[0][1]}</p>
               <div className="price">
                 <strong>£19</strong>
-                <span>/ month</span>
+                <span>{detail.pricing[0]}</span>
               </div>
               <ul>
                 <li>
-                  <Check /> Up to {PLAN_ENTITLEMENTS.Monitor.assetLimit} private
-                  reference files
+                  <Check /> {detail.pricing[2]} {PLAN_ENTITLEMENTS.Monitor.assetLimit} {detail.pricing[3]}
                 </li>
                 <li>
-                  <Check /> One supported-image scan every 30 days
+                  <Check /> {detail.pricing[4]}
                 </li>
                 <li>
-                  <Check /> Match alerts & evidence
+                  <Check /> {detail.pricing[5]}
                 </li>
               </ul>
               <button className="btn btn-outline" onClick={onStart}>
@@ -542,23 +553,22 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
               </button>
             </div>
             <div className="price-card featured">
-              <span className="popular">MOST POPULAR</span>
+              <span className="popular">{detail.pricing[1]}</span>
               <h3>{detail.plans[1][0]}</h3>
               <p>{detail.plans[1][1]}</p>
               <div className="price">
                 <strong>£49</strong>
-                <span>/ month</span>
+                <span>{detail.pricing[0]}</span>
               </div>
               <ul>
                 <li>
-                  <Check /> Up to {PLAN_ENTITLEMENTS.Protect.assetLimit} private
-                  reference files
+                  <Check /> {detail.pricing[2]} {PLAN_ENTITLEMENTS.Protect.assetLimit} {detail.pricing[3]}
                 </li>
                 <li>
-                  <Check /> One supported-image scan every 24 hours
+                  <Check /> {detail.pricing[6]}
                 </li>
                 <li>
-                  <Check /> Evidence and guided takedown cases
+                  <Check /> {detail.pricing[7]}
                 </li>
               </ul>
               <button className="btn btn-primary" onClick={onStart}>
@@ -570,18 +580,17 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
               <p>{detail.plans[2][1]}</p>
               <div className="price">
                 <strong>£99</strong>
-                <span>/ month</span>
+                <span>{detail.pricing[0]}</span>
               </div>
               <ul>
                 <li>
-                  <Check /> Up to {PLAN_ENTITLEMENTS.Pro.assetLimit} private
-                  reference files
+                  <Check /> {detail.pricing[2]} {PLAN_ENTITLEMENTS.Pro.assetLimit} {detail.pricing[3]}
                 </li>
                 <li>
-                  <Check /> One supported-image scan every 24 hours
+                  <Check /> {detail.pricing[6]}
                 </li>
                 <li>
-                  <Check /> Priority specialist review
+                  <Check /> {detail.pricing[8]}
                 </li>
               </ul>
               <button className="btn btn-outline" onClick={onStart}>
@@ -590,10 +599,7 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
             </div>
           </div>
           <p className="disclaimer">
-            Checkout remains unavailable until provider, verification and
-            billing controls are active. Features and recurring price are
-            confirmed again before purchase. Outcomes are not guaranteed; court
-            orders and legal representation are not included.
+            {detail.pricing[9]}
           </p>
         </section>
 
