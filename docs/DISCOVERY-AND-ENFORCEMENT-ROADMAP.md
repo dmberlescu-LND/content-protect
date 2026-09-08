@@ -49,6 +49,8 @@ Deliverables:
 
 **Target:** a small but real service that customers can understand and we can measure.
 
+The detailed entry gates, invitation wording, creator intake and weekly review process are maintained in [the pilot readiness runbook](./PILOT-READINESS-RUNBOOK.md). It is deliberately limited to an invitation-only, non-explicit-image first cohort.
+
 Scope:
 
 - Enable only approved still-image search first.
