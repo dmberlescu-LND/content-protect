@@ -43,6 +43,8 @@ Deliverables:
 4. Create a provider scorecard: coverage, precision, latency, cost per query, adult-content permissions, deletion/retention terms, incident route and DPA status.
 5. Define creator pilot terms, informed consent, exclusion criteria, refund/cancellation route and an urgent-harm escalation process.
 
+The first researched platform reporting routes are recorded separately in [the official reporting route register](./OFFICIAL-REPORTING-ROUTE-REGISTER.md). They remain disabled until legal and operational approval is recorded.
+
 **Exit evidence:** written approvals stored outside the repository; opaque approval references in configuration; `/api/health/ready` shows the relevant gate as ready; one non-explicit consented live test per enabled route.
 
 ## Stage 1 — commercial discovery MVP
