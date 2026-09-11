@@ -325,6 +325,12 @@ const DASHBOARD_COPY = {
   ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Protecție activă", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Conținutul tău este protejat. Iată ce s-a schimbat de la ultima vizită.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere protejate"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", live:"LIVE", waiting:"ÎN AȘTEPTARE" }
 };
 
+const DASHBOARD_DETAIL = {
+  en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved" },
+  es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada" },
+  ro: { vaultTitle:"Seif privat pentru referințe", vaultOwned:"Fișiere criptate deținute de acest cont", vaultUsed:"folosite", vaultChoose:"alege un plan pentru a adăuga fișiere", encrypted:"Criptat", rightsReviewed:"Drepturi verificate", rightsDeclared:"Drepturi declarate", rightsMissing:"Lipsește declarația de drepturi", replaceRights:"Înlocuiește declarația de drepturi", addRights:"Adaugă declarația de drepturi", downloadOriginal:"Descarcă originalul", deletePermanently:"Șterge permanent", vaultEmpty:"Încă nu există conținut de referință. Alege „Adaugă conținut” pentru a testa seiful securizat.", casesTitle:"Cazuri de eliminare", casesLead:"Fiecare acțiune necesită aprobarea creatorului", caseOpened:"Caz deschis", disputeOpen:"Contestație primită · acțiunile ulterioare sunt oprite pentru verificare umană", reviewApprove:"Verifică și aprobă", casesEmpty:"Încă nu există cazuri. Deschide Potriviri și selectează un rezultat pentru a păstra dovezile.", recentMatches:"Potriviri recente", matchesLead:"Posibile utilizări neautorizate detectate prin similitudine vizuală", filters:["Toate potrivirile","Acțiune necesară","Monitorizare","Verificare caz","Aprobarea ta","Livrare în așteptare","Raportat","Eliminat"], columns:["CONȚINUT GĂSIT","SURSĂ","SCOR POTRIVIRE","STATUS"], matchesEmpty:"Încă nu există potriviri publice verificate. Adaugă o imagine de referință și pornește scanarea după activarea furnizorului.", publicPage:"Pagină publică", captureRequired:"Este necesară capturarea paginii pentru un caz", capturePreserved:"Captură păstrată" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1302,6 +1308,7 @@ function RightsDeclarationFields({ value, onChange }) {
 
 function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
+  const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -1886,12 +1893,12 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="matches-card">
               <div className="matches-head">
                 <div>
-                  <h2>Private reference vault</h2>
+                  <h2>{detail.vaultTitle}</h2>
                   <p>
-                    Encrypted files owned by this account
+                    {detail.vaultOwned}
                     {data.entitlements.assetLimit
-                      ? ` · ${data.assets.length} of ${data.entitlements.assetLimit} used`
-                      : " · choose a plan to add files"}
+                      ? ` · ${data.assets.length} / ${data.entitlements.assetLimit} ${detail.vaultUsed}`
+                      : ` · ${detail.vaultChoose}`}
                   </p>
                 </div>
               </div>
@@ -1908,13 +1915,13 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       </span>
                     </div>
                     <div className="confidence">
-                      <b>Encrypted</b>
+                      <b>{detail.encrypted}</b>
                       <span className="rights-state">
                         {a.rights
                           ? a.rights.status === "verified"
-                            ? "Rights reviewed"
-                            : "Rights declared"
-                          : "Rights declaration missing"}
+                            ? detail.rightsReviewed
+                            : detail.rightsDeclared
+                          : detail.rightsMissing}
                       </span>
                     </div>
                     <div>
@@ -1924,8 +1931,8 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       <button
                         title={
                           a.rights
-                            ? "Replace rights declaration"
-                            : "Add rights declaration"
+                            ? detail.replaceRights
+                            : detail.addRights
                         }
                         onClick={() => {
                           setRightsAsset(a);
@@ -1939,13 +1946,13 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                         <FileCheck2 />
                       </button>
                       <button
-                        title="Download original"
+                        title={detail.downloadOriginal}
                         onClick={() => downloadAsset(a)}
                       >
                         <Download />
                       </button>
                       <button
-                        title="Delete permanently"
+                        title={detail.deletePermanently}
                         onClick={() => deleteAsset(a)}
                       >
                         <X />
@@ -1955,8 +1962,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 ))
               ) : (
                 <div className="empty-state">
-                  No reference content yet. Choose “Add content” to test the
-                  secure vault.
+                  {detail.vaultEmpty}
                 </div>
               )}
             </div>
@@ -1965,8 +1971,8 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="matches-card">
               <div className="matches-head">
                 <div>
-                  <h2>Takedown cases</h2>
-                  <p>Every action requires creator approval</p>
+                  <h2>{detail.casesTitle}</h2>
+                  <p>{detail.casesLead}</p>
                 </div>
               </div>
               {data.cases.length ? (
@@ -1978,14 +1984,14 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     <div className="source">
                       <b>{c.source}</b>
                       <span>
-                        Case opened{" "}
+                        {detail.caseOpened}{" "}
                         {new Date(c.createdAt).toLocaleDateString("en-GB")}
                       </span>
                       {c.disputes?.some(
                         (dispute) => dispute.status === "open",
                       ) && (
                         <span>
-                          Dispute received · follow-ups frozen for human review
+                          {detail.disputeOpen}
                         </span>
                       )}
                     </div>
@@ -2000,15 +2006,14 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                         className="btn btn-primary"
                         onClick={() => approveCase(c.id)}
                       >
-                        Review & approve
+                        {detail.reviewApprove}
                       </button>
                     )}
                   </div>
                 ))
               ) : (
                 <div className="empty-state">
-                  No cases yet. Open Matches and select a result to preserve
-                  evidence.
+                  {detail.casesEmpty}
                 </div>
               )}
             </div>
@@ -2094,37 +2099,26 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
               <div className="matches-head">
                 <div>
                   <h2>
-                    {tab === "Takedowns" ? "Takedown cases" : "Recent matches"}
+                    {tab === "Takedowns" ? detail.casesTitle : detail.recentMatches}
                   </h2>
                   <p>
-                    Potential unauthorized uses detected by visual similarity
+                    {detail.matchesLead}
                   </p>
                 </div>
                 <select
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
-                  <option>All matches</option>
-                  <option>Action needed</option>
-                  <option>Monitoring</option>
-                  <option>Case review</option>
-                  <option>Your approval</option>
-                  <option>Delivery pending</option>
-                  <option>Reported</option>
-                  <option>Removed</option>
+                  {detail.filters.map((label, index) => <option key={label} value={["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"][index]}>{label}</option>)}
                 </select>
               </div>
               <div className="table-head">
-                <span>FOUND CONTENT</span>
-                <span>SOURCE</span>
-                <span>MATCH SCORE</span>
-                <span>STATUS</span>
+                {detail.columns.map((label) => <span key={label}>{label}</span>)}
                 <span></span>
               </div>
               {!filtered.length && !loading && (
                 <div className="empty-state">
-                  No verified public matches yet. Add a reference image and run
-                  a live scan after provider activation.
+                  {detail.matchesEmpty}
                 </div>
               )}
               {filtered.map((m) => (
@@ -2136,13 +2130,13 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   <div className="source">
                     <b>{m.site}</b>
                     <span>
-                      <Link2 /> Public page · {m.age}
+                      <Link2 /> {detail.publicPage} · {m.age}
                     </span>
                     <span className={m.pageCapture ? "capture-ok" : ""}>
                       <FileCheck2 />
                       {m.pageCapture
-                        ? `Capture preserved · ${m.pageCapture.checksumSha256.slice(0, 10)}…`
-                        : "Page capture required for a case"}
+                        ? `${detail.capturePreserved} · ${m.pageCapture.checksumSha256.slice(0, 10)}…`
+                        : detail.captureRequired}
                     </span>
                   </div>
                   <div className="confidence">
