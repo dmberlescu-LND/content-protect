@@ -307,6 +307,12 @@ const LANDING_DETAIL = {
   }
 };
 
+const AUTH_COPY = {
+  en: { private:"PRIVATE CREATOR PROTECTION", createTitle:"Create your secure workspace", welcome:"Welcome back", createLead:"Create your account free. Choose a protection plan after verification.", loginLead:"Sign in to your protected workspace.", fullName:"Full name", stageName:"Stage name", email:"Email address", password:"Password", passwordNew:"10–128 characters", passwordLogin:"Enter your account password", age:"I confirm that I am at least 18 years old.", rights:"I own or am authorised to protect the content I submit.", accept:"I accept the", terms:"Terms", and:"and", privacy:"Privacy Notice", forgot:"Forgot your password?", creating:"Securing workspace…", create:"Create protected account", verify:"Verify and log in", login:"Log in securely", protected:"Already protected?", new:"New to Content Protect?", switchLogin:"Log in", switchCreate:"Create an account", trust:"Passwords are cryptographically protected. Sessions use secure HTTP-only cookies.", code:"Authenticator or recovery code", codeHelp:"Open your authenticator app or use one recovery code." },
+  es: { private:"PROTECCIÓN PRIVADA PARA CREADORES", createTitle:"Crea tu espacio seguro", welcome:"Bienvenido de nuevo", createLead:"Crea tu cuenta sin coste. Elige un plan de protección después de la verificación.", loginLead:"Inicia sesión en tu espacio protegido.", fullName:"Nombre completo", stageName:"Nombre artístico", email:"Dirección de correo", password:"Contraseña", passwordNew:"10–128 caracteres", passwordLogin:"Introduce la contraseña de tu cuenta", age:"Confirmo que tengo al menos 18 años.", rights:"Soy titular o estoy autorizado a proteger el contenido que envío.", accept:"Acepto los", terms:"Términos", and:"y el", privacy:"Aviso de privacidad", forgot:"¿Olvidaste la contraseña?", creating:"Protegiendo el espacio…", create:"Crear cuenta protegida", verify:"Verificar e iniciar sesión", login:"Iniciar sesión de forma segura", protected:"¿Ya tienes protección?", new:"¿Nuevo en Content Protect?", switchLogin:"Iniciar sesión", switchCreate:"Crear una cuenta", trust:"Las contraseñas están protegidas criptográficamente. Las sesiones usan cookies seguras solo HTTP.", code:"Código de autenticación o recuperación", codeHelp:"Abre tu aplicación de autenticación o usa un código de recuperación." },
+  ro: { private:"PROTECȚIE PRIVATĂ PENTRU CREATORI", createTitle:"Creează spațiul tău securizat", welcome:"Bine ai revenit", createLead:"Creează gratuit contul. Alegi un plan de protecție după verificare.", loginLead:"Autentifică-te în spațiul tău protejat.", fullName:"Nume complet", stageName:"Nume de scenă", email:"Adresă de email", password:"Parolă", passwordNew:"10–128 caractere", passwordLogin:"Introdu parola contului", age:"Confirm că am cel puțin 18 ani.", rights:"Dețin sau sunt autorizat să protejez conținutul pe care îl trimit.", accept:"Accept", terms:"Termenii", and:"și", privacy:"Notificarea de confidențialitate", forgot:"Ai uitat parola?", creating:"Se securizează spațiul…", create:"Creează contul protejat", verify:"Verifică și autentifică-te", login:"Autentificare securizată", protected:"Ai deja protecție?", new:"Ești nou în Content Protect?", switchLogin:"Autentificare", switchCreate:"Creează un cont", trust:"Parolele sunt protejate criptografic. Sesiunile folosesc cookie-uri securizate numai HTTP.", code:"Cod de autentificare sau recuperare", codeHelp:"Deschide aplicația de autentificare sau folosește un cod de recuperare." }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -2398,7 +2404,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
   );
 }
 
-function Auth({ mode, setMode, onSuccess, onClose }) {
+function Auth({ mode, setMode, onSuccess, onClose, language }) {
+  const copy = AUTH_COPY[language] || AUTH_COPY.en;
   const [form, setForm] = useState({
     name: "",
     stageName: "",
@@ -2445,22 +2452,22 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
         </button>
         <Logo />
         <div className="auth-heading">
-          <span>PRIVATE CREATOR PROTECTION</span>
+          <span>{copy.private}</span>
           <h2>
             {mode === "register"
-              ? "Create your secure workspace"
-              : "Welcome back"}
+              ? copy.createTitle
+              : copy.welcome}
           </h2>
           <p>
             {mode === "register"
-              ? "Create your account free. Choose a protection plan after verification."
-              : "Sign in to your protected workspace."}
+              ? copy.createLead
+              : copy.loginLead}
           </p>
         </div>
         {mode === "register" && (
           <div className="field-row">
             <label>
-              Full name
+              {copy.fullName}
               <input
                 required
                 maxLength="100"
@@ -2469,7 +2476,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
               />
             </label>
             <label>
-              Stage name
+              {copy.stageName}
               <input
                 maxLength="100"
                 value={form.stageName}
@@ -2481,7 +2488,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
           </div>
         )}
         <label>
-          Email address
+          {copy.email}
           <input
             type="email"
             autoComplete="email"
@@ -2492,7 +2499,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
         </label>
         {mode === "login" && mfaRequired && (
           <label>
-            Authenticator or recovery code
+          {copy.code}
             <input
               autoComplete="one-time-code"
               required
@@ -2502,11 +2509,11 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
               placeholder="123456 or XXXX-XXXX"
               autoFocus
             />
-            <small>Open your authenticator app or use one recovery code.</small>
+            <small>{copy.codeHelp}</small>
           </label>
         )}
         <label>
-          Password
+          {copy.password}
           <input
             type="password"
             autoComplete={
@@ -2520,8 +2527,8 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
           />
           <small>
             {mode === "register"
-              ? "10–128 characters"
-              : "Enter your account password"}
+              ? copy.passwordNew
+              : copy.passwordLogin}
           </small>
         </label>
         {mode === "register" && (
@@ -2535,7 +2542,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
                   setForm({ ...form, ageConfirmed: e.target.checked })
                 }
               />
-              <span>I confirm that I am at least 18 years old.</span>
+              <span>{copy.age}</span>
             </label>
             <label>
               <input
@@ -2547,7 +2554,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
                 }
               />
               <span>
-                I own or am authorised to protect the content I submit.
+                {copy.rights}
               </span>
             </label>
             <label>
@@ -2560,13 +2567,13 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
                 }
               />
               <span>
-                I accept the{" "}
+                {copy.accept}{" "}
                 <a href="/terms.html" target="_blank">
-                  Terms
+                  {copy.terms}
                 </a>{" "}
-                and{" "}
+                {copy.and}{" "}
                 <a href="/privacy.html" target="_blank">
-                  Privacy Notice
+                  {copy.privacy}
                 </a>
                 .
               </span>
@@ -2579,34 +2586,33 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
             type="button"
             onClick={() => setMode("forgot")}
           >
-            Forgot your password?
+            {copy.forgot}
           </button>
         )}
         {error && <div className="auth-error">{error}</div>}
         <button className="btn btn-primary auth-submit" disabled={busy}>
           {busy
-            ? "Securing workspace…"
+            ? copy.creating
             : mode === "register"
-              ? "Create protected account"
+              ? copy.create
               : mfaRequired
-                ? "Verify and log in"
-                : "Log in securely"}{" "}
+                ? copy.verify
+                : copy.login}{" "}
           <ArrowRight size={17} />
         </button>
         <div className="auth-switch">
           {mode === "register"
-            ? "Already protected?"
-            : "New to Content Protect?"}{" "}
+            ? copy.protected
+            : copy.new}{" "}
           <button
             type="button"
             onClick={() => setMode(mode === "register" ? "login" : "register")}
           >
-            {mode === "register" ? "Log in" : "Create an account"}
+            {mode === "register" ? copy.switchLogin : copy.switchCreate}
           </button>
         </div>
         <div className="auth-trust">
-          <LockKeyhole /> Passwords are cryptographically protected. Sessions
-          use secure HTTP-only cookies.
+          <LockKeyhole /> {copy.trust}
         </div>
       </form>
     </div>
@@ -5120,6 +5126,7 @@ function App() {
           setMode={setAuth}
           onSuccess={success}
           onClose={() => setAuth(null)}
+          language={language}
         />
       )}{" "}
       {user && !user.onboardingComplete && (
