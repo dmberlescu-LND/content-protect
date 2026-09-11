@@ -319,6 +319,12 @@ const ONBOARDING_COPY = {
   ro: { step:"PASUL", of:"DIN 3", headings:["Construiește-ți scutul de identitate", "Conectează-ți prezența publică", "Reguli de protecție"], leads:["Adaugă aliasuri publice ce pot fi folosite pentru a găsi impersonări.", "Introdu doar URL-uri de profil public; niciodată parole.", "Content Protect începe în siguranță și necesită aprobarea ta."], aliasLabel:"Nume de scenă și aliasuri", aliasPlaceholder:"NumeUnu, NumeDoi", aliasesHelp:"Separă numele prin virgule", profileLabel:"URL-uri de profil public ale creatorului", profilePlaceholder:"https://… , https://…", profileHelp:"Nu cerem niciodată parole pentru platformele de creatori", rules:[["Este necesară aprobarea creatorului", "Nicio notificare nu este trimisă înainte să aprobi dovezile."], ["Seif privat pentru referințe", "Conținutul tău sursă rămâne criptat și privat."], ["Status transparent al furnizorului", "Serviciile indisponibile sunt identificate clar și nu sunt înlocuite cu rezultate simulate."]], continue:"Continuă", activate:"Activează spațiul protejat", back:"Înapoi" }
 };
 
+const DASHBOARD_COPY = {
+  en: { workspace:"WORKSPACE", account:"ACCOUNT", plan:"plan", nav:{Overview:"Overview",Matches:"Matches","My content":"My content",Takedowns:"Takedowns",Billing:"Plans & billing",Account:"Account & security","Help & safety":"Help & safety"}, protectionActive:"Protection active", choosePlan:"Choose a plan", scansEnabled:"scans enabled", scanningInactive:"Scanning is not active", casesIncluded:"Takedown cases included", privateVault:"Private creator vault", logout:"Log out", breadcrumb:"Workspace", notifications:"Notifications", accountMenu:"Account menu", openNavigation:"Open navigation", closeNavigation:"Close navigation", greeting:"Good morning", overviewLead:"Your content is protected. Here’s what changed since your last visit.", manageLead:"Review and manage your protection workspace.", addContent:"Add content", limitReached:"File limit reached", stats:[["Matches found","protected assets"],["Need your review","Creator approval required"],["Takedown cases","active"],["Successfully removed","Verified outcomes only"]], loading:"Loading…", scanTitle:"Run protected", scanImage:"image", scanMedia:"media", choosePlanBefore:"Choose an active plan before scanning", addReference:"Add a supported reference image before scanning", videoAwaiting:"Video scanning awaits privacy and provider approval", commercialScan:"Search the commercial provider using private reference copies", scanningAwaiting:"Commercial scanning awaits provider activation", live:"LIVE", waiting:"WAITING" },
+  es: { workspace:"ESPACIO DE TRABAJO", account:"CUENTA", plan:"plan", nav:{Overview:"Resumen",Matches:"Coincidencias","My content":"Mi contenido",Takedowns:"Retiradas",Billing:"Planes y facturación",Account:"Cuenta y seguridad","Help & safety":"Ayuda y seguridad"}, protectionActive:"Protección activa", choosePlan:"Elegir un plan", scansEnabled:"escaneos activados", scanningInactive:"El escaneo no está activo", casesIncluded:"Casos de retirada incluidos", privateVault:"Bóveda privada del creador", logout:"Cerrar sesión", breadcrumb:"Espacio de trabajo", notifications:"Notificaciones", accountMenu:"Menú de cuenta", openNavigation:"Abrir navegación", closeNavigation:"Cerrar navegación", greeting:"Buenos días", overviewLead:"Tu contenido está protegido. Esto es lo que cambió desde tu última visita.", manageLead:"Revisa y gestiona tu espacio de protección.", addContent:"Añadir contenido", limitReached:"Límite de archivos alcanzado", stats:[["Coincidencias encontradas","archivos protegidos"],["Necesitan tu revisión","Se requiere aprobación del creador"],["Casos de retirada","activos"],["Eliminados correctamente","Solo resultados verificados"]], loading:"Cargando…", scanTitle:"Ejecutar escaneo protegido de", scanImage:"imagen", scanMedia:"contenido multimedia", choosePlanBefore:"Elige un plan activo antes de escanear", addReference:"Añade una imagen de referencia compatible antes de escanear", videoAwaiting:"El escaneo de vídeo espera aprobación de privacidad y proveedor", commercialScan:"Busca en el proveedor comercial usando copias privadas de referencia", scanningAwaiting:"El escaneo comercial espera activación del proveedor", live:"EN DIRECTO", waiting:"EN ESPERA" },
+  ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Protecție activă", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Conținutul tău este protejat. Iată ce s-a schimbat de la ultima vizită.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere protejate"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", live:"LIVE", waiting:"ÎN AȘTEPTARE" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1294,7 +1300,8 @@ function RightsDeclarationFields({ value, onChange }) {
   );
 }
 
-function Dashboard({ onLogout, onUserUpdate, user }) {
+function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
+  const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -1632,7 +1639,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       <aside className={navOpen ? "mobile-open" : ""}>
         <button
           className="mobile-close"
-          aria-label="Close navigation"
+          aria-label={copy.closeNavigation}
           onClick={() => setNavOpen(false)}
         >
           <X />
@@ -1642,11 +1649,11 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
           <span>{initials}</span>
           <div>
             <b>{user?.stageName || user?.name || "Creator"}</b>
-            <small>{data.entitlements.plan} plan</small>
+            <small>{data.entitlements.plan} {copy.plan}</small>
           </div>
           <ChevronDown size={15} />
         </button>
-        <div className="side-label">WORKSPACE</div>
+        <div className="side-label">{copy.workspace}</div>
         {["Overview", "Matches", "My content", "Takedowns"].map((x, i) => {
           const Icon = [LayoutDashboard, Search, Image, FileCheck2][i];
           return (
@@ -1656,56 +1663,56 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               onClick={() => setTab(x)}
             >
               <Icon size={18} />
-              {x}
+              {copy.nav[x]}
               {x === "Matches" && data.matches.length > 0 && (
                 <em>{data.matches.length}</em>
               )}
             </button>
           );
         })}
-        <div className="side-label lower">ACCOUNT</div>
+        <div className="side-label lower">{copy.account}</div>
         <button
           className={`side-link ${tab === "Billing" ? "active" : ""}`}
           onClick={() => setTab("Billing")}
         >
           <Sparkles size={18} />
-          Plans & billing
+          {copy.nav.Billing}
         </button>
         <button
           className={`side-link ${tab === "Account" ? "active" : ""}`}
           onClick={() => setTab("Account")}
         >
           <LockKeyhole size={18} />
-          Account & security
+          {copy.nav.Account}
         </button>
         <button
           className={`side-link ${tab === "Help & safety" ? "active" : ""}`}
           onClick={() => setTab("Help & safety")}
         >
           <HelpCircle size={18} />
-          Help & safety
+          {copy.nav["Help & safety"]}
         </button>
         <div className="upgrade">
           <Sparkles />
           <b>
-            {data.entitlements.canScan ? "Protection active" : "Choose a plan"}
+            {data.entitlements.canScan ? copy.protectionActive : copy.choosePlan}
           </b>
           <span>
             {data.entitlements.canScan
-              ? `${data.entitlements.scanFrequency} scans enabled`
-              : "Scanning is not active"}
+              ? `${data.entitlements.scanFrequency} ${copy.scansEnabled}`
+              : copy.scanningInactive}
           </span>
           <div>
             <i></i>
           </div>
           <small>
             {data.entitlements.canCreateCases
-              ? "Takedown cases included"
-              : "Private creator vault"}
+              ? copy.casesIncluded
+              : copy.privateVault}
           </small>
         </div>
         <button className="logout" onClick={logout}>
-          Log out
+          {copy.logout}
         </button>
       </aside>
       <main className="dashboard">
@@ -1713,21 +1720,22 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
           <div>
             <button
               className="mobile-menu"
-              aria-label="Open navigation"
+              aria-label={copy.openNavigation}
               onClick={() => setNavOpen(true)}
             >
               <Menu />
             </button>
-            <span>Workspace</span>
+            <span>{copy.breadcrumb}</span>
             <ChevronRight size={15} />
-            <b>{tab}</b>
+            <b>{copy.nav[tab]}</b>
           </div>
           <div>
-            <button className="icon-button" aria-label="Notifications">
+            <LanguagePicker language={language} onChange={setLanguage} />
+            <button className="icon-button" aria-label={copy.notifications}>
               <Bell size={19} />
               <i></i>
             </button>
-            <button className="avatar" aria-label="Account menu">
+            <button className="avatar" aria-label={copy.accountMenu}>
               {initials}
             </button>
           </div>
@@ -1765,13 +1773,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <p>Saturday, 18 July</p>
               <h1>
                 {tab === "Overview"
-                  ? `Good morning, ${user?.name?.split(" ")[0] || "Creator"}.`
-                  : tab}
+                  ? `${copy.greeting}, ${user?.name?.split(" ")[0] || "Creator"}.`
+                  : copy.nav[tab]}
               </h1>
               <span>
                 {tab === "Overview"
-                  ? "Your content is protected. Here’s what changed since your last visit."
-                  : "Review and manage your protection workspace."}
+                  ? copy.overviewLead
+                  : copy.manageLead}
               </span>
             </div>
             <button
@@ -1791,9 +1799,9 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <Plus size={18} />
               {data.entitlements.canUpload
                 ? data.entitlements.assetSlotsRemaining
-                  ? "Add content"
-                  : "File limit reached"
-                : "Choose a plan"}
+                  ? copy.addContent
+                  : copy.limitReached
+                : copy.choosePlan}
             </button>
           </div>
           {tab === "Overview" && (
@@ -1803,37 +1811,37 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <div className="stat-icon purple">
                     <Search />
                   </div>
-                  <span>Matches found</span>
+                  <span>{copy.stats[0][0]}</span>
                   <strong>{data.stats.matches}</strong>
                   <small>
                     {loading
-                      ? "Loading…"
-                      : `${data.assets.length} protected assets`}
+                      ? copy.loading
+                      : `${data.assets.length} ${copy.stats[0][1]}`}
                   </small>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon amber">
                     <Clock3 />
                   </div>
-                  <span>Need your review</span>
+                  <span>{copy.stats[1][0]}</span>
                   <strong>{data.stats.review}</strong>
-                  <small>Creator approval required</small>
+                  <small>{copy.stats[1][1]}</small>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon blue">
                     <FileCheck2 />
                   </div>
-                  <span>Takedown cases</span>
+                  <span>{copy.stats[2][0]}</span>
                   <strong>{data.cases.length}</strong>
-                  <small>{data.stats.active} active</small>
+                  <small>{data.stats.active} {copy.stats[2][1]}</small>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon green">
                     <ShieldCheck />
                   </div>
-                  <span>Successfully removed</span>
+                  <span>{copy.stats[3][0]}</span>
                   <strong>{data.stats.removed}</strong>
-                  <small>Verified outcomes only</small>
+                  <small>{copy.stats[3][1]}</small>
                 </div>
               </div>
               <button
@@ -1851,25 +1859,25 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 </div>
                 <div>
                   <b>
-                    Run protected {videoScanningActive ? "media" : "image"} scan
+                    {copy.scanTitle} {videoScanningActive ? copy.scanMedia : copy.scanImage}
                   </b>
                   <span>
                     {!data.entitlements.canScan
-                      ? "Choose an active plan before scanning"
+                      ? copy.choosePlanBefore
                       : !scannableAssetCount
                         ? videoAssetCount
-                          ? "Video scanning awaits privacy and provider approval"
-                          : "Add a supported reference image before scanning"
+                          ? copy.videoAwaiting
+                          : copy.addReference
                         : data.scannerMode === "tineye-commercial"
-                          ? "Search the commercial provider using private reference copies"
-                          : "Commercial scanning awaits provider activation"}
+                          ? copy.commercialScan
+                          : copy.scanningAwaiting}
                   </span>
                 </div>
                 <span className="live">
                   <i></i>{" "}
                   {data.scannerMode === "tineye-commercial"
-                    ? "LIVE"
-                    : "WAITING"}
+                    ? copy.live
+                    : copy.waiting}
                 </span>
               </button>
             </>
@@ -5091,6 +5099,8 @@ function App() {
         <Dashboard
           user={user}
           onUserUpdate={setUser}
+          language={language}
+          setLanguage={setLanguage}
           onLogout={() => {
             setUser(null);
             setView("landing");
