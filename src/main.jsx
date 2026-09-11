@@ -313,6 +313,12 @@ const AUTH_COPY = {
   ro: { private:"PROTECȚIE PRIVATĂ PENTRU CREATORI", createTitle:"Creează spațiul tău securizat", welcome:"Bine ai revenit", createLead:"Creează gratuit contul. Alegi un plan de protecție după verificare.", loginLead:"Autentifică-te în spațiul tău protejat.", fullName:"Nume complet", stageName:"Nume de scenă", email:"Adresă de email", password:"Parolă", passwordNew:"10–128 caractere", passwordLogin:"Introdu parola contului", age:"Confirm că am cel puțin 18 ani.", rights:"Dețin sau sunt autorizat să protejez conținutul pe care îl trimit.", accept:"Accept", terms:"Termenii", and:"și", privacy:"Notificarea de confidențialitate", forgot:"Ai uitat parola?", creating:"Se securizează spațiul…", create:"Creează contul protejat", verify:"Verifică și autentifică-te", login:"Autentificare securizată", protected:"Ai deja protecție?", new:"Ești nou în Content Protect?", switchLogin:"Autentificare", switchCreate:"Creează un cont", trust:"Parolele sunt protejate criptografic. Sesiunile folosesc cookie-uri securizate numai HTTP.", code:"Cod de autentificare sau recuperare", codeHelp:"Deschide aplicația de autentificare sau folosește un cod de recuperare." }
 };
 
+const ONBOARDING_COPY = {
+  en: { step:"STEP", of:"OF 3", headings:["Build your identity shield", "Connect your public presence", "Protection rules"], leads:["Add public aliases that could be used to find impersonations.", "Only enter public profile URLs—never passwords.", "Content Protect starts safely, with your approval required."], aliasLabel:"Stage names and aliases", aliasPlaceholder:"NameOne, NameTwo", aliasesHelp:"Separate names with commas", profileLabel:"Public creator profile URLs", profilePlaceholder:"https://… , https://…", profileHelp:"We never request passwords for creator platforms", rules:[["Creator approval required", "No notice is sent before you approve the evidence."], ["Private reference vault", "Your source content remains encrypted and private."], ["Transparent provider status", "Unavailable services are clearly identified and never replaced with simulated results."]], continue:"Continue", activate:"Activate protected workspace", back:"Back" },
+  es: { step:"PASO", of:"DE 3", headings:["Crea tu escudo de identidad", "Conecta tu presencia pública", "Reglas de protección"], leads:["Añade alias públicos que puedan utilizarse para encontrar suplantaciones.", "Introduce solo URLs de perfiles públicos; nunca contraseñas.", "Content Protect empieza de forma segura y requiere tu aprobación."], aliasLabel:"Nombres artísticos y alias", aliasPlaceholder:"NombreUno, NombreDos", aliasesHelp:"Separa los nombres con comas", profileLabel:"URLs de perfiles públicos de creador", profilePlaceholder:"https://… , https://…", profileHelp:"Nunca pedimos contraseñas de plataformas de creadores", rules:[["Se requiere aprobación del creador", "No se envía ningún aviso antes de que apruebes las pruebas."], ["Bóveda privada de referencias", "Tu contenido de origen permanece cifrado y privado."], ["Estado transparente del proveedor", "Los servicios no disponibles se identifican claramente y nunca se sustituyen por resultados simulados."]], continue:"Continuar", activate:"Activar espacio protegido", back:"Volver" },
+  ro: { step:"PASUL", of:"DIN 3", headings:["Construiește-ți scutul de identitate", "Conectează-ți prezența publică", "Reguli de protecție"], leads:["Adaugă aliasuri publice ce pot fi folosite pentru a găsi impersonări.", "Introdu doar URL-uri de profil public; niciodată parole.", "Content Protect începe în siguranță și necesită aprobarea ta."], aliasLabel:"Nume de scenă și aliasuri", aliasPlaceholder:"NumeUnu, NumeDoi", aliasesHelp:"Separă numele prin virgule", profileLabel:"URL-uri de profil public ale creatorului", profilePlaceholder:"https://… , https://…", profileHelp:"Nu cerem niciodată parole pentru platformele de creatori", rules:[["Este necesară aprobarea creatorului", "Nicio notificare nu este trimisă înainte să aprobi dovezile."], ["Seif privat pentru referințe", "Conținutul tău sursă rămâne criptat și privat."], ["Status transparent al furnizorului", "Serviciile indisponibile sunt identificate clar și nu sunt înlocuite cu rezultate simulate."]], continue:"Continuă", activate:"Activează spațiul protejat", back:"Înapoi" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -2786,7 +2792,8 @@ function ResetPassword({ token, onDone, onClose }) {
   );
 }
 
-function Onboarding({ user, onDone }) {
+function Onboarding({ user, onDone, language }) {
+  const copy = ONBOARDING_COPY[language] || ONBOARDING_COPY.en;
   const [stage, setStage] = useState(1);
   const [aliases, setAliases] = useState("");
   const [platforms, setPlatforms] = useState("");
@@ -2818,42 +2825,34 @@ function Onboarding({ user, onDone }) {
         </div>
         <Logo />
         <div className="auth-heading">
-          <span>STEP {stage} OF 3</span>
+          <span>{copy.step} {stage} {copy.of}</span>
           <h2>
-            {stage === 1
-              ? "Build your identity shield"
-              : stage === 2
-                ? "Connect your public presence"
-                : "Protection rules"}
+            {copy.headings[stage - 1]}
           </h2>
           <p>
-            {stage === 1
-              ? "Add public aliases that could be used to find impersonations."
-              : stage === 2
-                ? "Only enter public profile URLs—never passwords."
-                : "Content Protect starts safely, with your approval required."}
+            {copy.leads[stage - 1]}
           </p>
         </div>
         {stage === 1 && (
           <label>
-            Stage names and aliases
+            {copy.aliasLabel}
             <input
-              placeholder="NameOne, NameTwo"
+              placeholder={copy.aliasPlaceholder}
               value={aliases}
               onChange={(e) => setAliases(e.target.value)}
             />
-            <small>Separate names with commas</small>
+            <small>{copy.aliasesHelp}</small>
           </label>
         )}
         {stage === 2 && (
           <label>
-            Public creator profile URLs
+            {copy.profileLabel}
             <input
-              placeholder="https://… , https://…"
+              placeholder={copy.profilePlaceholder}
               value={platforms}
               onChange={(e) => setPlatforms(e.target.value)}
             />
-            <small>We never request passwords for creator platforms</small>
+            <small>{copy.profileHelp}</small>
           </label>
         )}
         {stage === 3 && (
@@ -2861,22 +2860,19 @@ function Onboarding({ user, onDone }) {
             <div>
               <ShieldCheck />
               <span>
-                <b>Creator approval required</b>No notice is sent before you
-                approve the evidence.
+                <b>{copy.rules[0][0]}</b>{copy.rules[0][1]}
               </span>
             </div>
             <div>
               <LockKeyhole />
               <span>
-                <b>Private reference vault</b>Your source content remains
-                encrypted and private.
+                <b>{copy.rules[1][0]}</b>{copy.rules[1][1]}
               </span>
             </div>
             <div>
               <Eye />
               <span>
-                <b>Transparent provider status</b>Unavailable services are
-                clearly identified and never replaced with simulated results.
+                <b>{copy.rules[2][0]}</b>{copy.rules[2][1]}
               </span>
             </div>
           </div>
@@ -2885,7 +2881,7 @@ function Onboarding({ user, onDone }) {
           className="btn btn-primary auth-submit"
           onClick={() => (stage < 3 ? setStage(stage + 1) : finish())}
         >
-          {stage < 3 ? "Continue" : "Activate protected workspace"}{" "}
+          {stage < 3 ? copy.continue : copy.activate}{" "}
           <ArrowRight size={17} />
         </button>
         {stage > 1 && (
@@ -2893,7 +2889,7 @@ function Onboarding({ user, onDone }) {
             className="onboarding-back"
             onClick={() => setStage(stage - 1)}
           >
-            Back
+            {copy.back}
           </button>
         )}
       </div>
@@ -5130,7 +5126,7 @@ function App() {
         />
       )}{" "}
       {user && !user.onboardingComplete && (
-        <Onboarding user={user} onDone={setUser} />
+        <Onboarding user={user} onDone={setUser} language={language} />
       )}
     </>
   );
