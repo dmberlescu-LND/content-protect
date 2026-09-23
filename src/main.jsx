@@ -95,6 +95,11 @@ const VERIFICATION_COPY = {
   es: { providerPending:"Pendiente de activación del proveedor", sandboxRunning:"Ejecutando prueba sandbox…", sandboxStart:"Ejecutar prueba sandbox aprobada", sandboxNote:"Solo cuenta de prueba · sin comprobación de teléfono o identidad Yoti", startAge:"Iniciar verificación privada de edad Yoti", loading:"Cargando comprobación segura de edad…", emailTitle:"Verifica tu correo antes de subir contenido", emailLead:"Enviamos un enlace de verificación seguro de 24 horas a {email}.", resend:"Reenviar correo", ageTitle:"Completa una comprobación privada de 18+", ageLead:"La verificación de producción usa Yoti y conserva solo el resultado y el método, nunca tu documento ni imagen facial.", sandboxPassword:"Introduce la contraseña de la cuenta de prueba para confirmar esta comprobación sandbox controlada.", sandboxFailed:"La prueba sandbox de edad falló.", sandboxSuccess:"La prueba sandbox controlada pasó. No es una comprobación de identidad real de Yoti y no puede activar producción." },
   ro: { providerPending:"Activarea furnizorului este în așteptare", sandboxRunning:"Se rulează testul sandbox…", sandboxStart:"Rulează testul sandbox aprobat", sandboxNote:"Doar cont de test · fără verificare Yoti de telefon sau identitate", startAge:"Pornește verificarea privată de vârstă Yoti", loading:"Se încarcă verificarea securizată de vârstă…", emailTitle:"Verifică e-mailul înainte de a încărca conținut", emailLead:"Am trimis un link securizat de verificare valabil 24 de ore la {email}.", resend:"Retrimite e-mailul", ageTitle:"Finalizează o verificare privată 18+", ageLead:"Verificarea de producție utilizează Yoti și păstrează doar rezultatul și metoda, niciodată documentul sau imaginea feței tale.", sandboxPassword:"Introdu parola contului de test pentru a confirma această verificare sandbox controlată.", sandboxFailed:"Testarea sandbox pentru vârstă a eșuat.", sandboxSuccess:"Testul sandbox controlat a trecut. Nu este o verificare reală de identitate Yoti și nu poate activa producția." }
 };
+const RECOVERY_COPY = {
+  en: { closeRecovery:"Close password recovery", closeReset:"Close password reset", eyebrow:"SECURE ACCOUNT RECOVERY", checkEmail:"Check your email", resetTitle:"Reset your password", sentLead:"If an account exists for that address, a secure link is on its way. It expires in 30 minutes.", resetLead:"Enter the email address used for your protected workspace.", received:"Request received", privacy:"For privacy, we do not confirm whether an address is registered.", email:"Email address", sending:"Sending secure link…", send:"Send reset link", back:"Back to login", linkHelp:"Reset links are single-use and expire after 30 minutes.", choose:"Choose a new password", unique:"Use a unique password you do not use on creator platforms.", newPassword:"New password", passwordHelp:"At least 10 characters", confirm:"Confirm new password", updating:"Updating password…", set:"Set new password", sessionHelp:"Completing this reset signs out all existing sessions.", mismatch:"Passwords do not match.", failed:"Password could not be reset." },
+  es: { closeRecovery:"Cerrar recuperación de contraseña", closeReset:"Cerrar restablecimiento de contraseña", eyebrow:"RECUPERACIÓN SEGURA DE CUENTA", checkEmail:"Revisa tu correo", resetTitle:"Restablece tu contraseña", sentLead:"Si existe una cuenta para esa dirección, el enlace seguro está en camino. Caduca en 30 minutos.", resetLead:"Introduce la dirección de correo usada para tu espacio de trabajo protegido.", received:"Solicitud recibida", privacy:"Por privacidad, no confirmamos si una dirección está registrada.", email:"Dirección de correo", sending:"Enviando enlace seguro…", send:"Enviar enlace de restablecimiento", back:"Volver al inicio de sesión", linkHelp:"Los enlaces de restablecimiento son de un solo uso y caducan en 30 minutos.", choose:"Elige una nueva contraseña", unique:"Usa una contraseña única que no uses en plataformas de creadores.", newPassword:"Nueva contraseña", passwordHelp:"Al menos 10 caracteres", confirm:"Confirmar nueva contraseña", updating:"Actualizando contraseña…", set:"Establecer nueva contraseña", sessionHelp:"Completar este restablecimiento cierra todas las sesiones existentes.", mismatch:"Las contraseñas no coinciden.", failed:"No se pudo restablecer la contraseña." },
+  ro: { closeRecovery:"Închide recuperarea parolei", closeReset:"Închide resetarea parolei", eyebrow:"RECUPERARE SECURIZATĂ A CONTULUI", checkEmail:"Verifică e-mailul", resetTitle:"Resetează parola", sentLead:"Dacă există un cont pentru această adresă, un link securizat este pe drum. Expiră în 30 de minute.", resetLead:"Introdu adresa de e-mail folosită pentru spațiul tău de lucru protejat.", received:"Solicitare primită", privacy:"Din motive de confidențialitate, nu confirmăm dacă o adresă este înregistrată.", email:"Adresă de e-mail", sending:"Se trimite linkul securizat…", send:"Trimite linkul de resetare", back:"Înapoi la autentificare", linkHelp:"Linkurile de resetare sunt de unică folosință și expiră în 30 de minute.", choose:"Alege o parolă nouă", unique:"Folosește o parolă unică, pe care nu o utilizezi pe platforme pentru creatori.", newPassword:"Parolă nouă", passwordHelp:"Cel puțin 10 caractere", confirm:"Confirmă parola nouă", updating:"Se actualizează parola…", set:"Setează parola nouă", sessionHelp:"Finalizarea acestei resetări deconectează toate sesiunile existente.", mismatch:"Parolele nu coincid.", failed:"Parola nu a putut fi resetată." }
+};
 function loadYotiShareClient() {
   if (window.Yoti) return Promise.resolve(window.Yoti);
   if (!yotiShareClientPromise)
@@ -2627,7 +2632,8 @@ function Auth({ mode, setMode, onSuccess, onClose, language }) {
   );
 }
 
-function ForgotPassword({ onBack, onClose }) {
+function ForgotPassword({ onBack, onClose, language }) {
+  const copy = RECOVERY_COPY[language] || RECOVERY_COPY.en;
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -2657,35 +2663,35 @@ function ForgotPassword({ onBack, onClose }) {
         <button
           type="button"
           className="modal-x"
-          aria-label="Close password recovery"
+          aria-label={copy.closeRecovery}
           onClick={onClose}
         >
           <X />
         </button>
         <Logo />
         <div className="auth-heading">
-          <span>SECURE ACCOUNT RECOVERY</span>
-          <h2>{sent ? "Check your email" : "Reset your password"}</h2>
+          <span>{copy.eyebrow}</span>
+          <h2>{sent ? copy.checkEmail : copy.resetTitle}</h2>
           <p>
             {sent
-              ? "If an account exists for that address, a secure link is on its way. It expires in 30 minutes."
-              : "Enter the email address used for your protected workspace."}
+              ? copy.sentLead
+              : copy.resetLead}
           </p>
         </div>
         {sent ? (
           <div className="recovery-success">
             <CircleCheck />
             <div>
-              <b>Request received</b>
+              <b>{copy.received}</b>
               <span>
-                For privacy, we do not confirm whether an address is registered.
+                {copy.privacy}
               </span>
             </div>
           </div>
         ) : (
           <>
             <label>
-              Email address
+              {copy.email}
               <input
                 type="email"
                 autoComplete="email"
@@ -2696,24 +2702,24 @@ function ForgotPassword({ onBack, onClose }) {
             </label>
             {error && <div className="auth-error">{error}</div>}
             <button className="btn btn-primary auth-submit" disabled={busy}>
-              {busy ? "Sending secure link…" : "Send reset link"}{" "}
+              {busy ? copy.sending : copy.send}{" "}
               <ArrowRight size={17} />
             </button>
           </>
         )}
         <button className="recovery-back" type="button" onClick={onBack}>
-          Back to login
+          {copy.back}
         </button>
         <div className="auth-trust">
-          <LockKeyhole /> Reset links are single-use and expire after 30
-          minutes.
+          <LockKeyhole /> {copy.linkHelp}
         </div>
       </form>
     </div>
   );
 }
 
-function ResetPassword({ token, onDone, onClose }) {
+function ResetPassword({ token, onDone, onClose, language }) {
+  const copy = RECOVERY_COPY[language] || RECOVERY_COPY.en;
   const [form, setForm] = useState({ password: "", confirm: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -2721,7 +2727,7 @@ function ResetPassword({ token, onDone, onClose }) {
     e.preventDefault();
     setError("");
     if (form.password !== form.confirm) {
-      setError("Passwords do not match.");
+      setError(copy.mismatch);
       return;
     }
     setBusy(true);
@@ -2732,7 +2738,7 @@ function ResetPassword({ token, onDone, onClose }) {
         body: JSON.stringify({ token, password: form.password }),
       });
       const d = await r.json();
-      if (!r.ok) throw Error(d.error || "Password could not be reset.");
+      if (!r.ok) throw Error(d.error || copy.failed);
       history.replaceState({}, "", location.pathname);
       onDone();
     } catch (e) {
@@ -2747,19 +2753,19 @@ function ResetPassword({ token, onDone, onClose }) {
         <button
           type="button"
           className="modal-x"
-          aria-label="Close password reset"
+          aria-label={copy.closeReset}
           onClick={onClose}
         >
           <X />
         </button>
         <Logo />
         <div className="auth-heading">
-          <span>SECURE ACCOUNT RECOVERY</span>
-          <h2>Choose a new password</h2>
-          <p>Use a unique password you do not use on creator platforms.</p>
+          <span>{copy.eyebrow}</span>
+          <h2>{copy.choose}</h2>
+          <p>{copy.unique}</p>
         </div>
         <label>
-          New password
+          {copy.newPassword}
           <input
             type="password"
             autoComplete="new-password"
@@ -2768,10 +2774,10 @@ function ResetPassword({ token, onDone, onClose }) {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
-          <small>At least 10 characters</small>
+          <small>{copy.passwordHelp}</small>
         </label>
         <label>
-          Confirm new password
+          {copy.confirm}
           <input
             type="password"
             autoComplete="new-password"
@@ -2783,11 +2789,11 @@ function ResetPassword({ token, onDone, onClose }) {
         </label>
         {error && <div className="auth-error">{error}</div>}
         <button className="btn btn-primary auth-submit" disabled={busy}>
-          {busy ? "Updating password…" : "Set new password"}{" "}
+          {busy ? copy.updating : copy.set}{" "}
           <ArrowRight size={17} />
         </button>
         <div className="auth-trust">
-          <LockKeyhole /> Completing this reset signs out all existing sessions.
+          <LockKeyhole /> {copy.sessionHelp}
         </div>
       </form>
     </div>
@@ -5111,6 +5117,7 @@ function App() {
         <ForgotPassword
           onBack={() => setAuth("login")}
           onClose={() => setAuth(null)}
+          language={language}
         />
       )}{" "}
       {auth === "reset" && (
@@ -5118,6 +5125,7 @@ function App() {
           token={resetToken}
           onDone={() => setAuth("login")}
           onClose={closeReset}
+          language={language}
         />
       )}{" "}
       {(auth === "login" || auth === "register") && (
