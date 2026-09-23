@@ -349,6 +349,12 @@ const RIGHTS_COPY = {
   ro: { title:"Declarație privind drepturile și autoritatea", lead:"Un operator instruit verifică aceste informații înainte de pregătirea unei notificări. Nu încărca aici contracte sau documente private.", relationship:"Relația ta legală cu această lucrare", roles:["Titular al drepturilor de autor","Agent autorizat al titularului de drepturi","Licențiat exclusiv autorizat să aplice drepturile"], holderName:"Numele legal sau comercial al titularului drepturilor", workTitle:"Titlul lucrării sau nume intern (opțional)", publicationUrl:"URL-ul publicării originale (opțional, HTTPS)", evidenceReference:"Referință dovezi", evidencePlaceholder:"Exemplu: fișierul sursă original sau acordul agenției CP-2026-004", evidenceHelp:"Folosește doar o referință scurtă. Păstrează documentul original în registrul corporativ restricționat aprobat.", authorityConfirm:"Dețin drepturile de autor sau sunt autorizat să le aplic în numele titularului indicat.", accuracyConfirm:"Confirm că această declarație pentru fișier este corectă și înțeleg că declarațiile false pot duce la suspendare." }
 };
 
+const UPLOAD_COPY = {
+  en: { closeUpload:"Close upload dialog", title:"Add reference content", lead:"Upload content you own so Content Protect can look for likely copies. Nothing is published.", usage:"plan files are currently used. Videos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated.", consentTitle:"Explicit media-processing consent", consent:"I consent to Content Protect processing this file for private matching and case evidence. I understand it may reveal special-category information, including information about sex life or sexual orientation, and I can withdraw consent by deleting the file.", choose:"Choose a supported photo or short video", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB · videos up to 10 minutes", privacyTitle:"Your privacy comes first", privacy:"Files are validated and encrypted before storage. Provider scan copies are resized and stripped of EXIF/GPS metadata.", closeRights:"Close rights declaration", declareTitle:"Declare rights for this file", record:"Record declaration" },
+  es: { closeUpload:"Cerrar el diálogo de subida", title:"Añadir contenido de referencia", lead:"Sube contenido del que eres titular para que Content Protect pueda buscar posibles copias. No se publica nada.", usage:"archivos del plan están en uso. Los vídeos ocupan un espacio de archivo y no se escanean hasta que se active la aprobación de privacidad y del proveedor para fotogramas de vídeo minimizados.", consentTitle:"Consentimiento explícito para el procesamiento de medios", consent:"Consiento que Content Protect procese este archivo para coincidencias privadas y pruebas de casos. Entiendo que puede revelar información de categoría especial, incluida información sobre vida sexual u orientación sexual, y que puedo retirar el consentimiento eliminando el archivo.", choose:"Elige una foto compatible o un vídeo corto", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV o WebM · 8 MB · vídeos de hasta 10 minutos", privacyTitle:"Tu privacidad es lo primero", privacy:"Los archivos se validan y cifran antes de almacenarse. Las copias para escaneo del proveedor se redimensionan y se eliminan los metadatos EXIF/GPS.", closeRights:"Cerrar la declaración de derechos", declareTitle:"Declarar derechos para este archivo", record:"Registrar declaración" },
+  ro: { closeUpload:"Închide fereastra de încărcare", title:"Adaugă conținut de referință", lead:"Încarcă un conținut asupra căruia ai drepturi, astfel încât Content Protect să poată căuta posibile copii. Nu se publică nimic.", usage:"fișiere din plan sunt utilizate în prezent. Videoclipurile ocupă un loc de fișier și nu sunt scanate până nu este activată aprobarea de confidențialitate și a furnizorului pentru cadre video minimizate.", consentTitle:"Consimțământ explicit pentru procesarea conținutului media", consent:"Sunt de acord ca Content Protect să proceseze acest fișier pentru potrivire privată și dovezi de caz. Înțeleg că poate dezvălui informații din categorii speciale, inclusiv despre viața sexuală sau orientarea sexuală, și îmi pot retrage consimțământul prin ștergerea fișierului.", choose:"Alege o fotografie compatibilă sau un videoclip scurt", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV sau WebM · 8 MB · videoclipuri de până la 10 minute", privacyTitle:"Confidențialitatea ta este pe primul loc", privacy:"Fișierele sunt validate și criptate înainte de stocare. Copiile pentru scanare ale furnizorului sunt redimensionate și nu păstrează metadate EXIF/GPS.", closeRights:"Închide declarația de drepturi", declareTitle:"Declară drepturile pentru acest fișier", record:"Înregistrează declarația" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1294,6 +1300,7 @@ function RightsDeclarationFields({ value, onChange, language }) {
 function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
   const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
+  const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -2298,7 +2305,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
           >
             <button
               className="modal-x"
-              aria-label="Close upload dialog"
+              aria-label={uploadCopy.closeUpload}
               onClick={() => setModal(false)}
             >
               <X />
@@ -2306,16 +2313,10 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="modal-icon">
               <Upload />
             </div>
-            <h2>Add reference content</h2>
+            <h2>{uploadCopy.title}</h2>
+            <p>{uploadCopy.lead}</p>
             <p>
-              Upload content you own so Content Protect can look for likely
-              copies. Nothing is published.
-            </p>
-            <p>
-              {data.assets.length} of {data.entitlements.assetLimit} plan files
-              are currently used. Videos use a file slot and are not scanned
-              until privacy and provider approval for minimized video frames is
-              activated.
+              {data.assets.length} of {data.entitlements.assetLimit} {uploadCopy.usage}
             </p>
             <div className="consent consent-checkbox">
               <input
@@ -2324,11 +2325,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 onChange={(event) => setMediaConsent(event.target.checked)}
               />
               <span>
-                <b>Explicit media-processing consent</b>I consent to Content
-                Protect processing this file for private matching and case
-                evidence. I understand it may reveal special-category
-                information, including information about sex life or sexual
-                orientation, and I can withdraw consent by deleting the file.
+                <b>{uploadCopy.consentTitle}</b>{uploadCopy.consent}
               </span>
             </div>
             <RightsDeclarationFields
@@ -2340,11 +2337,8 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
               className={`dropzone ${mediaConsent && rightsDeclarationReady ? "" : "disabled"}`}
             >
               <Upload />
-              <b>Choose a supported photo or short video</b>
-              <span>
-                JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB ·
-                videos up to 10 minutes
-              </span>
+              <b>{uploadCopy.choose}</b>
+              <span>{uploadCopy.formats}</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,image/avif,image/heic,video/mp4,video/quicktime,video/webm"
@@ -2355,9 +2349,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="consent">
               <ShieldCheck />
               <span>
-                <b>Your privacy comes first</b>Files are validated and encrypted
-                before storage. Provider scan copies are resized and stripped of
-                EXIF/GPS metadata.
+                <b>{uploadCopy.privacyTitle}</b>{uploadCopy.privacy}
               </span>
             </div>
           </div>
@@ -2376,7 +2368,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <button
               type="button"
               className="modal-x"
-              aria-label="Close rights declaration"
+              aria-label={uploadCopy.closeRights}
               onClick={() => setRightsAsset(null)}
             >
               <X />
@@ -2384,7 +2376,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="modal-icon">
               <FileCheck2 />
             </div>
-            <h2>Declare rights for this file</h2>
+            <h2>{uploadCopy.declareTitle}</h2>
             <p>{rightsAsset.name}</p>
             <RightsDeclarationFields
               value={rightsForm}
@@ -2392,7 +2384,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
               language={language}
             />
             <button className="btn btn-primary rights-submit" type="submit">
-              Record declaration
+              {uploadCopy.record}
             </button>
           </form>
         </div>
