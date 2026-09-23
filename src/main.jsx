@@ -331,6 +331,12 @@ const DASHBOARD_DETAIL = {
   ro: { vaultTitle:"Seif privat pentru referințe", vaultOwned:"Fișiere criptate deținute de acest cont", vaultUsed:"folosite", vaultChoose:"alege un plan pentru a adăuga fișiere", encrypted:"Criptat", rightsReviewed:"Drepturi verificate", rightsDeclared:"Drepturi declarate", rightsMissing:"Lipsește declarația de drepturi", replaceRights:"Înlocuiește declarația de drepturi", addRights:"Adaugă declarația de drepturi", downloadOriginal:"Descarcă originalul", deletePermanently:"Șterge permanent", vaultEmpty:"Încă nu există conținut de referință. Alege „Adaugă conținut” pentru a testa seiful securizat.", casesTitle:"Cazuri de eliminare", casesLead:"Fiecare acțiune necesită aprobarea creatorului", caseOpened:"Caz deschis", disputeOpen:"Contestație primită · acțiunile ulterioare sunt oprite pentru verificare umană", reviewApprove:"Verifică și aprobă", casesEmpty:"Încă nu există cazuri. Deschide Potriviri și selectează un rezultat pentru a păstra dovezile.", recentMatches:"Potriviri recente", matchesLead:"Posibile utilizări neautorizate detectate prin similitudine vizuală", filters:["Toate potrivirile","Acțiune necesară","Monitorizare","Verificare caz","Aprobarea ta","Livrare în așteptare","Raportat","Eliminat"], columns:["CONȚINUT GĂSIT","SURSĂ","SCOR POTRIVIRE","STATUS"], matchesEmpty:"Încă nu există potriviri publice verificate. Adaugă o imagine de referință și pornește scanarea după activarea furnizorului.", publicPage:"Pagină publică", captureRequired:"Este necesară capturarea paginii pentru un caz", capturePreserved:"Captură păstrată", billingLiveTitle:"Facturarea securizată Stripe este activă", billingTestTitle:"Facturarea de test Stripe este activă", billingPendingTitle:"Activarea facturării este în așteptare", billingLiveLead:"Abonamentele și datele de plată sunt gestionate de Stripe.", billingTestLead:"Sunt acceptate doar carduri Stripe de test; nu se face nicio plată reală.", billingPendingLead:"Plata este dezactivată până când produsele, prețurile și verificarea webhook Stripe sunt configurate.", recommended:"RECOMANDAT", creatorPlan:"PLAN PENTRU CREATORI", monthly:"/lună", choosePlan:"Alege planul", testCheckout:"Testează plata", unavailable:"Indisponibil", planDescriptions:["fișiere · scanare la fiecare 30 zile","fișiere · scanare zilnică + cazuri","fișiere · scanare zilnică + prioritate"] }
 };
 
+const ACCOUNT_COPY = {
+  en: { security:"Account security", currentPassword:"Current password", newPassword:"New password", passwordHelp:"At least 10 characters", updating:"Updating…", changePassword:"Change password", personalData:"Your personal data", dataLead:"Download a machine-readable copy of your profile, verification outcomes, asset metadata, scans, matches, cases, billing records and audit history.", downloadExport:"Download data export", exportHelp:"Your password is required. Original reference files are downloaded separately from My content.", mfa:"Two-step verification", mfaEnabled:"Enabled", recovery:"recovery codes remaining", mfaLead:"Protect sign-in with a time-based code from your authenticator app.", enableMfa:"Enable two-step verification", disableMfa:"Disable two-step verification", mfaHelp:"Enabling or disabling this control signs out every other session.", subscription:"Subscription", noSubscription:"No completed Stripe subscription", manageSubscription:"Manage subscription", liveBilling:"Secure billing is managed by Stripe.", testBilling:"Stripe test mode — test cards only, no live charges.", billingPending:"Billing activation is not complete; no payment can be taken.", deleteAccount:"Delete account", deleteLead:"Permanently removes your profile, encrypted reference files, scans, cases and active sessions.", deleteMine:"Delete my account" },
+  es: { security:"Seguridad de la cuenta", currentPassword:"Contraseña actual", newPassword:"Nueva contraseña", passwordHelp:"Al menos 10 caracteres", updating:"Actualizando…", changePassword:"Cambiar contraseña", personalData:"Tus datos personales", dataLead:"Descarga una copia legible por máquina de tu perfil, resultados de verificación, metadatos de archivos, escaneos, coincidencias, casos, registros de facturación e historial de auditoría.", downloadExport:"Descargar exportación de datos", exportHelp:"Se requiere tu contraseña. Los archivos originales de referencia se descargan por separado desde Mi contenido.", mfa:"Verificación en dos pasos", mfaEnabled:"Activada", recovery:"códigos de recuperación restantes", mfaLead:"Protege el inicio de sesión con un código temporal de tu aplicación de autenticación.", enableMfa:"Activar verificación en dos pasos", disableMfa:"Desactivar verificación en dos pasos", mfaHelp:"Activar o desactivar este control cierra las demás sesiones.", subscription:"Suscripción", noSubscription:"No hay suscripción Stripe completada", manageSubscription:"Gestionar suscripción", liveBilling:"Stripe gestiona la facturación segura.", testBilling:"Modo de prueba de Stripe: solo tarjetas de prueba, sin cargos reales.", billingPending:"La activación de facturación no está completa; no se puede realizar ningún pago.", deleteAccount:"Eliminar cuenta", deleteLead:"Elimina permanentemente tu perfil, archivos cifrados de referencia, escaneos, casos y sesiones activas.", deleteMine:"Eliminar mi cuenta" },
+  ro: { security:"Securitatea contului", currentPassword:"Parola actuală", newPassword:"Parola nouă", passwordHelp:"Cel puțin 10 caractere", updating:"Se actualizează…", changePassword:"Schimbă parola", personalData:"Datele tale personale", dataLead:"Descarcă o copie prelucrabilă automat a profilului, rezultatelor verificării, metadatelor fișierelor, scanărilor, potrivirilor, cazurilor, înregistrărilor de facturare și istoricului de audit.", downloadExport:"Descarcă exportul de date", exportHelp:"Este necesară parola. Fișierele originale de referință se descarcă separat din Conținutul meu.", mfa:"Verificare în doi pași", mfaEnabled:"Activată", recovery:"coduri de recuperare rămase", mfaLead:"Protejează autentificarea cu un cod temporar din aplicația ta de autentificare.", enableMfa:"Activează verificarea în doi pași", disableMfa:"Dezactivează verificarea în doi pași", mfaHelp:"Activarea sau dezactivarea acestui control închide toate celelalte sesiuni.", subscription:"Abonament", noSubscription:"Nu există un abonament Stripe finalizat", manageSubscription:"Gestionează abonamentul", liveBilling:"Facturarea securizată este gestionată de Stripe.", testBilling:"Mod de test Stripe — doar carduri de test, fără plăți reale.", billingPending:"Activarea facturării nu este finalizată; nu poate fi făcută nicio plată.", deleteAccount:"Șterge contul", deleteLead:"Elimină permanent profilul, fișierele de referință criptate, scanările, cazurile și sesiunile active.", deleteMine:"Șterge contul meu" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -653,7 +659,8 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
   );
 }
 
-function AccountSettings({ user, subscription, billingMode, onDeleted }) {
+function AccountSettings({ user, subscription, billingMode, onDeleted, language }) {
+  const copy = ACCOUNT_COPY[language] || ACCOUNT_COPY.en;
   const [passwords, setPasswords] = useState({
     currentPassword: "",
     newPassword: "",
@@ -792,11 +799,11 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
   return (
     <div className="account-grid">
       <section className="account-card">
-        <h2>Account security</h2>
+        <h2>{copy.security}</h2>
         <p>{user.email}</p>
         <form onSubmit={changePassword}>
           <label>
-            Current password
+            {copy.currentPassword}
             <input
               type="password"
               required
@@ -807,7 +814,7 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
             />
           </label>
           <label>
-            New password
+            {copy.newPassword}
             <input
               type="password"
               required
@@ -817,34 +824,29 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
                 setPasswords({ ...passwords, newPassword: e.target.value })
               }
             />
-            <small>At least 10 characters</small>
+            <small>{copy.passwordHelp}</small>
           </label>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? "Updating…" : "Change password"}
+            {busy ? copy.updating : copy.changePassword}
           </button>
         </form>
       </section>
       <section className="account-card">
-        <h2>Your personal data</h2>
-        <p>
-          Download a machine-readable copy of your profile, verification
-          outcomes, asset metadata, scans, matches, cases, billing records and
-          audit history.
-        </p>
+        <h2>{copy.personalData}</h2>
+        <p>{copy.dataLead}</p>
         <button className="btn btn-outline" onClick={exportData}>
-          <Download size={16} /> Download data export
+          <Download size={16} /> {copy.downloadExport}
         </button>
         <small>
-          Your password is required. Original reference files are downloaded
-          separately from My content.
+          {copy.exportHelp}
         </small>
       </section>
       <section className="account-card">
-        <h2>Two-step verification</h2>
+        <h2>{copy.mfa}</h2>
         <p>
           {user.mfaEnabled
-            ? `Enabled · ${user.mfaRecoveryCodesRemaining} recovery codes remaining`
-            : "Protect sign-in with a time-based code from your authenticator app."}
+            ? `${copy.mfaEnabled} · ${user.mfaRecoveryCodesRemaining} ${copy.recovery}`
+            : copy.mfaLead}
         </p>
         <button
           className={user.mfaEnabled ? "btn danger-btn" : "btn btn-primary"}
@@ -852,38 +854,35 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
         >
           <ShieldCheck size={16} />
           {user.mfaEnabled
-            ? "Disable two-step verification"
-            : "Enable two-step verification"}
+            ? copy.disableMfa
+            : copy.enableMfa}
         </button>
         <small>
-          Enabling or disabling this control signs out every other session.
+          {copy.mfaHelp}
         </small>
       </section>
       <section className="account-card">
-        <h2>Subscription</h2>
+        <h2>{copy.subscription}</h2>
         <p>
           <b>{subscription?.plan || user.plan}</b> ·{" "}
-          {subscription?.status || "No completed Stripe subscription"}
+          {subscription?.status || copy.noSubscription}
         </p>
         <button className="btn btn-outline" onClick={openPortal}>
-          Manage subscription
+          {copy.manageSubscription}
         </button>
         <small>
           {billingMode === "stripe_live"
-            ? "Secure billing is managed by Stripe."
+            ? copy.liveBilling
             : billingMode === "stripe_test"
-              ? "Stripe test mode — test cards only, no live charges."
-              : "Billing activation is not complete; no payment can be taken."}
+              ? copy.testBilling
+              : copy.billingPending}
         </small>
       </section>
       <section className="account-card danger-zone">
-        <h2>Delete account</h2>
-        <p>
-          Permanently removes your profile, encrypted reference files, scans,
-          cases and active sessions.
-        </p>
+        <h2>{copy.deleteAccount}</h2>
+        <p>{copy.deleteLead}</p>
         <button className="btn danger-btn" onClick={deleteAccount}>
-          Delete my account
+          {copy.deleteMine}
         </button>
       </section>
     </div>
@@ -2024,6 +2023,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
               subscription={data.subscription}
               billingMode={data.billingMode}
               onDeleted={onLogout}
+              language={language}
             />
           )}
           {tab === "Help & safety" && <HelpSafety />}
