@@ -361,6 +361,12 @@ const EVIDENCE_COPY = {
   ro: { close:"Închide fereastra de captură a paginii", title:"Păstrează pagina potrivită", lead:"Fă o captură actuală care arată clar conținutul potrivit și contextul paginii. Este criptată, iar hash-ul de integritate este legat de caz.", existing:"SHA-256 existent:", download:"Descarcă captura păstrată", immutableTitle:"Dovadă de caz imuabilă", immutable:"Această captură este deja legată de un caz și nu poate fi înlocuită.", consentTitle:"Consimțământ explicit pentru procesarea dovezilor", consent:"Sunt de acord cu procesarea privată a acestei capturi ca dovadă de caz. Poate conține informații sensibile sau din categorii speciale.", targetTitle:"Confirmarea paginii-țintă", target:"Această captură arată URL-ul public identificat mai sus și conținutul suspectat ca fiind copiat.", accuracyTitle:"Confirmarea exactității", accuracy:"Pagina și conținutul relevante nu au fost manipulate; este posibil să fi fost decupat doar material nerelevant.", choose:"Alege o captură", chooseReplacement:"Alege o captură de înlocuire", formats:"JPEG, PNG sau WebP · maximum 8 MB", privateTitle:"Dovada nu este publicată", private:"Fișierul original criptat și suma sa de control SHA-256 rămân private. Un operator instruit trebuie totuși să verifice URL-ul activ și captura." }
 };
 
+const MATCH_ACTION_COPY = {
+  en: { reviewPreserved:"Review the capture preserved in the case", reviewReplace:"Review or replace page capture", addCapture:"Add page capture", createCase:"Create protected case", sandbox:"Sandbox", live:"Live" },
+  es: { reviewPreserved:"Revisar la captura conservada en el caso", reviewReplace:"Revisar o sustituir la captura de página", addCapture:"Añadir captura de página", createCase:"Crear caso protegido", sandbox:"Entorno de pruebas", live:"Activo" },
+  ro: { reviewPreserved:"Verifică captura păstrată în caz", reviewReplace:"Verifică sau înlocuiește captura paginii", addCapture:"Adaugă captură de pagină", createCase:"Creează caz protejat", sandbox:"Mediu de test", live:"Activ" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1308,6 +1314,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
   const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
   const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
+  const matchActionCopy = MATCH_ACTION_COPY[language] || MATCH_ACTION_COPY.en;
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -1995,7 +2002,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       )}
                     </div>
                     <div className="confidence">
-                      <b>{c.mode === "sandbox" ? "Sandbox" : "Live"}</b>
+                      <b>{c.mode === "sandbox" ? matchActionCopy.sandbox : matchActionCopy.live}</b>
                     </div>
                     <div>
                       <span className="status monitoring">{c.status}</span>
@@ -2158,9 +2165,9 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       title={
                         m.pageCapture
                           ? m.pageCaptureLocked
-                            ? "Review the capture preserved in the case"
-                            : "Review or replace page capture"
-                          : "Add page capture"
+                            ? matchActionCopy.reviewPreserved
+                            : matchActionCopy.reviewReplace
+                          : matchActionCopy.addCapture
                       }
                       onClick={() => openPageCapture(m)}
                     >
@@ -2168,7 +2175,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     </button>
                     <button
                       className="more"
-                      title="Create protected case"
+                      title={matchActionCopy.createCase}
                       onClick={() => createCase(m.id)}
                     >
                       <Plus />
