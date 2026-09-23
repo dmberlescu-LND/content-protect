@@ -367,6 +367,12 @@ const MATCH_ACTION_COPY = {
   ro: { reviewPreserved:"Verifică captura păstrată în caz", reviewReplace:"Verifică sau înlocuiește captura paginii", addCapture:"Adaugă captură de pagină", createCase:"Creează caz protejat", sandbox:"Mediu de test", live:"Activ" }
 };
 
+const STATUS_COPY = {
+  en: { "Action needed":"Action needed", Monitoring:"Monitoring", Removed:"Removed", "Awaiting operator preparation":"Awaiting operator preparation", "Awaiting creator approval":"Awaiting creator approval", "Approved — delivery pending":"Approved — delivery pending", "Submitted — awaiting delivery confirmation":"Submitted — awaiting delivery confirmation", "Delivered — monitoring":"Delivered — monitoring" },
+  es: { "Action needed":"Acción necesaria", Monitoring:"Supervisión", Removed:"Eliminado", "Awaiting operator preparation":"Pendiente de preparación del operador", "Awaiting creator approval":"Pendiente de aprobación del creador", "Approved — delivery pending":"Aprobado — entrega pendiente", "Submitted — awaiting delivery confirmation":"Enviado — pendiente de confirmación de entrega", "Delivered — monitoring":"Entregado — en supervisión" },
+  ro: { "Action needed":"Acțiune necesară", Monitoring:"Monitorizare", Removed:"Eliminat", "Awaiting operator preparation":"Așteaptă pregătirea operatorului", "Awaiting creator approval":"Așteaptă aprobarea creatorului", "Approved — delivery pending":"Aprobat — livrare în așteptare", "Submitted — awaiting delivery confirmation":"Trimis — se așteaptă confirmarea livrării", "Delivered — monitoring":"Livrat — în monitorizare" }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1315,6 +1321,9 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
   const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
   const matchActionCopy = MATCH_ACTION_COPY[language] || MATCH_ACTION_COPY.en;
+  const statusCopy = STATUS_COPY[language] || STATUS_COPY.en;
+  const localizeStatus = (status) => statusCopy[status] || status;
+  const dateLocale = language === "ro" ? "ro-RO" : language === "es" ? "es-ES" : "en-GB";
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -1991,7 +2000,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       <b>{c.source}</b>
                       <span>
                         {detail.caseOpened}{" "}
-                        {new Date(c.createdAt).toLocaleDateString("en-GB")}
+                        {new Date(c.createdAt).toLocaleDateString(dateLocale)}
                       </span>
                       {c.disputes?.some(
                         (dispute) => dispute.status === "open",
@@ -2005,7 +2014,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       <b>{c.mode === "sandbox" ? matchActionCopy.sandbox : matchActionCopy.live}</b>
                     </div>
                     <div>
-                      <span className="status monitoring">{c.status}</span>
+                      <span className="status monitoring">{localizeStatus(c.status)}</span>
                     </div>
                     {c.status === "Awaiting creator approval" && (
                       <button
@@ -2156,7 +2165,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     <span
                       className={`status ${m.status.toLowerCase().replaceAll(" ", "-")}`}
                     >
-                      {m.status}
+                      {localizeStatus(m.status)}
                     </span>
                   </div>
                   <div className="match-actions">
