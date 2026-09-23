@@ -90,6 +90,11 @@ async function saveDownload(response, fallbackName) {
 }
 
 let yotiShareClientPromise;
+const VERIFICATION_COPY = {
+  en: { providerPending:"Provider activation pending", sandboxRunning:"Running sandbox test…", sandboxStart:"Run approved sandbox test", sandboxNote:"Test account only · no Yoti phone or identity check", startAge:"Start private Yoti age verification", loading:"Loading secure age check…", emailTitle:"Verify your email before uploading content", emailLead:"We sent a secure 24-hour verification link to {email}.", resend:"Resend email", ageTitle:"Complete a private 18+ age check", ageLead:"Production verification uses Yoti and retains only the outcome and method, never your document or face image.", sandboxPassword:"Enter the test account password to confirm this controlled sandbox check.", sandboxFailed:"Sandbox age testing failed.", sandboxSuccess:"Controlled sandbox test passed. This is not a real Yoti identity check and cannot enable production." },
+  es: { providerPending:"Pendiente de activación del proveedor", sandboxRunning:"Ejecutando prueba sandbox…", sandboxStart:"Ejecutar prueba sandbox aprobada", sandboxNote:"Solo cuenta de prueba · sin comprobación de teléfono o identidad Yoti", startAge:"Iniciar verificación privada de edad Yoti", loading:"Cargando comprobación segura de edad…", emailTitle:"Verifica tu correo antes de subir contenido", emailLead:"Enviamos un enlace de verificación seguro de 24 horas a {email}.", resend:"Reenviar correo", ageTitle:"Completa una comprobación privada de 18+", ageLead:"La verificación de producción usa Yoti y conserva solo el resultado y el método, nunca tu documento ni imagen facial.", sandboxPassword:"Introduce la contraseña de la cuenta de prueba para confirmar esta comprobación sandbox controlada.", sandboxFailed:"La prueba sandbox de edad falló.", sandboxSuccess:"La prueba sandbox controlada pasó. No es una comprobación de identidad real de Yoti y no puede activar producción." },
+  ro: { providerPending:"Activarea furnizorului este în așteptare", sandboxRunning:"Se rulează testul sandbox…", sandboxStart:"Rulează testul sandbox aprobat", sandboxNote:"Doar cont de test · fără verificare Yoti de telefon sau identitate", startAge:"Pornește verificarea privată de vârstă Yoti", loading:"Se încarcă verificarea securizată de vârstă…", emailTitle:"Verifică e-mailul înainte de a încărca conținut", emailLead:"Am trimis un link securizat de verificare valabil 24 de ore la {email}.", resend:"Retrimite e-mailul", ageTitle:"Finalizează o verificare privată 18+", ageLead:"Verificarea de producție utilizează Yoti și păstrează doar rezultatul și metoda, niciodată documentul sau imaginea feței tale.", sandboxPassword:"Introdu parola contului de test pentru a confirma această verificare sandbox controlată.", sandboxFailed:"Testarea sandbox pentru vârstă a eșuat.", sandboxSuccess:"Testul sandbox controlat a trecut. Nu este o verificare reală de identitate Yoti și nu poate activa producția." }
+};
 function loadYotiShareClient() {
   if (window.Yoti) return Promise.resolve(window.Yoti);
   if (!yotiShareClientPromise)
@@ -107,7 +112,8 @@ function loadYotiShareClient() {
   return yotiShareClientPromise;
 }
 
-function YotiAgeButton({ onVerified }) {
+function YotiAgeButton({ onVerified, language }) {
+  const copy = VERIFICATION_COPY[language] || VERIFICATION_COPY.en;
   const container = useRef(null),
     currentSessionId = useRef(null),
     completing = useRef(false),
@@ -194,7 +200,7 @@ function YotiAgeButton({ onVerified }) {
   }, []);
   const runSandboxTest = async () => {
     const password = prompt(
-      "Enter the test account password to confirm this controlled sandbox check.",
+      copy.sandboxPassword,
     );
     if (!password) return;
     setSandboxRunning(true);
@@ -206,13 +212,13 @@ function YotiAgeButton({ onVerified }) {
         }),
         result = await response.json();
       if (!response.ok || !result.verified)
-        throw new Error(result.error || "Sandbox age testing failed.");
+        throw new Error(result.error || copy.sandboxFailed);
       onVerifiedRef.current(result.user);
       alert(
-        "Controlled sandbox test passed. This is not a real Yoti identity check and cannot enable production.",
+        copy.sandboxSuccess,
       );
     } catch (error) {
-      alert(error.message || "Sandbox age testing failed.");
+      alert(error.message || copy.sandboxFailed);
     } finally {
       setSandboxRunning(false);
     }
@@ -220,7 +226,7 @@ function YotiAgeButton({ onVerified }) {
   if (status === "unavailable")
     return (
       <button className="btn btn-outline" disabled>
-        Provider activation pending
+        {copy.providerPending}
       </button>
     );
   if (status === "sandbox")
@@ -232,10 +238,10 @@ function YotiAgeButton({ onVerified }) {
           onClick={runSandboxTest}
         >
           {sandboxRunning
-            ? "Running sandbox test…"
-            : "Run approved sandbox test"}
+            ? copy.sandboxRunning
+            : copy.sandboxStart}
         </button>
-        <small>Test account only · no Yoti phone or identity check</small>
+        <small>{copy.sandboxNote}</small>
       </div>
     );
   return (
@@ -244,9 +250,9 @@ function YotiAgeButton({ onVerified }) {
         ref={container}
         id="yoti-age-share-button"
         aria-busy={status === "loading"}
-        aria-label="Start private Yoti age verification"
+        aria-label={copy.startAge}
       />
-      {status === "loading" && <span>Loading secure age check…</span>}
+      {status === "loading" && <span>{copy.loading}</span>}
     </div>
   );
 }
@@ -1329,6 +1335,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const matchActionCopy = MATCH_ACTION_COPY[language] || MATCH_ACTION_COPY.en;
   const statusCopy = STATUS_COPY[language] || STATUS_COPY.en;
   const actionNoticeCopy = ACTION_NOTICE_COPY[language] || ACTION_NOTICE_COPY.en;
+  const verificationCopy = VERIFICATION_COPY[language] || VERIFICATION_COPY.en;
   const localizeStatus = (status) => statusCopy[status] || status;
   const dateLocale = language === "ro" ? "ro-RO" : language === "es" ? "es-ES" : "en-GB";
   const [tab, setTab] = useState("Overview");
@@ -1770,13 +1777,13 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="verification-banner">
               <ShieldCheck />
               <div>
-                <b>Verify your email before uploading content</b>
+                <b>{verificationCopy.emailTitle}</b>
                 <span>
-                  We sent a secure 24-hour verification link to {user.email}.
+                  {verificationCopy.emailLead.replace("{email}", user.email)}
                 </span>
               </div>
               <button className="btn btn-outline" onClick={resendVerification}>
-                Resend email
+                {verificationCopy.resend}
               </button>
             </div>
           )}
@@ -1784,13 +1791,12 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="verification-banner">
               <ShieldCheck />
               <div>
-                <b>Complete a private 18+ age check</b>
+                <b>{verificationCopy.ageTitle}</b>
                 <span>
-                  Production verification uses Yoti and retains only the outcome
-                  and method, never your document or face image.
+                  {verificationCopy.ageLead}
                 </span>
               </div>
-              <YotiAgeButton onVerified={onUserUpdate} />
+              <YotiAgeButton onVerified={onUserUpdate} language={language} />
             </div>
           )}
           <div className="dash-title">
