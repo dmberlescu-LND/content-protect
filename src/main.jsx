@@ -355,6 +355,12 @@ const UPLOAD_COPY = {
   ro: { closeUpload:"Închide fereastra de încărcare", title:"Adaugă conținut de referință", lead:"Încarcă un conținut asupra căruia ai drepturi, astfel încât Content Protect să poată căuta posibile copii. Nu se publică nimic.", usage:"fișiere din plan sunt utilizate în prezent. Videoclipurile ocupă un loc de fișier și nu sunt scanate până nu este activată aprobarea de confidențialitate și a furnizorului pentru cadre video minimizate.", consentTitle:"Consimțământ explicit pentru procesarea conținutului media", consent:"Sunt de acord ca Content Protect să proceseze acest fișier pentru potrivire privată și dovezi de caz. Înțeleg că poate dezvălui informații din categorii speciale, inclusiv despre viața sexuală sau orientarea sexuală, și îmi pot retrage consimțământul prin ștergerea fișierului.", choose:"Alege o fotografie compatibilă sau un videoclip scurt", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV sau WebM · 8 MB · videoclipuri de până la 10 minute", privacyTitle:"Confidențialitatea ta este pe primul loc", privacy:"Fișierele sunt validate și criptate înainte de stocare. Copiile pentru scanare ale furnizorului sunt redimensionate și nu păstrează metadate EXIF/GPS.", closeRights:"Închide declarația de drepturi", declareTitle:"Declară drepturile pentru acest fișier", record:"Înregistrează declarația" }
 };
 
+const EVIDENCE_COPY = {
+  en: { close:"Close page-capture dialog", title:"Preserve the matched page", lead:"Take a current screenshot that clearly shows the matched content and page context. It is encrypted and its integrity hash is bound to the case.", existing:"Existing SHA-256:", download:"Download preserved capture", immutableTitle:"Immutable case evidence", immutable:"This capture is already bound to a case and cannot be replaced.", consentTitle:"Explicit evidence-processing consent", consent:"I consent to private processing of this screenshot as case evidence. It may contain sensitive or special-category information.", targetTitle:"Target-page confirmation", target:"This screenshot shows the public URL identified above and the suspected copied content.", accuracyTitle:"Accuracy confirmation", accuracy:"The relevant page and content have not been manipulated; only unrelated material may have been cropped out.", choose:"Choose a screenshot", chooseReplacement:"Choose a replacement screenshot", formats:"JPEG, PNG or WebP · maximum 8 MB", privateTitle:"Evidence is not published", private:"The original encrypted file and its SHA-256 checksum remain private. A trained operator must still review the live URL and the capture." },
+  es: { close:"Cerrar el diálogo de captura de página", title:"Conservar la página coincidente", lead:"Haz una captura actual que muestre claramente el contenido coincidente y el contexto de la página. Se cifra y su hash de integridad queda vinculado al caso.", existing:"SHA-256 existente:", download:"Descargar captura conservada", immutableTitle:"Prueba de caso inmutable", immutable:"Esta captura ya está vinculada a un caso y no puede sustituirse.", consentTitle:"Consentimiento explícito para el procesamiento de pruebas", consent:"Consiento el procesamiento privado de esta captura como prueba del caso. Puede contener información sensible o de categoría especial.", targetTitle:"Confirmación de página de destino", target:"Esta captura muestra la URL pública identificada arriba y el contenido presuntamente copiado.", accuracyTitle:"Confirmación de exactitud", accuracy:"La página y el contenido relevantes no se han manipulado; solo se puede haber recortado material no relacionado.", choose:"Elige una captura", chooseReplacement:"Elige una captura de reemplazo", formats:"JPEG, PNG o WebP · máximo 8 MB", privateTitle:"La prueba no se publica", private:"El archivo original cifrado y su checksum SHA-256 se mantienen privados. Un operador formado debe revisar igualmente la URL activa y la captura." },
+  ro: { close:"Închide fereastra de captură a paginii", title:"Păstrează pagina potrivită", lead:"Fă o captură actuală care arată clar conținutul potrivit și contextul paginii. Este criptată, iar hash-ul de integritate este legat de caz.", existing:"SHA-256 existent:", download:"Descarcă captura păstrată", immutableTitle:"Dovadă de caz imuabilă", immutable:"Această captură este deja legată de un caz și nu poate fi înlocuită.", consentTitle:"Consimțământ explicit pentru procesarea dovezilor", consent:"Sunt de acord cu procesarea privată a acestei capturi ca dovadă de caz. Poate conține informații sensibile sau din categorii speciale.", targetTitle:"Confirmarea paginii-țintă", target:"Această captură arată URL-ul public identificat mai sus și conținutul suspectat ca fiind copiat.", accuracyTitle:"Confirmarea exactității", accuracy:"Pagina și conținutul relevante nu au fost manipulate; este posibil să fi fost decupat doar material nerelevant.", choose:"Alege o captură", chooseReplacement:"Alege o captură de înlocuire", formats:"JPEG, PNG sau WebP · maximum 8 MB", privateTitle:"Dovada nu este publicată", private:"Fișierul original criptat și suma sa de control SHA-256 rămân private. Un operator instruit trebuie totuși să verifice URL-ul activ și captura." }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1301,6 +1307,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
   const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
   const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
+  const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -2181,7 +2188,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
           >
             <button
               className="modal-x"
-              aria-label="Close page-capture dialog"
+              aria-label={evidenceCopy.close}
               onClick={closePageCapture}
             >
               <X />
@@ -2189,18 +2196,14 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="modal-icon">
               <FileCheck2 />
             </div>
-            <h2>Preserve the matched page</h2>
-            <p>
-              Take a current screenshot that clearly shows the matched content
-              and page context. It is encrypted and its integrity hash is bound
-              to the case.
-            </p>
+            <h2>{evidenceCopy.title}</h2>
+            <p>{evidenceCopy.lead}</p>
             <div className="capture-target">
               <b>{captureMatch.site}</b>
               <span>{captureMatch.sourceUrl}</span>
               {captureMatch.pageCapture && (
                 <small>
-                  Existing SHA-256: {captureMatch.pageCapture.checksumSha256}
+                  {evidenceCopy.existing} {captureMatch.pageCapture.checksumSha256}
                 </small>
               )}
             </div>
@@ -2209,15 +2212,14 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 className="btn btn-outline capture-download"
                 onClick={() => downloadPageCapture(captureMatch)}
               >
-                <Download /> Download preserved capture
+                <Download /> {evidenceCopy.download}
               </button>
             )}
             {captureMatch.pageCaptureLocked ? (
               <div className="consent">
                 <LockKeyhole />
                 <span>
-                  <b>Immutable case evidence</b>This capture is already bound to
-                  a case and cannot be replaced.
+                  <b>{evidenceCopy.immutableTitle}</b>{evidenceCopy.immutable}
                 </span>
               </div>
             ) : (
@@ -2232,9 +2234,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     }
                   />
                   <span>
-                    <b>Explicit evidence-processing consent</b>I consent to
-                    private processing of this screenshot as case evidence. It
-                    may contain sensitive or special-category information.
+                    <b>{evidenceCopy.consentTitle}</b>{evidenceCopy.consent}
                   </span>
                 </label>
                 <label className="consent consent-checkbox">
@@ -2247,9 +2247,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     }
                   />
                   <span>
-                    <b>Target-page confirmation</b>This screenshot shows the
-                    public URL identified above and the suspected copied
-                    content.
+                    <b>{evidenceCopy.targetTitle}</b>{evidenceCopy.target}
                   </span>
                 </label>
                 <label className="consent consent-checkbox">
@@ -2262,9 +2260,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     }
                   />
                   <span>
-                    <b>Accuracy confirmation</b>The relevant page and content
-                    have not been manipulated; only unrelated material may have
-                    been cropped out.
+                    <b>{evidenceCopy.accuracyTitle}</b>{evidenceCopy.accuracy}
                   </span>
                 </label>
                 <label
@@ -2273,10 +2269,10 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   <Upload />
                   <b>
                     {captureMatch.pageCapture
-                      ? "Choose a replacement screenshot"
-                      : "Choose a screenshot"}
+                      ? evidenceCopy.chooseReplacement
+                      : evidenceCopy.choose}
                   </b>
-                  <span>JPEG, PNG or WebP · maximum 8 MB</span>
+                  <span>{evidenceCopy.formats}</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -2289,9 +2285,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <div className="consent">
               <ShieldCheck />
               <span>
-                <b>Evidence is not published</b>The original encrypted file and
-                its SHA-256 checksum remain private. A trained operator must
-                still review the live URL and the capture.
+                <b>{evidenceCopy.privateTitle}</b>{evidenceCopy.private}
               </span>
             </div>
           </div>
