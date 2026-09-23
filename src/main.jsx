@@ -373,6 +373,12 @@ const STATUS_COPY = {
   ro: { "Action needed":"Acțiune necesară", Monitoring:"Monitorizare", Removed:"Eliminat", "Awaiting operator preparation":"Așteaptă pregătirea operatorului", "Awaiting creator approval":"Așteaptă aprobarea creatorului", "Approved — delivery pending":"Aprobat — livrare în așteptare", "Submitted — awaiting delivery confirmation":"Trimis — se așteaptă confirmarea livrării", "Delivered — monitoring":"Livrat — în monitorizare" }
 };
 
+const ACTION_NOTICE_COPY = {
+  en: { uploadFailed:"Upload failed", uploadSuccess:"Content encrypted and added to your private vault.", rightsFailed:"Rights declaration could not be saved.", rightsSuccess:"The per-file rights declaration was recorded for operator review.", captureFailed:"The page capture could not be preserved.", captureSuccess:"The encrypted page capture and its SHA-256 integrity hash were preserved.", capturePassword:"Enter your password to decrypt and download this preserved page capture.", captureDownloadFailed:"The page capture could not be downloaded.", captureBeforeCase:"Preserve a current screenshot of the matched public page before opening the case.", caseFailed:"Could not create case", caseCreated:"Evidence preserved. A trained operator must verify the recipient and jurisdiction before the exact notice returns to you for approval.", deleteConfirm:"Permanently delete “{name}” from your encrypted vault?", deleteFailed:"Could not delete asset", assetPassword:"Enter your password to decrypt and download “{name}”.", assetDownloadFailed:"The reference file could not be downloaded.", noticeNotReady:"The exact notice has not been prepared for review yet.", caseApproveFailed:"Could not approve case", verificationSent:"Verification email sent.", verificationFailed:"Could not send verification email." },
+  es: { uploadFailed:"No se pudo subir el archivo", uploadSuccess:"El contenido se cifró y se añadió a tu bóveda privada.", rightsFailed:"No se pudo guardar la declaración de derechos.", rightsSuccess:"La declaración de derechos por archivo se registró para revisión del operador.", captureFailed:"No se pudo conservar la captura de página.", captureSuccess:"Se conservaron la captura de página cifrada y su hash de integridad SHA-256.", capturePassword:"Introduce tu contraseña para descifrar y descargar esta captura de página conservada.", captureDownloadFailed:"No se pudo descargar la captura de página.", captureBeforeCase:"Conserva una captura actual de la página pública coincidente antes de abrir el caso.", caseFailed:"No se pudo crear el caso", caseCreated:"Pruebas conservadas. Un operador formado debe verificar el destinatario y la jurisdicción antes de que el aviso exacto vuelva para tu aprobación.", deleteConfirm:"¿Eliminar permanentemente “{name}” de tu bóveda cifrada?", deleteFailed:"No se pudo eliminar el archivo", assetPassword:"Introduce tu contraseña para descifrar y descargar “{name}”.", assetDownloadFailed:"No se pudo descargar el archivo de referencia.", noticeNotReady:"El aviso exacto aún no se ha preparado para su revisión.", caseApproveFailed:"No se pudo aprobar el caso", verificationSent:"Correo de verificación enviado.", verificationFailed:"No se pudo enviar el correo de verificación." },
+  ro: { uploadFailed:"Încărcarea a eșuat", uploadSuccess:"Conținutul a fost criptat și adăugat în seiful tău privat.", rightsFailed:"Declarația de drepturi nu a putut fi salvată.", rightsSuccess:"Declarația de drepturi pentru fișier a fost înregistrată pentru verificarea operatorului.", captureFailed:"Captura paginii nu a putut fi păstrată.", captureSuccess:"Captura criptată a paginii și hash-ul său de integritate SHA-256 au fost păstrate.", capturePassword:"Introdu parola pentru a decripta și descărca această captură de pagină păstrată.", captureDownloadFailed:"Captura paginii nu a putut fi descărcată.", captureBeforeCase:"Păstrează o captură actuală a paginii publice potrivite înainte de a deschide cazul.", caseFailed:"Nu s-a putut crea cazul", caseCreated:"Dovezile au fost păstrate. Un operator instruit trebuie să verifice destinatarul și jurisdicția înainte ca notificarea exactă să revină pentru aprobarea ta.", deleteConfirm:"Ștergi definitiv „{name}” din seiful tău criptat?", deleteFailed:"Fișierul nu a putut fi șters", assetPassword:"Introdu parola pentru a decripta și descărca „{name}”.", assetDownloadFailed:"Fișierul de referință nu a putut fi descărcat.", noticeNotReady:"Notificarea exactă nu a fost încă pregătită pentru verificare.", caseApproveFailed:"Cazul nu a putut fi aprobat", verificationSent:"E-mailul de verificare a fost trimis.", verificationFailed:"E-mailul de verificare nu a putut fi trimis." }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1322,6 +1328,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
   const matchActionCopy = MATCH_ACTION_COPY[language] || MATCH_ACTION_COPY.en;
   const statusCopy = STATUS_COPY[language] || STATUS_COPY.en;
+  const actionNoticeCopy = ACTION_NOTICE_COPY[language] || ACTION_NOTICE_COPY.en;
   const localizeStatus = (status) => statusCopy[status] || status;
   const dateLocale = language === "ro" ? "ro-RO" : language === "es" ? "es-ES" : "en-GB";
   const [tab, setTab] = useState("Overview");
@@ -1421,14 +1428,14 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     });
     if (!response.ok) {
       const result = await response.json();
-      alert(result.error || "Upload failed");
+      alert(result.error || actionNoticeCopy.uploadFailed);
       return;
     }
     setModal(false);
     setMediaConsent(false);
     setRightsForm(blankRightsDeclaration(user?.name));
     await refresh();
-    alert("Content encrypted and added to your private vault.");
+    alert(actionNoticeCopy.uploadSuccess);
   };
   const saveAssetRights = async (event) => {
     event.preventDefault();
@@ -1440,13 +1447,13 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Rights declaration could not be saved.");
+      alert(result.error || actionNoticeCopy.rightsFailed);
       return;
     }
     setRightsAsset(null);
     setRightsForm(blankRightsDeclaration(user?.name));
     await refresh();
-    alert("The per-file rights declaration was recorded for operator review.");
+    alert(actionNoticeCopy.rightsSuccess);
   };
   const openPageCapture = (match) => {
     setCaptureMatch(match);
@@ -1486,18 +1493,16 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     );
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "The page capture could not be preserved.");
+      alert(result.error || actionNoticeCopy.captureFailed);
       return;
     }
     closePageCapture();
     await refresh();
-    alert(
-      "The encrypted page capture and its SHA-256 integrity hash were preserved.",
-    );
+    alert(actionNoticeCopy.captureSuccess);
   };
   const downloadPageCapture = async (match) => {
     const password = prompt(
-      "Enter your password to decrypt and download this preserved page capture.",
+      actionNoticeCopy.capturePassword,
     );
     if (!password) return;
     const response = await fetch(
@@ -1510,7 +1515,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     );
     if (!response.ok) {
       const result = await response.json();
-      alert(result.error || "The page capture could not be downloaded.");
+      alert(result.error || actionNoticeCopy.captureDownloadFailed);
       return;
     }
     await saveDownload(response, `page-capture-${match.id}.png`);
@@ -1520,7 +1525,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     if (!match?.pageCapture) {
       if (match) openPageCapture(match);
       alert(
-        "Preserve a current screenshot of the matched public page before opening the case.",
+        actionNoticeCopy.captureBeforeCase,
       );
       return;
     }
@@ -1531,14 +1536,12 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Could not create case");
+      alert(result.error || actionNoticeCopy.caseFailed);
       return;
     }
     await refresh();
     setTab("Takedowns");
-    alert(
-      "Evidence preserved. A trained operator must verify the recipient and jurisdiction before the exact notice returns to you for approval.",
-    );
+    alert(actionNoticeCopy.caseCreated);
   };
   const runScan = async () => {
     const response = await fetch("/api/scans", { method: "POST" });
@@ -1584,20 +1587,20 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   };
   const deleteAsset = async (asset) => {
     if (
-      !confirm(`Permanently delete “${asset.name}” from your encrypted vault?`)
+      !confirm(actionNoticeCopy.deleteConfirm.replace("{name}", asset.name))
     )
       return;
     const r = await fetch(`/api/assets/${asset.id}`, { method: "DELETE" });
     const d = await r.json();
     if (!r.ok) {
-      alert(d.error || "Could not delete asset");
+      alert(d.error || actionNoticeCopy.deleteFailed);
       return;
     }
     await refresh();
   };
   const downloadAsset = async (asset) => {
     const password = prompt(
-      `Enter your password to decrypt and download “${asset.name}”.`,
+      actionNoticeCopy.assetPassword.replace("{name}", asset.name),
     );
     if (!password) return;
     const response = await fetch(`/api/assets/${asset.id}/download`, {
@@ -1607,7 +1610,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     });
     if (!response.ok) {
       const result = await response.json();
-      alert(result.error || "The reference file could not be downloaded.");
+      alert(result.error || actionNoticeCopy.assetDownloadFailed);
       return;
     }
     await saveDownload(response, asset.name || "reference-file");
@@ -1615,7 +1618,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const approveCase = async (caseId) => {
     const currentCase = data.cases.find((item) => item.id === caseId);
     if (!currentCase?.noticeText || !currentCase?.noticeHash) {
-      alert("The exact notice has not been prepared for review yet.");
+      alert(actionNoticeCopy.noticeNotReady);
       return;
     }
     if (
@@ -1637,7 +1640,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     });
     const d = await r.json();
     if (!r.ok) {
-      alert(d.error || "Could not approve case");
+      alert(d.error || actionNoticeCopy.caseApproveFailed);
       return;
     }
     await refresh();
@@ -1652,8 +1655,8 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     const d = await r.json();
     alert(
       r.ok
-        ? d.notice || "Verification email sent."
-        : d.error || "Could not send verification email.",
+        ? d.notice || actionNoticeCopy.verificationSent
+        : d.error || actionNoticeCopy.verificationFailed,
     );
   };
   return (
