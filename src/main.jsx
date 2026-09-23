@@ -343,6 +343,12 @@ const HELP_COPY = {
   ro: { title:"Suport privat și reclamații", lead:"Deschide o solicitare urmărită pentru facturare, anulare, rambursare, confidențialitate, accesibilitate, siguranță sau serviciu. Detaliile sensibile sunt criptate și verificate doar de un operator autorizat.", category:"Categorie", categories:["Facturare","Anulare","Retragere în 14 zile","Rambursare","Serviciu","Confidențialitate","Accesibilitate","Siguranță urgentă pentru creator","Altul"], order:"Referință comandă (opțional)", orderPlaceholder:"Referință opacă Stripe sau cont", subject:"Subiect", happened:"Ce s-a întâmplat?", resolution:"Soluție solicitată (opțional)", accurate:"Confirm că această solicitare este corectă.", noSecrets:"Nu am inclus parole, documente de identitate sau conținut privat.", privacy:"Înțeleg că această solicitare este procesată conform Notificării de confidențialitate.", submitting:"Se trimite…", open:"Deschide solicitare urmărită", requests:"Solicitările tale", response:"Termen răspuns:", resolutionTarget:"Termen soluționare:", followUp:"Adaugă un mesaj de follow-up sigur (fără parole sau conținut privat)", addMessage:"Adaugă mesaj", noRequests:"Încă nu există solicitări urmărite.", safetyTitle:"Ghid de siguranță", safetyLead:"Pași practici pentru abuzul de imagini intime, securitatea contului și situațiile în care contactarea persoanei care a încărcat materialul poate crește riscul.", safetyButton:"Deschide centrul de siguranță", safetyNote:"Content Protect nu este un serviciu de urgență sau de aplicare a legii.", reportTitle:"Raportează o problemă", reportLead:"Raportează o posibilă problemă de securitate, o potrivire incorectă, o reclamație de proprietate contestată sau o problemă de accesibilitate.", reportButton:"Trimite raportul de problemă", reportNote:"Pentru rapoarte de securitate, descrie problema fără parole active sau conținut privat." }
 };
 
+const RIGHTS_COPY = {
+  en: { title:"Rights and authority declaration", lead:"A trained operator reviews this before any notice can be prepared. Do not upload contracts or private documents here.", relationship:"Your legal relationship to this work", roles:["Copyright owner","Authorised agent for the rights holder","Exclusive licensee authorised to enforce"], holderName:"Legal or business name of rights holder", workTitle:"Work title or internal name (optional)", publicationUrl:"Original publication URL (optional, HTTPS)", evidenceReference:"Evidence reference", evidencePlaceholder:"Example: original source file or agency agreement CP-2026-004", evidenceHelp:"Use a short reference only. Keep the underlying document in the approved restricted company record.", authorityConfirm:"I own the copyright or am authorised to enforce it for the named rights holder.", accuracyConfirm:"I confirm this per-file declaration is accurate and understand that false claims may result in suspension." },
+  es: { title:"Declaración de derechos y facultad", lead:"Un operador formado revisa esta información antes de preparar un aviso. No subas contratos ni documentos privados aquí.", relationship:"Tu relación legal con esta obra", roles:["Titular de los derechos de autor","Agente autorizado del titular de derechos","Licenciatario exclusivo autorizado para reclamar"], holderName:"Nombre legal o empresarial del titular de derechos", workTitle:"Título de la obra o nombre interno (opcional)", publicationUrl:"URL de publicación original (opcional, HTTPS)", evidenceReference:"Referencia de prueba", evidencePlaceholder:"Ejemplo: archivo fuente original o acuerdo de agencia CP-2026-004", evidenceHelp:"Usa solo una referencia breve. Guarda el documento subyacente en el registro corporativo restringido aprobado.", authorityConfirm:"Soy titular de los derechos de autor o estoy autorizado para reclamar en nombre del titular indicado.", accuracyConfirm:"Confirmo que esta declaración por archivo es exacta y entiendo que las reclamaciones falsas pueden causar suspensión." },
+  ro: { title:"Declarație privind drepturile și autoritatea", lead:"Un operator instruit verifică aceste informații înainte de pregătirea unei notificări. Nu încărca aici contracte sau documente private.", relationship:"Relația ta legală cu această lucrare", roles:["Titular al drepturilor de autor","Agent autorizat al titularului de drepturi","Licențiat exclusiv autorizat să aplice drepturile"], holderName:"Numele legal sau comercial al titularului drepturilor", workTitle:"Titlul lucrării sau nume intern (opțional)", publicationUrl:"URL-ul publicării originale (opțional, HTTPS)", evidenceReference:"Referință dovezi", evidencePlaceholder:"Exemplu: fișierul sursă original sau acordul agenției CP-2026-004", evidenceHelp:"Folosește doar o referință scurtă. Păstrează documentul original în registrul corporativ restricționat aprobat.", authorityConfirm:"Dețin drepturile de autor sau sunt autorizat să le aplic în numele titularului indicat.", accuracyConfirm:"Confirm că această declarație pentru fișier este corectă și înțeleg că declarațiile false pot duce la suspendare." }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -1186,36 +1192,34 @@ function blankRightsDeclaration(name = "") {
   };
 }
 
-function RightsDeclarationFields({ value, onChange }) {
+function RightsDeclarationFields({ value, onChange, language }) {
+  const copy = RIGHTS_COPY[language] || RIGHTS_COPY.en;
   const update = (field, next) => onChange({ ...value, [field]: next });
   return (
     <div className="rights-form">
       <div className="rights-form-heading">
-        <b>Rights and authority declaration</b>
-        <span>
-          This is reviewed by a trained operator before any notice can be
-          prepared. Do not upload contracts or private documents here.
-        </span>
+        <b>{copy.title}</b>
+        <span>{copy.lead}</span>
       </div>
       <div className="rights-field-row">
         <label>
-          Your legal relationship to this work
+          {copy.relationship}
           <select
             required
             value={value.rightsRole}
             onChange={(event) => update("rightsRole", event.target.value)}
           >
-            <option value="copyright-owner">Copyright owner</option>
-            <option value="authorised-agent">
-              Authorised agent for the rights holder
-            </option>
-            <option value="exclusive-licensee">
-              Exclusive licensee authorised to enforce
-            </option>
+            {[
+              "copyright-owner",
+              "authorised-agent",
+              "exclusive-licensee",
+            ].map((role, index) => (
+              <option key={role} value={role}>{copy.roles[index]}</option>
+            ))}
           </select>
         </label>
         <label>
-          Legal or business name of rights holder
+          {copy.holderName}
           <input
             type="text"
             required
@@ -1227,7 +1231,7 @@ function RightsDeclarationFields({ value, onChange }) {
       </div>
       <div className="rights-field-row">
         <label>
-          Work title or internal name (optional)
+          {copy.workTitle}
           <input
             type="text"
             maxLength="160"
@@ -1236,7 +1240,7 @@ function RightsDeclarationFields({ value, onChange }) {
           />
         </label>
         <label>
-          Original publication URL (optional, HTTPS)
+          {copy.publicationUrl}
           <input
             type="url"
             placeholder="https://…"
@@ -1248,21 +1252,18 @@ function RightsDeclarationFields({ value, onChange }) {
         </label>
       </div>
       <label>
-        Evidence reference
+        {copy.evidenceReference}
         <input
           type="text"
           required
           maxLength="200"
-          placeholder="Example: original source file or agency agreement CP-2026-004"
+          placeholder={copy.evidencePlaceholder}
           value={value.authorityEvidenceReference}
           onChange={(event) =>
             update("authorityEvidenceReference", event.target.value)
           }
         />
-        <small>
-          Use a short reference only. Keep the underlying document in the
-          approved restricted company record.
-        </small>
+        <small>{copy.evidenceHelp}</small>
       </label>
       <label className="rights-check">
         <input
@@ -1273,8 +1274,7 @@ function RightsDeclarationFields({ value, onChange }) {
             update("confirmRightsAuthority", event.target.checked)
           }
         />
-        I own the copyright or am authorised to enforce it for the named rights
-        holder.
+        {copy.authorityConfirm}
       </label>
       <label className="rights-check">
         <input
@@ -1285,8 +1285,7 @@ function RightsDeclarationFields({ value, onChange }) {
             update("confirmRightsAccurate", event.target.checked)
           }
         />
-        I confirm this per-file declaration is accurate and understand that
-        false claims may result in suspension.
+        {copy.accuracyConfirm}
       </label>
     </div>
   );
@@ -2335,6 +2334,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <RightsDeclarationFields
               value={rightsForm}
               onChange={setRightsForm}
+              language={language}
             />
             <label
               className={`dropzone ${mediaConsent && rightsDeclarationReady ? "" : "disabled"}`}
@@ -2389,6 +2389,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <RightsDeclarationFields
               value={rightsForm}
               onChange={setRightsForm}
+              language={language}
             />
             <button className="btn btn-primary rights-submit" type="submit">
               Record declaration
