@@ -337,6 +337,12 @@ const ACCOUNT_COPY = {
   ro: { security:"Securitatea contului", currentPassword:"Parola actuală", newPassword:"Parola nouă", passwordHelp:"Cel puțin 10 caractere", updating:"Se actualizează…", changePassword:"Schimbă parola", personalData:"Datele tale personale", dataLead:"Descarcă o copie prelucrabilă automat a profilului, rezultatelor verificării, metadatelor fișierelor, scanărilor, potrivirilor, cazurilor, înregistrărilor de facturare și istoricului de audit.", downloadExport:"Descarcă exportul de date", exportHelp:"Este necesară parola. Fișierele originale de referință se descarcă separat din Conținutul meu.", mfa:"Verificare în doi pași", mfaEnabled:"Activată", recovery:"coduri de recuperare rămase", mfaLead:"Protejează autentificarea cu un cod temporar din aplicația ta de autentificare.", enableMfa:"Activează verificarea în doi pași", disableMfa:"Dezactivează verificarea în doi pași", mfaHelp:"Activarea sau dezactivarea acestui control închide toate celelalte sesiuni.", subscription:"Abonament", noSubscription:"Nu există un abonament Stripe finalizat", manageSubscription:"Gestionează abonamentul", liveBilling:"Facturarea securizată este gestionată de Stripe.", testBilling:"Mod de test Stripe — doar carduri de test, fără plăți reale.", billingPending:"Activarea facturării nu este finalizată; nu poate fi făcută nicio plată.", deleteAccount:"Șterge contul", deleteLead:"Elimină permanent profilul, fișierele de referință criptate, scanările, cazurile și sesiunile active.", deleteMine:"Șterge contul meu" }
 };
 
+const HELP_COPY = {
+  en: { title:"Private support and complaints", lead:"Open a tracked request about billing, cancellation, refunds, privacy, accessibility, safety or the service. Sensitive details are encrypted and reviewed only by an authorised operator.", category:"Category", categories:["Billing","Cancellation","14-day cooling-off","Refund","Service","Privacy","Accessibility","Urgent creator safety","Other"], order:"Order reference (optional)", orderPlaceholder:"Opaque Stripe or account reference", subject:"Subject", happened:"What happened?", resolution:"Requested resolution (optional)", accurate:"I confirm this request is accurate.", noSecrets:"I have not included passwords, identity documents or private media.", privacy:"I understand this request is processed under the Privacy Notice.", submitting:"Submitting…", open:"Open tracked request", requests:"Your requests", response:"Response target:", resolutionTarget:"Resolution target:", followUp:"Add a safe follow-up message (no passwords or private media)", addMessage:"Add message", noRequests:"No tracked requests yet.", safetyTitle:"Safety guidance", safetyLead:"Practical steps for intimate-image abuse, account security and situations where contacting an uploader may increase risk.", safetyButton:"Open safety centre", safetyNote:"Content Protect is not an emergency or law-enforcement service.", reportTitle:"Report a problem", reportLead:"Report a suspected security issue, incorrect match, disputed ownership claim or accessibility problem.", reportButton:"Send a problem report", reportNote:"For security reports, describe the issue without including live passwords or private content." },
+  es: { title:"Soporte privado y reclamaciones", lead:"Abre una solicitud con seguimiento sobre facturación, cancelación, reembolsos, privacidad, accesibilidad, seguridad o el servicio. Los datos sensibles se cifran y solo los revisa un operador autorizado.", category:"Categoría", categories:["Facturación","Cancelación","Desistimiento de 14 días","Reembolso","Servicio","Privacidad","Accesibilidad","Seguridad urgente del creador","Otro"], order:"Referencia de pedido (opcional)", orderPlaceholder:"Referencia opaca de Stripe o de cuenta", subject:"Asunto", happened:"¿Qué ocurrió?", resolution:"Resolución solicitada (opcional)", accurate:"Confirmo que esta solicitud es exacta.", noSecrets:"No he incluido contraseñas, documentos de identidad ni contenido privado.", privacy:"Entiendo que esta solicitud se procesa conforme al Aviso de privacidad.", submitting:"Enviando…", open:"Abrir solicitud con seguimiento", requests:"Tus solicitudes", response:"Objetivo de respuesta:", resolutionTarget:"Objetivo de resolución:", followUp:"Añade un mensaje seguro de seguimiento (sin contraseñas ni contenido privado)", addMessage:"Añadir mensaje", noRequests:"Aún no hay solicitudes con seguimiento.", safetyTitle:"Guía de seguridad", safetyLead:"Pasos prácticos para abuso de imágenes íntimas, seguridad de cuenta y situaciones en las que contactar al usuario que subió el contenido puede aumentar el riesgo.", safetyButton:"Abrir centro de seguridad", safetyNote:"Content Protect no es un servicio de emergencia ni de las fuerzas de seguridad.", reportTitle:"Informar de un problema", reportLead:"Informa de un posible problema de seguridad, coincidencia incorrecta, reclamación de propiedad disputada o problema de accesibilidad.", reportButton:"Enviar informe de problema", reportNote:"Para informes de seguridad, describe el problema sin incluir contraseñas activas ni contenido privado." },
+  ro: { title:"Suport privat și reclamații", lead:"Deschide o solicitare urmărită pentru facturare, anulare, rambursare, confidențialitate, accesibilitate, siguranță sau serviciu. Detaliile sensibile sunt criptate și verificate doar de un operator autorizat.", category:"Categorie", categories:["Facturare","Anulare","Retragere în 14 zile","Rambursare","Serviciu","Confidențialitate","Accesibilitate","Siguranță urgentă pentru creator","Altul"], order:"Referință comandă (opțional)", orderPlaceholder:"Referință opacă Stripe sau cont", subject:"Subiect", happened:"Ce s-a întâmplat?", resolution:"Soluție solicitată (opțional)", accurate:"Confirm că această solicitare este corectă.", noSecrets:"Nu am inclus parole, documente de identitate sau conținut privat.", privacy:"Înțeleg că această solicitare este procesată conform Notificării de confidențialitate.", submitting:"Se trimite…", open:"Deschide solicitare urmărită", requests:"Solicitările tale", response:"Termen răspuns:", resolutionTarget:"Termen soluționare:", followUp:"Adaugă un mesaj de follow-up sigur (fără parole sau conținut privat)", addMessage:"Adaugă mesaj", noRequests:"Încă nu există solicitări urmărite.", safetyTitle:"Ghid de siguranță", safetyLead:"Pași practici pentru abuzul de imagini intime, securitatea contului și situațiile în care contactarea persoanei care a încărcat materialul poate crește riscul.", safetyButton:"Deschide centrul de siguranță", safetyNote:"Content Protect nu este un serviciu de urgență sau de aplicare a legii.", reportTitle:"Raportează o problemă", reportLead:"Raportează o posibilă problemă de securitate, o potrivire incorectă, o reclamație de proprietate contestată sau o problemă de accesibilitate.", reportButton:"Trimite raportul de problemă", reportNote:"Pentru rapoarte de securitate, descrie problema fără parole active sau conținut privat." }
+};
+
 function LanguagePicker({ language, onChange }) {
   return <label className="language-picker" aria-label="Choose language"><Globe2 size={15} /><select value={language} onChange={(event) => onChange(event.target.value)}><option value="en">EN</option><option value="es">ES</option><option value="ro">RO</option></select></label>;
 }
@@ -889,7 +895,8 @@ function AccountSettings({ user, subscription, billingMode, onDeleted, language 
   );
 }
 
-function HelpSafety() {
+function HelpSafety({ language }) {
+  const copy = HELP_COPY[language] || HELP_COPY.en;
   const [cases, setCases] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -975,39 +982,27 @@ function HelpSafety() {
         <div className="support-icon">
           <HelpCircle />
         </div>
-        <h2>Private support and complaints</h2>
-        <p>
-          Open a tracked request about billing, cancellation, refunds, privacy,
-          accessibility, safety or the service. Sensitive details are encrypted
-          and reviewed only by an authorised operator.
-        </p>
+        <h2>{copy.title}</h2>
+        <p>{copy.lead}</p>
         {error && <div className="operator-error">{error}</div>}
         <form className="support-case-form" onSubmit={submitCase}>
           <div className="support-case-fields">
             <label>
-              Category
+              {copy.category}
               <select
                 value={form.category}
                 onChange={(event) =>
                   setForm({ ...form, category: event.target.value })
                 }
               >
-                <option value="billing">Billing</option>
-                <option value="cancellation">Cancellation</option>
-                <option value="cooling-off">14-day cooling-off</option>
-                <option value="refund">Refund</option>
-                <option value="service">Service</option>
-                <option value="privacy">Privacy</option>
-                <option value="accessibility">Accessibility</option>
-                <option value="safety">Urgent creator safety</option>
-                <option value="other">Other</option>
+                {["billing","cancellation","cooling-off","refund","service","privacy","accessibility","safety","other"].map((value, index) => <option key={value} value={value}>{copy.categories[index]}</option>)}
               </select>
             </label>
             <label>
-              Order reference (optional)
+              {copy.order}
               <input
                 maxLength="160"
-                placeholder="Opaque Stripe or account reference"
+                placeholder={copy.orderPlaceholder}
                 value={form.orderReference}
                 onChange={(event) =>
                   setForm({ ...form, orderReference: event.target.value })
@@ -1016,7 +1011,7 @@ function HelpSafety() {
             </label>
           </div>
           <label>
-            Subject
+            {copy.subject}
             <input
               required
               minLength="8"
@@ -1028,7 +1023,7 @@ function HelpSafety() {
             />
           </label>
           <label>
-            What happened?
+            {copy.happened}
             <textarea
               required
               minLength="30"
@@ -1041,7 +1036,7 @@ function HelpSafety() {
             />
           </label>
           <label>
-            Requested resolution (optional)
+            {copy.resolution}
             <textarea
               maxLength="1000"
               rows="3"
@@ -1060,7 +1055,7 @@ function HelpSafety() {
                   setForm({ ...form, confirmAccuracy: event.target.checked })
                 }
               />
-              I confirm this request is accurate.
+              {copy.accurate}
             </label>
             <label>
               <input
@@ -1073,8 +1068,7 @@ function HelpSafety() {
                   })
                 }
               />
-              I have not included passwords, identity documents or private
-              media.
+              {copy.noSecrets}
             </label>
             <label>
               <input
@@ -1084,7 +1078,7 @@ function HelpSafety() {
                   setForm({ ...form, privacyAccepted: event.target.checked })
                 }
               />
-              I understand this request is processed under the Privacy Notice.
+              {copy.privacy}
             </label>
           </div>
           <button
@@ -1096,11 +1090,11 @@ function HelpSafety() {
               !form.privacyAccepted
             }
           >
-            {busy ? "Submitting…" : "Open tracked request"}
+            {busy ? copy.submitting : copy.open}
           </button>
         </form>
         <div className="support-case-list">
-          <h3>Your requests</h3>
+          <h3>{copy.requests}</h3>
           {cases.length ? (
             cases.map((item) => (
               <article key={item.id}>
@@ -1110,9 +1104,9 @@ function HelpSafety() {
                 </div>
                 <strong>{item.subject}</strong>
                 <small>
-                  Response target:{" "}
+                  {copy.response}{" "}
                   {new Date(item.responseDueAt).toLocaleDateString()} ·
-                  Resolution target:{" "}
+                  {copy.resolutionTarget}{" "}
                   {new Date(item.resolutionDueAt).toLocaleDateString()}
                 </small>
                 <p>{item.statement}</p>
@@ -1121,7 +1115,7 @@ function HelpSafety() {
                     <textarea
                       rows="2"
                       maxLength="3000"
-                      placeholder="Add a safe follow-up message (no passwords or private media)"
+                      placeholder={copy.followUp}
                       value={messageDrafts[item.id] || ""}
                       onChange={(event) =>
                         setMessageDrafts({
@@ -1136,14 +1130,14 @@ function HelpSafety() {
                       disabled={busy}
                       onClick={() => addMessage(item.id)}
                     >
-                      Add message
+                      {copy.addMessage}
                     </button>
                   </div>
                 )}
               </article>
             ))
           ) : (
-            <small>No tracked requests yet.</small>
+            <small>{copy.noRequests}</small>
           )}
         </div>
       </section>
@@ -1151,36 +1145,29 @@ function HelpSafety() {
         <div className="support-icon urgent">
           <ShieldCheck />
         </div>
-        <h2>Safety guidance</h2>
-        <p>
-          Practical steps for intimate-image abuse, account security and
-          situations where contacting an uploader may increase risk.
-        </p>
+        <h2>{copy.safetyTitle}</h2>
+        <p>{copy.safetyLead}</p>
         <a className="btn btn-outline" href="/safety.html">
-          Open safety centre
+          {copy.safetyButton}
         </a>
         <small>
-          Content Protect is not an emergency or law-enforcement service.
+          {copy.safetyNote}
         </small>
       </section>
       <section className="account-card">
         <div className="support-icon">
           <FileCheck2 />
         </div>
-        <h2>Report a problem</h2>
-        <p>
-          Report a suspected security issue, incorrect match, disputed ownership
-          claim or accessibility problem.
-        </p>
+        <h2>{copy.reportTitle}</h2>
+        <p>{copy.reportLead}</p>
         <a
           className="btn btn-outline"
           href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20problem%20report"
         >
-          Send a problem report
+          {copy.reportButton}
         </a>
         <small>
-          For security reports, describe the issue without including live
-          passwords or private content.
+          {copy.reportNote}
         </small>
       </section>
     </div>
@@ -2026,7 +2013,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
               language={language}
             />
           )}
-          {tab === "Help & safety" && <HelpSafety />}
+          {tab === "Help & safety" && <HelpSafety language={language} />}
           {tab === "Billing" ? (
             <div className="sandbox-plans">
               <div className="sandbox-note">
