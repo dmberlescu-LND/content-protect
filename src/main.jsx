@@ -326,9 +326,9 @@ const DASHBOARD_COPY = {
 };
 
 const DASHBOARD_DETAIL = {
-  en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved" },
-  es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada" },
-  ro: { vaultTitle:"Seif privat pentru referințe", vaultOwned:"Fișiere criptate deținute de acest cont", vaultUsed:"folosite", vaultChoose:"alege un plan pentru a adăuga fișiere", encrypted:"Criptat", rightsReviewed:"Drepturi verificate", rightsDeclared:"Drepturi declarate", rightsMissing:"Lipsește declarația de drepturi", replaceRights:"Înlocuiește declarația de drepturi", addRights:"Adaugă declarația de drepturi", downloadOriginal:"Descarcă originalul", deletePermanently:"Șterge permanent", vaultEmpty:"Încă nu există conținut de referință. Alege „Adaugă conținut” pentru a testa seiful securizat.", casesTitle:"Cazuri de eliminare", casesLead:"Fiecare acțiune necesită aprobarea creatorului", caseOpened:"Caz deschis", disputeOpen:"Contestație primită · acțiunile ulterioare sunt oprite pentru verificare umană", reviewApprove:"Verifică și aprobă", casesEmpty:"Încă nu există cazuri. Deschide Potriviri și selectează un rezultat pentru a păstra dovezile.", recentMatches:"Potriviri recente", matchesLead:"Posibile utilizări neautorizate detectate prin similitudine vizuală", filters:["Toate potrivirile","Acțiune necesară","Monitorizare","Verificare caz","Aprobarea ta","Livrare în așteptare","Raportat","Eliminat"], columns:["CONȚINUT GĂSIT","SURSĂ","SCOR POTRIVIRE","STATUS"], matchesEmpty:"Încă nu există potriviri publice verificate. Adaugă o imagine de referință și pornește scanarea după activarea furnizorului.", publicPage:"Pagină publică", captureRequired:"Este necesară capturarea paginii pentru un caz", capturePreserved:"Captură păstrată" }
+  en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved", billingLiveTitle:"Secure Stripe billing is active", billingTestTitle:"Stripe test billing is active", billingPendingTitle:"Billing activation is pending", billingLiveLead:"Subscriptions and payment details are handled by Stripe.", billingTestLead:"Only Stripe test cards are accepted; no live charge is made.", billingPendingLead:"Checkout is disabled until Stripe products, prices and webhook verification are configured.", recommended:"RECOMMENDED", creatorPlan:"CREATOR PLAN", monthly:"/mo", choosePlan:"Choose plan", testCheckout:"Test checkout", unavailable:"Unavailable", planDescriptions:["files · scan every 30 days","files · daily scan + cases","files · daily scan + priority"] },
+  es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada", billingLiveTitle:"La facturación segura de Stripe está activa", billingTestTitle:"La facturación de prueba de Stripe está activa", billingPendingTitle:"La activación de facturación está pendiente", billingLiveLead:"Stripe gestiona las suscripciones y los datos de pago.", billingTestLead:"Solo se aceptan tarjetas de prueba de Stripe; no se realiza ningún cargo real.", billingPendingLead:"El pago está desactivado hasta que se configuren productos, precios y verificación de webhooks de Stripe.", recommended:"RECOMENDADO", creatorPlan:"PLAN PARA CREADORES", monthly:"/mes", choosePlan:"Elegir plan", testCheckout:"Probar pago", unavailable:"No disponible", planDescriptions:["archivos · escaneo cada 30 días","archivos · escaneo diario + casos","archivos · escaneo diario + prioridad"] },
+  ro: { vaultTitle:"Seif privat pentru referințe", vaultOwned:"Fișiere criptate deținute de acest cont", vaultUsed:"folosite", vaultChoose:"alege un plan pentru a adăuga fișiere", encrypted:"Criptat", rightsReviewed:"Drepturi verificate", rightsDeclared:"Drepturi declarate", rightsMissing:"Lipsește declarația de drepturi", replaceRights:"Înlocuiește declarația de drepturi", addRights:"Adaugă declarația de drepturi", downloadOriginal:"Descarcă originalul", deletePermanently:"Șterge permanent", vaultEmpty:"Încă nu există conținut de referință. Alege „Adaugă conținut” pentru a testa seiful securizat.", casesTitle:"Cazuri de eliminare", casesLead:"Fiecare acțiune necesită aprobarea creatorului", caseOpened:"Caz deschis", disputeOpen:"Contestație primită · acțiunile ulterioare sunt oprite pentru verificare umană", reviewApprove:"Verifică și aprobă", casesEmpty:"Încă nu există cazuri. Deschide Potriviri și selectează un rezultat pentru a păstra dovezile.", recentMatches:"Potriviri recente", matchesLead:"Posibile utilizări neautorizate detectate prin similitudine vizuală", filters:["Toate potrivirile","Acțiune necesară","Monitorizare","Verificare caz","Aprobarea ta","Livrare în așteptare","Raportat","Eliminat"], columns:["CONȚINUT GĂSIT","SURSĂ","SCOR POTRIVIRE","STATUS"], matchesEmpty:"Încă nu există potriviri publice verificate. Adaugă o imagine de referință și pornește scanarea după activarea furnizorului.", publicPage:"Pagină publică", captureRequired:"Este necesară capturarea paginii pentru un caz", capturePreserved:"Captură păstrată", billingLiveTitle:"Facturarea securizată Stripe este activă", billingTestTitle:"Facturarea de test Stripe este activă", billingPendingTitle:"Activarea facturării este în așteptare", billingLiveLead:"Abonamentele și datele de plată sunt gestionate de Stripe.", billingTestLead:"Sunt acceptate doar carduri Stripe de test; nu se face nicio plată reală.", billingPendingLead:"Plata este dezactivată până când produsele, prețurile și verificarea webhook Stripe sunt configurate.", recommended:"RECOMANDAT", creatorPlan:"PLAN PENTRU CREATORI", monthly:"/lună", choosePlan:"Alege planul", testCheckout:"Testează plata", unavailable:"Indisponibil", planDescriptions:["fișiere · scanare la fiecare 30 zile","fișiere · scanare zilnică + cazuri","fișiere · scanare zilnică + prioritate"] }
 };
 
 function LanguagePicker({ language, onChange }) {
@@ -2034,17 +2034,17 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 <div>
                   <b>
                     {data.billingMode === "stripe_live"
-                      ? "Secure Stripe billing is active"
+                      ? detail.billingLiveTitle
                       : data.billingMode === "stripe_test"
-                        ? "Stripe test billing is active"
-                        : "Billing activation is pending"}
+                        ? detail.billingTestTitle
+                        : detail.billingPendingTitle}
                   </b>
                   <span>
                     {data.billingMode === "stripe_live"
-                      ? "Subscriptions and payment details are handled by Stripe."
+                      ? detail.billingLiveLead
                       : data.billingMode === "stripe_test"
-                        ? "Only Stripe test cards are accepted; no live charge is made."
-                        : "Checkout is disabled until Stripe products, prices and webhook verification are configured."}
+                        ? detail.billingTestLead
+                        : detail.billingPendingLead}
                   </span>
                 </div>
               </div>
@@ -2053,17 +2053,17 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   [
                     "Monitor",
                     "£19",
-                    `${PLAN_ENTITLEMENTS.Monitor.assetLimit} files · scan every 30 days`,
+                    `${PLAN_ENTITLEMENTS.Monitor.assetLimit} ${detail.planDescriptions[0]}`,
                   ],
                   [
                     "Protect",
                     "£49",
-                    `${PLAN_ENTITLEMENTS.Protect.assetLimit} files · daily scan + cases`,
+                    `${PLAN_ENTITLEMENTS.Protect.assetLimit} ${detail.planDescriptions[1]}`,
                   ],
                   [
                     "Pro",
                     "£99",
-                    `${PLAN_ENTITLEMENTS.Pro.assetLimit} files · daily scan + priority`,
+                    `${PLAN_ENTITLEMENTS.Pro.assetLimit} ${detail.planDescriptions[2]}`,
                   ],
                 ].map(([name, price, desc]) => (
                   <div
@@ -2071,12 +2071,12 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     key={name}
                   >
                     <span>
-                      {name === "Protect" ? "RECOMMENDED" : "CREATOR PLAN"}
+                      {name === "Protect" ? detail.recommended : detail.creatorPlan}
                     </span>
                     <h3>{name}</h3>
                     <strong>
                       {price}
-                      <small>/mo</small>
+                      <small>{detail.monthly}</small>
                     </strong>
                     <p>{desc}</p>
                     <button
@@ -2085,10 +2085,10 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                       onClick={() => selectPlan(name)}
                     >
                       {data.billingMode === "stripe_live"
-                        ? "Choose plan"
+                        ? detail.choosePlan
                         : data.billingMode === "stripe_test"
-                          ? "Test checkout"
-                          : "Unavailable"}
+                          ? detail.testCheckout
+                          : detail.unavailable}
                     </button>
                   </div>
                 ))}
