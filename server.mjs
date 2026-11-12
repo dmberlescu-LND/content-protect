@@ -2783,6 +2783,14 @@ const appServer = http.createServer(async (req, res) => {
       const caseId = route.split("/")[4],
         b = await parse(req),
         caseRecord = d.cases.find((item) => item.id === caseId);
+      if (!caseRecord) return send(res, 404, { error: "Case not found." });
+      if (caseRecord.status !== "Approved — delivery pending")
+        return send(res, 409, { error: "Case is not ready for delivery." });
+      if (!deliveryNoticeTypeSupported(caseRecord.noticeType))
+        return send(res, 409, {
+          error:
+            "This case type has no counsel-approved delivery workflow. Keep it in operator-led legal review.",
+        });
       if (!operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode))
         return send(res, 401, {
           error: "A current authenticator code is required before delivery.",
@@ -2801,14 +2809,6 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 409, {
           error:
             "That authenticator code was already used. Wait for a new code.",
-        });
-      if (!caseRecord) return send(res, 404, { error: "Case not found." });
-      if (caseRecord.status !== "Approved — delivery pending")
-        return send(res, 409, { error: "Case is not ready for delivery." });
-      if (!deliveryNoticeTypeSupported(caseRecord.noticeType))
-        return send(res, 409, {
-          error:
-            "This case type has no counsel-approved delivery workflow. Keep it in operator-led legal review.",
         });
       if (
         !EMAIL.test(caseRecord.recipientEmail || "") ||
