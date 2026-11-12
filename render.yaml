@@ -98,6 +98,25 @@ services:
       sizeGB: 1
 
   - type: cron
+    name: content-protect-monitor-heartbeat
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node monitor-heartbeat.mjs
+    schedule: "*/5 * * * *"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        value: https://content-protect.com
+      - key: MONITORING_HEARTBEAT_TOKEN
+        fromService:
+          type: web
+          name: content-protect-staging
+          envVarKey: MONITORING_HEARTBEAT_TOKEN
+
+  - type: cron
     name: content-protect-retention
     runtime: docker
     plan: starter

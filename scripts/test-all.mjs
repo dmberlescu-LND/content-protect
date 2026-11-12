@@ -19,6 +19,7 @@ const checks = [
   "test-scanner.mjs",
   "test-discovery-source-registry.mjs",
   "test-operations-readiness.mjs",
+  "test-monitor-heartbeat.mjs",
   "test-production-verification-policy.mjs",
   "test-launch-governance.mjs",
   "test-security-policy.mjs",
