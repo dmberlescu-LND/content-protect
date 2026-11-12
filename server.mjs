@@ -734,6 +734,7 @@ function customerConsumerCase(caseRecord) {
     statement: details.statement,
     desiredResolution: details.desiredResolution,
     orderReference: details.orderReference,
+    reportedUrl: details.reportedUrl || null,
     timeline: (caseRecord.events || []).map((event) => ({
       id: event.id,
       type: event.type,
