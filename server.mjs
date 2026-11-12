@@ -68,6 +68,7 @@ import {
   YOTI_SHARE_ID,
 } from "./yoti-digital-identity.mjs";
 import {
+  deliveryNoticeTypeSupported,
   exactNoticeApproved,
   noticeText,
   textDigest,
@@ -2804,6 +2805,11 @@ const appServer = http.createServer(async (req, res) => {
       if (!caseRecord) return send(res, 404, { error: "Case not found." });
       if (caseRecord.status !== "Approved — delivery pending")
         return send(res, 409, { error: "Case is not ready for delivery." });
+      if (!deliveryNoticeTypeSupported(caseRecord.noticeType))
+        return send(res, 409, {
+          error:
+            "This case type has no counsel-approved delivery workflow. Keep it in operator-led legal review.",
+        });
       if (
         !EMAIL.test(caseRecord.recipientEmail || "") ||
         !safeHttpsReference(caseRecord.recipientSource) ||

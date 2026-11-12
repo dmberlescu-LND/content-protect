@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  deliveryNoticeTypeSupported,
   exactNoticeApproved,
   noticeText,
   textDigest,
@@ -41,6 +42,11 @@ assert.equal(
   true,
 );
 
+assert.equal(deliveryNoticeTypeSupported("copyright"), true);
+assert.equal(deliveryNoticeTypeSupported("impersonation"), false);
+assert.equal(deliveryNoticeTypeSupported("personal-data-removal"), false);
+assert.equal(deliveryNoticeTypeSupported(undefined), false);
+
 for (const changed of [
   { recipientEmail: "different@example-host.test" },
   { jurisdiction: "Different jurisdiction" },
@@ -75,5 +81,6 @@ console.log(
     postApprovalMutationRejected: true,
     legalClaimantIdentityIncluded: true,
     rightsCapacityIncluded: true,
+    nonCopyrightDeliveryFailsClosed: true,
   }),
 );
