@@ -41,7 +41,7 @@ Use [the launch-gate register](LAUNCH-GATE-REGISTER.md) as the single operationa
 - Separate identity verification data from creator content.
 - Keep Sandbox testing restricted to the expressly approved test-account allowlist. A Sandbox result must be labelled test-only, require password reauthentication and stop counting automatically when the application changes to live Yoti mode.
 - Require explicit creator approval before the first real takedown.
-- Provide emergency paths for intimate-image abuse, doxxing, stalking and credible threats.
+- Provide emergency paths for intimate-image abuse, doxxing, stalking and credible threats. Use the restricted [urgent impersonation and personal-data removal playbook](compliance/URGENT-IMPERSONATION-REMOVAL-PLAYBOOK.md); complete the named safety/legal ownership and escalation contacts before launch.
 - Prohibit searches for people who have not authorised the account.
 
 ## Copyright and takedowns
