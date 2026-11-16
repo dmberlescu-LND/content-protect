@@ -34,6 +34,7 @@
     "test:scanner": "node scripts/test-scanner.mjs",
     "test:operations": "node scripts/test-operations-readiness.mjs",
     "test:free-pilot-deployment": "node scripts/test-free-pilot-deployment.mjs",
+    "test:pilot-admission-pack": "node scripts/test-pilot-admission-pack.mjs",
     "test:monitor-heartbeat": "node scripts/test-monitor-heartbeat.mjs",
     "test:production-verification-policy": "node scripts/test-production-verification-policy.mjs",
     "test:launch-governance": "node scripts/test-launch-governance.mjs",
