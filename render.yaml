@@ -19,7 +19,7 @@ services:
       - key: BIOMETRICS_ENABLED
         value: "false"
       - key: CONTENT_PROTECT_PILOT_MODE
-        value: standard
+        value: free
       - key: CONTENT_PROTECT_MASTER_KEY
         generateValue: true
       - key: APP_URL
