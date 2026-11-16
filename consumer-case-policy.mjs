@@ -65,6 +65,22 @@ function opaqueReference(value, label, { optional = false } = {}) {
   return reference;
 }
 
+function publicHttpsUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password || !url.hostname)
+      throw new Error("unsafe");
+    url.hash = "";
+    return url.href;
+  } catch {
+    throw new ConsumerCasePolicyError(
+      "Reported page must be a valid public HTTPS URL.",
+    );
+  }
+}
+
 export function addBusinessDays(value, days) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime()) || !Number.isInteger(days) || days < 0)
@@ -140,6 +156,8 @@ export function createConsumerCase(
       orderReference: opaqueReference(input.orderReference, "Order reference", {
         optional: true,
       }),
+      reportedUrl:
+        category === "safety" ? publicHttpsUrl(input.reportedUrl) : null,
     },
     record = {
       id,

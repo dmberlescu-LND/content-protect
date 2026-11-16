@@ -52,6 +52,53 @@ assert.equal(
   addBusinessDays("2026-07-17T12:00:00.000Z", 1),
   "2026-07-20T12:00:00.000Z",
 );
+const safetyId = randomUUID();
+const safetyCase = createConsumerCase(
+  {
+    category: "safety",
+    subject: "Urgent impersonation report",
+    statement:
+      "A public page appears to impersonate me and contains contact details without my permission.",
+    reportedUrl: "https://example.test/report#fragment",
+    confirmAccuracy: true,
+    confirmNoSecretsOrMedia: true,
+    privacyAccepted: true,
+  },
+  {
+    id: safetyId,
+    reference: `CP-${safetyId.replace(/-/g, "").slice(0, 12).toUpperCase()}`,
+    userId,
+    subjectHash,
+    contactEmail: "creator@example.com",
+    now,
+  },
+);
+assert.equal(safetyCase.record.priority, "urgent");
+assert.equal(safetyCase.restricted.reportedUrl, "https://example.test/report");
+assert.throws(
+  () =>
+    createConsumerCase(
+      {
+        category: "safety",
+        subject: "Unsafe link report",
+        statement:
+          "A public page appears to impersonate me and contains contact details without my permission.",
+        reportedUrl: "http://example.test/report",
+        confirmAccuracy: true,
+        confirmNoSecretsOrMedia: true,
+        privacyAccepted: true,
+      },
+      {
+        id: randomUUID(),
+        reference: `CP-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`,
+        userId,
+        subjectHash,
+        contactEmail: "creator@example.com",
+        now,
+      },
+    ),
+  /HTTPS URL/i,
+);
 const pendingDecisionRecord = structuredClone(record);
 assert.throws(
   () =>

@@ -331,9 +331,24 @@ const ONBOARDING_COPY = {
 };
 
 const DASHBOARD_COPY = {
-  en: { workspace:"WORKSPACE", account:"ACCOUNT", plan:"plan", nav:{Overview:"Overview",Matches:"Matches","My content":"My content",Takedowns:"Takedowns",Billing:"Plans & billing",Account:"Account & security","Help & safety":"Help & safety"}, protectionActive:"Protection active", choosePlan:"Choose a plan", scansEnabled:"scans enabled", scanningInactive:"Scanning is not active", casesIncluded:"Takedown cases included", privateVault:"Private creator vault", logout:"Log out", breadcrumb:"Workspace", notifications:"Notifications", accountMenu:"Account menu", openNavigation:"Open navigation", closeNavigation:"Close navigation", greeting:"Good morning", overviewLead:"Your content is protected. Here’s what changed since your last visit.", manageLead:"Review and manage your protection workspace.", addContent:"Add content", limitReached:"File limit reached", stats:[["Matches found","protected assets"],["Need your review","Creator approval required"],["Takedown cases","active"],["Successfully removed","Verified outcomes only"]], loading:"Loading…", scanTitle:"Run protected", scanImage:"image", scanMedia:"media", choosePlanBefore:"Choose an active plan before scanning", addReference:"Add a supported reference image before scanning", videoAwaiting:"Video scanning awaits privacy and provider approval", commercialScan:"Search the commercial provider using private reference copies", scanningAwaiting:"Commercial scanning awaits provider activation", live:"LIVE", waiting:"WAITING" },
-  es: { workspace:"ESPACIO DE TRABAJO", account:"CUENTA", plan:"plan", nav:{Overview:"Resumen",Matches:"Coincidencias","My content":"Mi contenido",Takedowns:"Retiradas",Billing:"Planes y facturación",Account:"Cuenta y seguridad","Help & safety":"Ayuda y seguridad"}, protectionActive:"Protección activa", choosePlan:"Elegir un plan", scansEnabled:"escaneos activados", scanningInactive:"El escaneo no está activo", casesIncluded:"Casos de retirada incluidos", privateVault:"Bóveda privada del creador", logout:"Cerrar sesión", breadcrumb:"Espacio de trabajo", notifications:"Notificaciones", accountMenu:"Menú de cuenta", openNavigation:"Abrir navegación", closeNavigation:"Cerrar navegación", greeting:"Buenos días", overviewLead:"Tu contenido está protegido. Esto es lo que cambió desde tu última visita.", manageLead:"Revisa y gestiona tu espacio de protección.", addContent:"Añadir contenido", limitReached:"Límite de archivos alcanzado", stats:[["Coincidencias encontradas","archivos protegidos"],["Necesitan tu revisión","Se requiere aprobación del creador"],["Casos de retirada","activos"],["Eliminados correctamente","Solo resultados verificados"]], loading:"Cargando…", scanTitle:"Ejecutar escaneo protegido de", scanImage:"imagen", scanMedia:"contenido multimedia", choosePlanBefore:"Elige un plan activo antes de escanear", addReference:"Añade una imagen de referencia compatible antes de escanear", videoAwaiting:"El escaneo de vídeo espera aprobación de privacidad y proveedor", commercialScan:"Busca en el proveedor comercial usando copias privadas de referencia", scanningAwaiting:"El escaneo comercial espera activación del proveedor", live:"EN DIRECTO", waiting:"EN ESPERA" },
-  ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Protecție activă", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Conținutul tău este protejat. Iată ce s-a schimbat de la ultima vizită.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere protejate"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", live:"LIVE", waiting:"ÎN AȘTEPTARE" }
+  en: { workspace:"WORKSPACE", account:"ACCOUNT", plan:"plan", nav:{Overview:"Overview",Matches:"Matches","My content":"My content",Takedowns:"Takedowns",Billing:"Plans & billing",Account:"Account & security","Help & safety":"Help & safety"}, protectionActive:"Commercial scanning active", protectionPending:"Protection setup pending", choosePlan:"Choose a plan", scansEnabled:"scans enabled", scanningInactive:"Scanning is not active", casesIncluded:"Takedown cases included", privateVault:"Private creator vault", logout:"Log out", breadcrumb:"Workspace", notifications:"Notifications", accountMenu:"Account menu", openNavigation:"Open navigation", closeNavigation:"Close navigation", greeting:"Good morning", overviewLead:"Review your workspace status and the actions awaiting your approval.", manageLead:"Review and manage your protection workspace.", addContent:"Add content", limitReached:"File limit reached", stats:[["Matches found","reference assets"],["Need your review","Creator approval required"],["Takedown cases","active"],["Successfully removed","Verified outcomes only"]], loading:"Loading…", scanTitle:"Run protected", scanImage:"image", scanMedia:"media", choosePlanBefore:"Choose an active plan before scanning", addReference:"Add a supported reference image before scanning", videoAwaiting:"Video scanning awaits privacy and provider approval", commercialScan:"Search the commercial provider using private reference copies", scanningAwaiting:"Commercial scanning awaits provider activation", scanFailed:"Scan could not start", scanCompleted:"Live image scan completed.", billingUnavailable:"Billing is not available yet. No payment was taken.", checkoutConfirm:"Continue with the {plan} monthly subscription: {limit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.", planLimits:{Monitor:"up to {count} reference files and one image scan every 30 days",Protect:"up to {count} reference files, one image scan every 24 hours and takedown cases",Pro:"up to {count} reference files, one image scan every 24 hours and priority support"}, live:"LIVE", waiting:"WAITING" },
+  es: { workspace:"ESPACIO DE TRABAJO", account:"CUENTA", plan:"plan", nav:{Overview:"Resumen",Matches:"Coincidencias","My content":"Mi contenido",Takedowns:"Retiradas",Billing:"Planes y facturación",Account:"Cuenta y seguridad","Help & safety":"Ayuda y seguridad"}, protectionActive:"Escaneo comercial activo", protectionPending:"Configuración de protección pendiente", choosePlan:"Elegir un plan", scansEnabled:"escaneos activados", scanningInactive:"El escaneo no está activo", casesIncluded:"Casos de retirada incluidos", privateVault:"Bóveda privada del creador", logout:"Cerrar sesión", breadcrumb:"Espacio de trabajo", notifications:"Notificaciones", accountMenu:"Menú de cuenta", openNavigation:"Abrir navegación", closeNavigation:"Cerrar navegación", greeting:"Buenos días", overviewLead:"Revisa el estado de tu espacio y las acciones que requieren tu aprobación.", manageLead:"Revisa y gestiona tu espacio de protección.", addContent:"Añadir contenido", limitReached:"Límite de archivos alcanzado", stats:[["Coincidencias encontradas","archivos de referencia"],["Necesitan tu revisión","Se requiere aprobación del creador"],["Casos de retirada","activos"],["Eliminados correctamente","Solo resultados verificados"]], loading:"Cargando…", scanTitle:"Ejecutar escaneo protegido de", scanImage:"imagen", scanMedia:"contenido multimedia", choosePlanBefore:"Elige un plan activo antes de escanear", addReference:"Añade una imagen de referencia compatible antes de escanear", videoAwaiting:"El escaneo de vídeo espera aprobación de privacidad y proveedor", commercialScan:"Busca en el proveedor comercial usando copias privadas de referencia", scanningAwaiting:"El escaneo comercial espera activación del proveedor", scanFailed:"No se pudo iniciar el escaneo", scanCompleted:"El escaneo de imagen en vivo se completó.", billingUnavailable:"La facturación aún no está disponible. No se realizó ningún pago.", checkoutConfirm:"¿Continuar con la suscripción mensual {plan}: {limit}?\n\nLos vídeos ocupan una plaza de archivo y no se escanean hasta que se active la aprobación de privacidad y proveedor para fotogramas de vídeo minimizados. Al seleccionar Aceptar, aceptas los Términos del servicio, solicitas expresamente que Content Protect inicie el servicio digital de inmediato y entiendes que, si cancelas en 14 días, es posible que tengas que pagar por el servicio ya suministrado. Tus derechos legales no se ven afectados.", planLimits:{Monitor:"hasta {count} archivos de referencia y un escaneo de imagen cada 30 días",Protect:"hasta {count} archivos de referencia, un escaneo de imagen cada 24 horas y casos de retirada",Pro:"hasta {count} archivos de referencia, un escaneo de imagen cada 24 horas y soporte prioritario"}, live:"EN DIRECTO", waiting:"EN ESPERA" },
+  ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Scanare comercială activă", protectionPending:"Configurarea protecției este în așteptare", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Verifică starea spațiului tău și acțiunile care așteaptă aprobarea ta.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere de referință"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", scanFailed:"Scanarea nu a putut porni", scanCompleted:"Scanarea live a imaginii a fost finalizată.", billingUnavailable:"Facturarea nu este disponibilă încă. Nu a fost efectuată nicio plată.", checkoutConfirm:"Continui cu abonamentul lunar {plan}: {limit}?\n\nVideoclipurile ocupă un loc de fișier și nu sunt scanate până la activarea aprobării de confidențialitate și furnizor pentru cadre video minimizate. Prin selectarea OK, accepți Termenii serviciului, soliciți expres ca Content Protect să înceapă imediat serviciul digital și înțelegi că, dacă anulezi în 14 zile, este posibil să fie nevoie să plătești pentru serviciul deja furnizat. Drepturile tale legale nu sunt afectate.", planLimits:{Monitor:"până la {count} fișiere de referință și o scanare de imagine la fiecare 30 de zile",Protect:"până la {count} fișiere de referință, o scanare de imagine la fiecare 24 de ore și cazuri de eliminare",Pro:"până la {count} fișiere de referință, o scanare de imagine la fiecare 24 de ore și suport prioritar"}, live:"LIVE", waiting:"ÎN AȘTEPTARE" }
+};
+
+const PILOT_COPY = {
+  en: {
+    title: "Free controlled pilot",
+    lead: "No payment, external scan or live notice can be sent from this workspace while pilot safeguards are active.",
+  },
+  es: {
+    title: "Piloto gratuito controlado",
+    lead: "No se puede enviar ningún pago, escaneo externo ni aviso en vivo desde este espacio mientras estén activos los controles del piloto.",
+  },
+  ro: {
+    title: "Pilot gratuit controlat",
+    lead: "Nu se poate trimite nicio plată, scanare externă sau notificare live din acest spațiu cât timp protecțiile pilotului sunt active.",
+  },
 };
 
 const DASHBOARD_DETAIL = {
@@ -349,8 +364,8 @@ const ACCOUNT_COPY = {
 };
 
 const HELP_COPY = {
-  en: { title:"Private support and complaints", lead:"Open a tracked request about billing, cancellation, refunds, privacy, accessibility, safety or the service. Sensitive details are encrypted and reviewed only by an authorised operator.", category:"Category", categories:["Billing","Cancellation","14-day cooling-off","Refund","Service","Privacy","Accessibility","Urgent creator safety","Other"], order:"Order reference (optional)", orderPlaceholder:"Opaque Stripe or account reference", subject:"Subject", happened:"What happened?", resolution:"Requested resolution (optional)", accurate:"I confirm this request is accurate.", noSecrets:"I have not included passwords, identity documents or private media.", privacy:"I understand this request is processed under the Privacy Notice.", submitting:"Submitting…", open:"Open tracked request", requests:"Your requests", response:"Response target:", resolutionTarget:"Resolution target:", followUp:"Add a safe follow-up message (no passwords or private media)", addMessage:"Add message", noRequests:"No tracked requests yet.", safetyTitle:"Safety guidance", safetyLead:"Practical steps for intimate-image abuse, account security and situations where contacting an uploader may increase risk.", safetyButton:"Open safety centre", safetyNote:"Content Protect is not an emergency or law-enforcement service.", reportTitle:"Report a problem", reportLead:"Report a suspected security issue, incorrect match, disputed ownership claim or accessibility problem.", reportButton:"Send a problem report", reportNote:"For security reports, describe the issue without including live passwords or private content." },
-  es: { title:"Soporte privado y reclamaciones", lead:"Abre una solicitud con seguimiento sobre facturación, cancelación, reembolsos, privacidad, accesibilidad, seguridad o el servicio. Los datos sensibles se cifran y solo los revisa un operador autorizado.", category:"Categoría", categories:["Facturación","Cancelación","Desistimiento de 14 días","Reembolso","Servicio","Privacidad","Accesibilidad","Seguridad urgente del creador","Otro"], order:"Referencia de pedido (opcional)", orderPlaceholder:"Referencia opaca de Stripe o de cuenta", subject:"Asunto", happened:"¿Qué ocurrió?", resolution:"Resolución solicitada (opcional)", accurate:"Confirmo que esta solicitud es exacta.", noSecrets:"No he incluido contraseñas, documentos de identidad ni contenido privado.", privacy:"Entiendo que esta solicitud se procesa conforme al Aviso de privacidad.", submitting:"Enviando…", open:"Abrir solicitud con seguimiento", requests:"Tus solicitudes", response:"Objetivo de respuesta:", resolutionTarget:"Objetivo de resolución:", followUp:"Añade un mensaje seguro de seguimiento (sin contraseñas ni contenido privado)", addMessage:"Añadir mensaje", noRequests:"Aún no hay solicitudes con seguimiento.", safetyTitle:"Guía de seguridad", safetyLead:"Pasos prácticos para abuso de imágenes íntimas, seguridad de cuenta y situaciones en las que contactar al usuario que subió el contenido puede aumentar el riesgo.", safetyButton:"Abrir centro de seguridad", safetyNote:"Content Protect no es un servicio de emergencia ni de las fuerzas de seguridad.", reportTitle:"Informar de un problema", reportLead:"Informa de un posible problema de seguridad, coincidencia incorrecta, reclamación de propiedad disputada o problema de accesibilidad.", reportButton:"Enviar informe de problema", reportNote:"Para informes de seguridad, describe el problema sin incluir contraseñas activas ni contenido privado." },
+  en: { title:"Private support and complaints", lead:"Open a tracked request about billing, cancellation, refunds, privacy, accessibility, safety or the service. Sensitive details are encrypted and reviewed only by an authorised operator.", category:"Category", categories:["Billing","Cancellation","14-day cooling-off","Refund","Service","Privacy","Accessibility","Urgent creator safety","Other"], order:"Order reference (optional)", orderPlaceholder:"Opaque Stripe or account reference", reportedUrl:"Public page to review (optional)", reportedUrlHelp:"For urgent safety only: use the exact HTTPS page URL. Do not add private media or passwords.", subject:"Subject", happened:"What happened?", resolution:"Requested resolution (optional)", accurate:"I confirm this request is accurate.", noSecrets:"I have not included passwords, identity documents or private media.", privacy:"I understand this request is processed under the Privacy Notice.", submitting:"Submitting…", open:"Open tracked request", requests:"Your requests", response:"Response target:", resolutionTarget:"Resolution target:", followUp:"Add a safe follow-up message (no passwords or private media)", addMessage:"Add message", noRequests:"No tracked requests yet.", safetyTitle:"Safety guidance", safetyLead:"Practical steps for intimate-image abuse, account security and situations where contacting an uploader may increase risk.", safetyButton:"Open safety centre", safetyNote:"Content Protect is not an emergency or law-enforcement service.", reportTitle:"Report a problem", reportLead:"Report a suspected security issue, incorrect match, disputed ownership claim or accessibility problem.", reportButton:"Send a problem report", reportNote:"For security reports, describe the issue without including live passwords or private content." },
+  es: { title:"Soporte privado y reclamaciones", lead:"Abre una solicitud con seguimiento sobre facturación, cancelación, reembolsos, privacidad, accesibilidad, seguridad o el servicio. Los datos sensibles se cifran y solo los revisa un operador autorizado.", category:"Categoría", categories:["Facturación","Cancelación","Desistimiento de 14 días","Reembolso","Servicio","Privacidad","Accesibilidad","Seguridad urgente del creador","Otro"], order:"Referencia de pedido (opcional)", orderPlaceholder:"Referencia opaca de Stripe o de cuenta", reportedUrl:"Página pública que se debe revisar (opcional)", reportedUrlHelp:"Solo para seguridad urgente: utiliza la URL HTTPS exacta de la página. No añadas contenido privado ni contraseñas.", subject:"Asunto", happened:"¿Qué ocurrió?", resolution:"Resolución solicitada (opcional)", accurate:"Confirmo que esta solicitud es exacta.", noSecrets:"No he incluido contraseñas, documentos de identidad ni contenido privado.", privacy:"Entiendo que esta solicitud se procesa conforme al Aviso de privacidad.", submitting:"Enviando…", open:"Abrir solicitud con seguimiento", requests:"Tus solicitudes", response:"Objetivo de respuesta:", resolutionTarget:"Objetivo de resolución:", followUp:"Añade un mensaje seguro de seguimiento (sin contraseñas ni contenido privado)", addMessage:"Añadir mensaje", noRequests:"Aún no hay solicitudes con seguimiento.", safetyTitle:"Guía de seguridad", safetyLead:"Pasos prácticos para abuso de imágenes íntimas, seguridad de cuenta y situaciones en las que contactar al usuario que subió el contenido puede aumentar el riesgo.", safetyButton:"Abrir centro de seguridad", safetyNote:"Content Protect no es un servicio de emergencia ni de las fuerzas de seguridad.", reportTitle:"Informar de un problema", reportLead:"Informa de un posible problema de seguridad, coincidencia incorrecta, reclamación de propiedad disputada o problema de accesibilidad.", reportButton:"Enviar informe de problema", reportNote:"Para informes de seguridad, describe el problema sin incluir contraseñas activas ni contenido privado." },
   ro: { title:"Suport privat și reclamații", lead:"Deschide o solicitare urmărită pentru facturare, anulare, rambursare, confidențialitate, accesibilitate, siguranță sau serviciu. Detaliile sensibile sunt criptate și verificate doar de un operator autorizat.", category:"Categorie", categories:["Facturare","Anulare","Retragere în 14 zile","Rambursare","Serviciu","Confidențialitate","Accesibilitate","Siguranță urgentă pentru creator","Altul"], order:"Referință comandă (opțional)", orderPlaceholder:"Referință opacă Stripe sau cont", subject:"Subiect", happened:"Ce s-a întâmplat?", resolution:"Soluție solicitată (opțional)", accurate:"Confirm că această solicitare este corectă.", noSecrets:"Nu am inclus parole, documente de identitate sau conținut privat.", privacy:"Înțeleg că această solicitare este procesată conform Notificării de confidențialitate.", submitting:"Se trimite…", open:"Deschide solicitare urmărită", requests:"Solicitările tale", response:"Termen răspuns:", resolutionTarget:"Termen soluționare:", followUp:"Adaugă un mesaj de follow-up sigur (fără parole sau conținut privat)", addMessage:"Adaugă mesaj", noRequests:"Încă nu există solicitări urmărite.", safetyTitle:"Ghid de siguranță", safetyLead:"Pași practici pentru abuzul de imagini intime, securitatea contului și situațiile în care contactarea persoanei care a încărcat materialul poate crește riscul.", safetyButton:"Deschide centrul de siguranță", safetyNote:"Content Protect nu este un serviciu de urgență sau de aplicare a legii.", reportTitle:"Raportează o problemă", reportLead:"Raportează o posibilă problemă de securitate, o potrivire incorectă, o reclamație de proprietate contestată sau o problemă de accesibilitate.", reportButton:"Trimite raportul de problemă", reportNote:"Pentru rapoarte de securitate, descrie problema fără parole active sau conținut privat." }
 };
 
@@ -943,7 +958,7 @@ function AccountSettings({ user, subscription, billingMode, onDeleted, language 
 }
 
 function HelpSafety({ language }) {
-  const copy = HELP_COPY[language] || HELP_COPY.en;
+  const copy = { ...HELP_COPY.en, ...(HELP_COPY[language] || {}) };
   const [cases, setCases] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -954,6 +969,7 @@ function HelpSafety({ language }) {
     statement: "",
     desiredResolution: "",
     orderReference: "",
+    reportedUrl: "",
     confirmAccuracy: false,
     confirmNoSecretsOrMedia: false,
     privacyAccepted: false,
@@ -987,6 +1003,7 @@ function HelpSafety({ language }) {
         statement: "",
         desiredResolution: "",
         orderReference: "",
+        reportedUrl: "",
         confirmAccuracy: false,
         confirmNoSecretsOrMedia: false,
         privacyAccepted: false,
@@ -1056,6 +1073,21 @@ function HelpSafety({ language }) {
                 }
               />
             </label>
+            {form.category === "safety" && (
+              <label>
+                {copy.reportedUrl}
+                <input
+                  type="url"
+                  maxLength="2000"
+                  placeholder="https://…"
+                  value={form.reportedUrl}
+                  onChange={(event) =>
+                    setForm({ ...form, reportedUrl: event.target.value })
+                  }
+                />
+                <small>{copy.reportedUrlHelp}</small>
+              </label>
+            )}
           </div>
           <label>
             {copy.subject}
@@ -1334,6 +1366,7 @@ function RightsDeclarationFields({ value, onChange, language }) {
 
 function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
+  const pilotCopy = PILOT_COPY[language] || PILOT_COPY.en;
   const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
   const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
   const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
@@ -1370,6 +1403,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
       assetSlotsRemaining: 0,
       scanFrequency: "unavailable",
     },
+    pilotMode: "standard",
     scannerMode: "unconfigured",
     videoScannerMode: "unconfigured",
     stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
@@ -1395,6 +1429,8 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     videoAssetCount = data.assets.filter((asset) =>
       asset.mime?.startsWith("video/"),
     ).length,
+    commercialScanningActive =
+      data.entitlements.canScan && data.scannerMode === "tineye-commercial",
     videoScanningActive = data.videoScannerMode === "tineye-keyframes",
     scannableAssetCount =
       imageAssetCount + (videoScanningActive ? videoAssetCount : 0),
@@ -1559,21 +1595,20 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     const response = await fetch("/api/scans", { method: "POST" });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Scan could not start");
+      alert(result.error || copy.scanFailed);
       return;
     }
     await refresh();
-    alert(result.notice || "Live image scan completed.");
+    alert(result.notice || copy.scanCompleted);
   };
   const selectPlan = async (plan) => {
     const entitlement = PLAN_ENTITLEMENTS[plan];
-    const planLimit = {
-      Monitor: `up to ${entitlement.assetLimit} reference files and one image scan every 30 days`,
-      Protect: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and takedown cases`,
-      Pro: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and priority support`,
-    }[plan];
+    const planLimit = (copy.planLimits[plan] || copy.planLimits.Monitor).replace(
+      "{count}",
+      entitlement.assetLimit,
+    );
     const accepted = confirm(
-      `Continue with the ${plan} monthly subscription: ${planLimit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
+      copy.checkoutConfirm.replace("{plan}", plan).replace("{limit}", planLimit),
     );
     if (!accepted) return;
     const r = await fetch("/api/billing/checkout", {
@@ -1595,7 +1630,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
       location.assign(d.checkoutUrl);
       return;
     }
-    alert(d.notice || "Billing is not available yet. No payment was taken.");
+    alert(d.notice || copy.billingUnavailable);
   };
   const deleteAsset = async (asset) => {
     if (
@@ -1732,10 +1767,14 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
         <div className="upgrade">
           <Sparkles />
           <b>
-            {data.entitlements.canScan ? copy.protectionActive : copy.choosePlan}
+            {commercialScanningActive
+              ? copy.protectionActive
+              : data.entitlements.canScan
+                ? copy.protectionPending
+                : copy.choosePlan}
           </b>
           <span>
-            {data.entitlements.canScan
+            {commercialScanningActive
               ? `${data.entitlements.scanFrequency} ${copy.scansEnabled}`
               : copy.scanningInactive}
           </span>
@@ -1802,6 +1841,15 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 </span>
               </div>
               <YotiAgeButton onVerified={onUserUpdate} language={language} />
+            </div>
+          )}
+          {data.pilotMode === "free" && (
+            <div className="verification-banner">
+              <ShieldCheck />
+              <div>
+                <b>{pilotCopy.title}</b>
+                <span>{pilotCopy.lead}</span>
+              </div>
             </div>
           )}
           <div className="dash-title">
@@ -4988,6 +5036,12 @@ function OperatorConsole() {
   );
 }
 
+const APP_COPY = {
+  en: { emailVerified:"Email verified successfully.", verificationFailed:"Verification failed.", ageVerified:"Your 18+ age check was verified successfully.", ageProcessing:"Your age check is still processing. Please try again shortly.", ageIncomplete:"Age verification was not completed.", ageCancelled:"Age verification was cancelled. No result was stored.", subscriptionConfirmed:"Subscription confirmed: {plan}.", checkoutCancelled:"Checkout cancelled. No payment was taken.", opening:"Opening your protected workspace…" },
+  es: { emailVerified:"El correo electrónico se verificó correctamente.", verificationFailed:"La verificación falló.", ageVerified:"Tu comprobación de edad 18+ se verificó correctamente.", ageProcessing:"Tu comprobación de edad aún se está procesando. Inténtalo de nuevo en unos momentos.", ageIncomplete:"La verificación de edad no se completó.", ageCancelled:"La verificación de edad se canceló. No se guardó ningún resultado.", subscriptionConfirmed:"Suscripción confirmada: {plan}.", checkoutCancelled:"Pago cancelado. No se realizó ningún cargo.", opening:"Abriendo tu espacio de trabajo protegido…" },
+  ro: { emailVerified:"Adresa de email a fost verificată cu succes.", verificationFailed:"Verificarea a eșuat.", ageVerified:"Verificarea ta de vârstă 18+ a fost confirmată cu succes.", ageProcessing:"Verificarea de vârstă este încă în procesare. Încearcă din nou în scurt timp.", ageIncomplete:"Verificarea vârstei nu a fost finalizată.", ageCancelled:"Verificarea vârstei a fost anulată. Nu a fost stocat niciun rezultat.", subscriptionConfirmed:"Abonament confirmat: {plan}.", checkoutCancelled:"Plata a fost anulată. Nu a fost efectuată nicio plată.", opening:"Se deschide spațiul tău de lucru protejat…" },
+};
+
 function App() {
   const operatorPath = location.pathname === "/operator";
   const query = new URLSearchParams(location.search);
@@ -4999,6 +5053,7 @@ function App() {
   const [language, setLanguage] = useState(
     () => localStorage.getItem("content-protect-language") || "en",
   );
+  const appCopy = APP_COPY[language] || APP_COPY.en;
   useEffect(() => {
     localStorage.setItem("content-protect-language", language);
     document.documentElement.lang = language;
@@ -5017,8 +5072,8 @@ function App() {
           history.replaceState({}, "", location.pathname);
           alert(
             verification.ok
-              ? "Email verified successfully."
-              : result.error || "Verification failed.",
+              ? appCopy.emailVerified
+              : result.error || appCopy.verificationFailed,
           );
         }
         const me = await fetch("/api/me");
@@ -5043,15 +5098,15 @@ function App() {
             if (r.ok) {
               if (d.verified) {
                 u = d.user;
-                alert("Your 18+ age check was verified successfully.");
+                alert(appCopy.ageVerified);
               } else
                 alert(
-                  "Your age check is still processing. Please try again shortly.",
+                  appCopy.ageProcessing,
                 );
-            } else alert(d.error || "Age verification was not completed.");
+            } else alert(d.error || appCopy.ageIncomplete);
           } else if (q.get("age_check") === "cancelled") {
             history.replaceState({}, "", location.pathname);
-            alert("Age verification was cancelled. No result was stored.");
+            alert(appCopy.ageCancelled);
           } else if (q.get("checkout") === "success" && sessionId) {
             const r = await fetch(
                 `/api/billing/session?session_id=${encodeURIComponent(sessionId)}`,
@@ -5060,11 +5115,11 @@ function App() {
             if (r.ok) {
               u = d.user;
               history.replaceState({}, "", location.pathname);
-              alert(`Subscription confirmed: ${d.subscription.plan}.`);
+              alert(appCopy.subscriptionConfirmed.replace("{plan}", d.subscription.plan));
             }
           } else if (q.get("checkout") === "cancelled") {
             history.replaceState({}, "", location.pathname);
-            alert("Checkout cancelled. No payment was taken.");
+            alert(appCopy.checkoutCancelled);
           }
           setUser(u);
           setView("dashboard");
@@ -5089,7 +5144,7 @@ function App() {
     return (
       <div className="boot-screen">
         <Logo />
-        <span>Opening your protected workspace…</span>
+        <span>{appCopy.opening}</span>
       </div>
     );
   return (
