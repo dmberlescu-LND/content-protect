@@ -4,6 +4,7 @@ const checks = [
   "test-billing-policy.mjs",
   "test-pilot-policy.mjs",
   "test-free-pilot-deployment.mjs",
+  "test-pilot-admission-pack.mjs",
   "test-audit-integrity.mjs",
   "test-audit-export-policy.mjs",
   "test-backup-restore-policy.mjs",
