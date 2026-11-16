@@ -18,6 +18,10 @@ All of the following must be true before any real creator media is processed thr
 6. At least five non-explicit, consented acceptance tests have passed against the approved source.
 7. The operator on duty has completed the match-quality and evidence-capture process.
 
+### Free controlled-pilot runtime lock
+
+Set `CONTENT_PROTECT_PILOT_MODE=free` only for a genuinely free, invitation-only cohort. In this mode the application refuses all checkout creation, external provider scans and live notice delivery, even if another integration is configured later. It still permits the private vault, consent, rights declarations and reviewed case preparation. An unrecognised value also fails closed for those external actions. Return to `standard` only in a separately approved release; changing this value does not itself approve any commercial launch gate.
+
 ## First cohort
 
 - Start with **five** invited creators; expand only after a weekly review.

@@ -86,6 +86,7 @@ import {
   validateStripeSubscriptionForAccount,
 } from "./stripe-subscription-policy.mjs";
 import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
+import { pilotActionError, pilotConfiguration } from "./pilot-policy.mjs";
 import { BACKUP_TABLES } from "./backup-snapshot.mjs";
 import {
   accountDeletionBlockedByLegalHold,
@@ -220,6 +221,7 @@ const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
 const TAKEDOWN_DELIVERY_LIVE = Boolean(
   TAKEDOWN_DELIVERY_CONFIGURED && TAKEDOWNS_MODE === "live",
 );
+const PILOT_CONFIGURATION = pilotConfiguration();
 let key;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function emailFromAddress(value) {
@@ -1427,6 +1429,7 @@ const appServer = http.createServer(async (req, res) => {
         auditExport: readiness.operationalGates.auditExport
           ? "verified-recently"
           : "unconfigured-or-expired",
+        pilot: PILOT_CONFIGURATION.mode,
       });
     }
     const d = await load();
@@ -2774,6 +2777,8 @@ const appServer = http.createServer(async (req, res) => {
     ) {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
+      const pilotLock = pilotActionError(process.env, "notice-delivery");
+      if (pilotLock) return send(res, 409, { error: pilotLock });
       if (!TAKEDOWN_DELIVERY_LIVE)
         return send(res, 503, {
           error:
@@ -4066,6 +4071,8 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/scans" && req.method === "POST") {
+      const pilotLock = pilotActionError(process.env, "scan");
+      if (pilotLock) return send(res, 409, { error: pilotLock });
       if (
         !u.emailVerifiedAt ||
         !u.eligibilityAcceptedAt ||
@@ -4234,6 +4241,8 @@ const appServer = http.createServer(async (req, res) => {
       }
     }
     if (route === "/api/billing/checkout" && req.method === "POST") {
+      const pilotLock = pilotActionError(process.env, "billing");
+      if (pilotLock) return send(res, 409, { error: pilotLock });
       const b = await parse(req);
       if (!STRIPE_PRICES[b.plan])
         return send(res, 400, { error: "Invalid plan." });
