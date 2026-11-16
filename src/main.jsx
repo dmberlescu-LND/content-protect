@@ -336,6 +336,21 @@ const DASHBOARD_COPY = {
   ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Scanare comercială activă", protectionPending:"Configurarea protecției este în așteptare", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Verifică starea spațiului tău și acțiunile care așteaptă aprobarea ta.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere de referință"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", live:"LIVE", waiting:"ÎN AȘTEPTARE" }
 };
 
+const PILOT_COPY = {
+  en: {
+    title: "Free controlled pilot",
+    lead: "No payment, external scan or live notice can be sent from this workspace while pilot safeguards are active.",
+  },
+  es: {
+    title: "Piloto gratuito controlado",
+    lead: "No se puede enviar ningún pago, escaneo externo ni aviso en vivo desde este espacio mientras estén activos los controles del piloto.",
+  },
+  ro: {
+    title: "Pilot gratuit controlat",
+    lead: "Nu se poate trimite nicio plată, scanare externă sau notificare live din acest spațiu cât timp protecțiile pilotului sunt active.",
+  },
+};
+
 const DASHBOARD_DETAIL = {
   en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved", billingLiveTitle:"Secure Stripe billing is active", billingTestTitle:"Stripe test billing is active", billingPendingTitle:"Billing activation is pending", billingLiveLead:"Subscriptions and payment details are handled by Stripe.", billingTestLead:"Only Stripe test cards are accepted; no live charge is made.", billingPendingLead:"Checkout is disabled until Stripe products, prices and webhook verification are configured.", recommended:"RECOMMENDED", creatorPlan:"CREATOR PLAN", monthly:"/mo", choosePlan:"Choose plan", testCheckout:"Test checkout", unavailable:"Unavailable", planDescriptions:["files · scan every 30 days","files · daily scan + cases","files · daily scan + priority"] },
   es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada", billingLiveTitle:"La facturación segura de Stripe está activa", billingTestTitle:"La facturación de prueba de Stripe está activa", billingPendingTitle:"La activación de facturación está pendiente", billingLiveLead:"Stripe gestiona las suscripciones y los datos de pago.", billingTestLead:"Solo se aceptan tarjetas de prueba de Stripe; no se realiza ningún cargo real.", billingPendingLead:"El pago está desactivado hasta que se configuren productos, precios y verificación de webhooks de Stripe.", recommended:"RECOMENDADO", creatorPlan:"PLAN PARA CREADORES", monthly:"/mes", choosePlan:"Elegir plan", testCheckout:"Probar pago", unavailable:"No disponible", planDescriptions:["archivos · escaneo cada 30 días","archivos · escaneo diario + casos","archivos · escaneo diario + prioridad"] },
@@ -1351,6 +1366,7 @@ function RightsDeclarationFields({ value, onChange, language }) {
 
 function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
+  const pilotCopy = PILOT_COPY[language] || PILOT_COPY.en;
   const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
   const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
   const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
@@ -1387,6 +1403,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
       assetSlotsRemaining: 0,
       scanFrequency: "unavailable",
     },
+    pilotMode: "standard",
     scannerMode: "unconfigured",
     videoScannerMode: "unconfigured",
     stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
@@ -1825,6 +1842,15 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 </span>
               </div>
               <YotiAgeButton onVerified={onUserUpdate} language={language} />
+            </div>
+          )}
+          {data.pilotMode === "free" && (
+            <div className="verification-banner">
+              <ShieldCheck />
+              <div>
+                <b>{pilotCopy.title}</b>
+                <span>{pilotCopy.lead}</span>
+              </div>
             </div>
           )}
           <div className="dash-title">

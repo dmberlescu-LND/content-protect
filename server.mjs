@@ -3612,6 +3612,7 @@ const appServer = http.createServer(async (req, res) => {
         billingMode: STRIPE_CONFIGURED
           ? `stripe_${PAYMENTS_MODE}`
           : "unconfigured",
+        pilotMode: PILOT_CONFIGURATION.mode,
         scannerMode: scannerMode(),
         videoScannerMode: videoScannerMode(),
         audit: d.audit.filter((x) => x.userId === u.id).slice(0, 20),
