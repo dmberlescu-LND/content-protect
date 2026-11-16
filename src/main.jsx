@@ -331,9 +331,9 @@ const ONBOARDING_COPY = {
 };
 
 const DASHBOARD_COPY = {
-  en: { workspace:"WORKSPACE", account:"ACCOUNT", plan:"plan", nav:{Overview:"Overview",Matches:"Matches","My content":"My content",Takedowns:"Takedowns",Billing:"Plans & billing",Account:"Account & security","Help & safety":"Help & safety"}, protectionActive:"Commercial scanning active", protectionPending:"Protection setup pending", choosePlan:"Choose a plan", scansEnabled:"scans enabled", scanningInactive:"Scanning is not active", casesIncluded:"Takedown cases included", privateVault:"Private creator vault", logout:"Log out", breadcrumb:"Workspace", notifications:"Notifications", accountMenu:"Account menu", openNavigation:"Open navigation", closeNavigation:"Close navigation", greeting:"Good morning", overviewLead:"Review your workspace status and the actions awaiting your approval.", manageLead:"Review and manage your protection workspace.", addContent:"Add content", limitReached:"File limit reached", stats:[["Matches found","reference assets"],["Need your review","Creator approval required"],["Takedown cases","active"],["Successfully removed","Verified outcomes only"]], loading:"Loading…", scanTitle:"Run protected", scanImage:"image", scanMedia:"media", choosePlanBefore:"Choose an active plan before scanning", addReference:"Add a supported reference image before scanning", videoAwaiting:"Video scanning awaits privacy and provider approval", commercialScan:"Search the commercial provider using private reference copies", scanningAwaiting:"Commercial scanning awaits provider activation", live:"LIVE", waiting:"WAITING" },
-  es: { workspace:"ESPACIO DE TRABAJO", account:"CUENTA", plan:"plan", nav:{Overview:"Resumen",Matches:"Coincidencias","My content":"Mi contenido",Takedowns:"Retiradas",Billing:"Planes y facturación",Account:"Cuenta y seguridad","Help & safety":"Ayuda y seguridad"}, protectionActive:"Escaneo comercial activo", protectionPending:"Configuración de protección pendiente", choosePlan:"Elegir un plan", scansEnabled:"escaneos activados", scanningInactive:"El escaneo no está activo", casesIncluded:"Casos de retirada incluidos", privateVault:"Bóveda privada del creador", logout:"Cerrar sesión", breadcrumb:"Espacio de trabajo", notifications:"Notificaciones", accountMenu:"Menú de cuenta", openNavigation:"Abrir navegación", closeNavigation:"Cerrar navegación", greeting:"Buenos días", overviewLead:"Revisa el estado de tu espacio y las acciones que requieren tu aprobación.", manageLead:"Revisa y gestiona tu espacio de protección.", addContent:"Añadir contenido", limitReached:"Límite de archivos alcanzado", stats:[["Coincidencias encontradas","archivos de referencia"],["Necesitan tu revisión","Se requiere aprobación del creador"],["Casos de retirada","activos"],["Eliminados correctamente","Solo resultados verificados"]], loading:"Cargando…", scanTitle:"Ejecutar escaneo protegido de", scanImage:"imagen", scanMedia:"contenido multimedia", choosePlanBefore:"Elige un plan activo antes de escanear", addReference:"Añade una imagen de referencia compatible antes de escanear", videoAwaiting:"El escaneo de vídeo espera aprobación de privacidad y proveedor", commercialScan:"Busca en el proveedor comercial usando copias privadas de referencia", scanningAwaiting:"El escaneo comercial espera activación del proveedor", live:"EN DIRECTO", waiting:"EN ESPERA" },
-  ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Scanare comercială activă", protectionPending:"Configurarea protecției este în așteptare", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Verifică starea spațiului tău și acțiunile care așteaptă aprobarea ta.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere de referință"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", live:"LIVE", waiting:"ÎN AȘTEPTARE" }
+  en: { workspace:"WORKSPACE", account:"ACCOUNT", plan:"plan", nav:{Overview:"Overview",Matches:"Matches","My content":"My content",Takedowns:"Takedowns",Billing:"Plans & billing",Account:"Account & security","Help & safety":"Help & safety"}, protectionActive:"Commercial scanning active", protectionPending:"Protection setup pending", choosePlan:"Choose a plan", scansEnabled:"scans enabled", scanningInactive:"Scanning is not active", casesIncluded:"Takedown cases included", privateVault:"Private creator vault", logout:"Log out", breadcrumb:"Workspace", notifications:"Notifications", accountMenu:"Account menu", openNavigation:"Open navigation", closeNavigation:"Close navigation", greeting:"Good morning", overviewLead:"Review your workspace status and the actions awaiting your approval.", manageLead:"Review and manage your protection workspace.", addContent:"Add content", limitReached:"File limit reached", stats:[["Matches found","reference assets"],["Need your review","Creator approval required"],["Takedown cases","active"],["Successfully removed","Verified outcomes only"]], loading:"Loading…", scanTitle:"Run protected", scanImage:"image", scanMedia:"media", choosePlanBefore:"Choose an active plan before scanning", addReference:"Add a supported reference image before scanning", videoAwaiting:"Video scanning awaits privacy and provider approval", commercialScan:"Search the commercial provider using private reference copies", scanningAwaiting:"Commercial scanning awaits provider activation", scanFailed:"Scan could not start", scanCompleted:"Live image scan completed.", billingUnavailable:"Billing is not available yet. No payment was taken.", checkoutConfirm:"Continue with the {plan} monthly subscription: {limit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.", planLimits:{Monitor:"up to {count} reference files and one image scan every 30 days",Protect:"up to {count} reference files, one image scan every 24 hours and takedown cases",Pro:"up to {count} reference files, one image scan every 24 hours and priority support"}, live:"LIVE", waiting:"WAITING" },
+  es: { workspace:"ESPACIO DE TRABAJO", account:"CUENTA", plan:"plan", nav:{Overview:"Resumen",Matches:"Coincidencias","My content":"Mi contenido",Takedowns:"Retiradas",Billing:"Planes y facturación",Account:"Cuenta y seguridad","Help & safety":"Ayuda y seguridad"}, protectionActive:"Escaneo comercial activo", protectionPending:"Configuración de protección pendiente", choosePlan:"Elegir un plan", scansEnabled:"escaneos activados", scanningInactive:"El escaneo no está activo", casesIncluded:"Casos de retirada incluidos", privateVault:"Bóveda privada del creador", logout:"Cerrar sesión", breadcrumb:"Espacio de trabajo", notifications:"Notificaciones", accountMenu:"Menú de cuenta", openNavigation:"Abrir navegación", closeNavigation:"Cerrar navegación", greeting:"Buenos días", overviewLead:"Revisa el estado de tu espacio y las acciones que requieren tu aprobación.", manageLead:"Revisa y gestiona tu espacio de protección.", addContent:"Añadir contenido", limitReached:"Límite de archivos alcanzado", stats:[["Coincidencias encontradas","archivos de referencia"],["Necesitan tu revisión","Se requiere aprobación del creador"],["Casos de retirada","activos"],["Eliminados correctamente","Solo resultados verificados"]], loading:"Cargando…", scanTitle:"Ejecutar escaneo protegido de", scanImage:"imagen", scanMedia:"contenido multimedia", choosePlanBefore:"Elige un plan activo antes de escanear", addReference:"Añade una imagen de referencia compatible antes de escanear", videoAwaiting:"El escaneo de vídeo espera aprobación de privacidad y proveedor", commercialScan:"Busca en el proveedor comercial usando copias privadas de referencia", scanningAwaiting:"El escaneo comercial espera activación del proveedor", scanFailed:"No se pudo iniciar el escaneo", scanCompleted:"El escaneo de imagen en vivo se completó.", billingUnavailable:"La facturación aún no está disponible. No se realizó ningún pago.", checkoutConfirm:"¿Continuar con la suscripción mensual {plan}: {limit}?\n\nLos vídeos ocupan una plaza de archivo y no se escanean hasta que se active la aprobación de privacidad y proveedor para fotogramas de vídeo minimizados. Al seleccionar Aceptar, aceptas los Términos del servicio, solicitas expresamente que Content Protect inicie el servicio digital de inmediato y entiendes que, si cancelas en 14 días, es posible que tengas que pagar por el servicio ya suministrado. Tus derechos legales no se ven afectados.", planLimits:{Monitor:"hasta {count} archivos de referencia y un escaneo de imagen cada 30 días",Protect:"hasta {count} archivos de referencia, un escaneo de imagen cada 24 horas y casos de retirada",Pro:"hasta {count} archivos de referencia, un escaneo de imagen cada 24 horas y soporte prioritario"}, live:"EN DIRECTO", waiting:"EN ESPERA" },
+  ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Scanare comercială activă", protectionPending:"Configurarea protecției este în așteptare", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Verifică starea spațiului tău și acțiunile care așteaptă aprobarea ta.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere de referință"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", scanFailed:"Scanarea nu a putut porni", scanCompleted:"Scanarea live a imaginii a fost finalizată.", billingUnavailable:"Facturarea nu este disponibilă încă. Nu a fost efectuată nicio plată.", checkoutConfirm:"Continui cu abonamentul lunar {plan}: {limit}?\n\nVideoclipurile ocupă un loc de fișier și nu sunt scanate până la activarea aprobării de confidențialitate și furnizor pentru cadre video minimizate. Prin selectarea OK, accepți Termenii serviciului, soliciți expres ca Content Protect să înceapă imediat serviciul digital și înțelegi că, dacă anulezi în 14 zile, este posibil să fie nevoie să plătești pentru serviciul deja furnizat. Drepturile tale legale nu sunt afectate.", planLimits:{Monitor:"până la {count} fișiere de referință și o scanare de imagine la fiecare 30 de zile",Protect:"până la {count} fișiere de referință, o scanare de imagine la fiecare 24 de ore și cazuri de eliminare",Pro:"până la {count} fișiere de referință, o scanare de imagine la fiecare 24 de ore și suport prioritar"}, live:"LIVE", waiting:"ÎN AȘTEPTARE" }
 };
 
 const PILOT_COPY = {
@@ -1595,21 +1595,20 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
     const response = await fetch("/api/scans", { method: "POST" });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Scan could not start");
+      alert(result.error || copy.scanFailed);
       return;
     }
     await refresh();
-    alert(result.notice || "Live image scan completed.");
+    alert(result.notice || copy.scanCompleted);
   };
   const selectPlan = async (plan) => {
     const entitlement = PLAN_ENTITLEMENTS[plan];
-    const planLimit = {
-      Monitor: `up to ${entitlement.assetLimit} reference files and one image scan every 30 days`,
-      Protect: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and takedown cases`,
-      Pro: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and priority support`,
-    }[plan];
+    const planLimit = (copy.planLimits[plan] || copy.planLimits.Monitor).replace(
+      "{count}",
+      entitlement.assetLimit,
+    );
     const accepted = confirm(
-      `Continue with the ${plan} monthly subscription: ${planLimit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
+      copy.checkoutConfirm.replace("{plan}", plan).replace("{limit}", planLimit),
     );
     if (!accepted) return;
     const r = await fetch("/api/billing/checkout", {
@@ -1631,7 +1630,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
       location.assign(d.checkoutUrl);
       return;
     }
-    alert(d.notice || "Billing is not available yet. No payment was taken.");
+    alert(d.notice || copy.billingUnavailable);
   };
   const deleteAsset = async (asset) => {
     if (
@@ -5037,6 +5036,12 @@ function OperatorConsole() {
   );
 }
 
+const APP_COPY = {
+  en: { emailVerified:"Email verified successfully.", verificationFailed:"Verification failed.", ageVerified:"Your 18+ age check was verified successfully.", ageProcessing:"Your age check is still processing. Please try again shortly.", ageIncomplete:"Age verification was not completed.", ageCancelled:"Age verification was cancelled. No result was stored.", subscriptionConfirmed:"Subscription confirmed: {plan}.", checkoutCancelled:"Checkout cancelled. No payment was taken.", opening:"Opening your protected workspace…" },
+  es: { emailVerified:"El correo electrónico se verificó correctamente.", verificationFailed:"La verificación falló.", ageVerified:"Tu comprobación de edad 18+ se verificó correctamente.", ageProcessing:"Tu comprobación de edad aún se está procesando. Inténtalo de nuevo en unos momentos.", ageIncomplete:"La verificación de edad no se completó.", ageCancelled:"La verificación de edad se canceló. No se guardó ningún resultado.", subscriptionConfirmed:"Suscripción confirmada: {plan}.", checkoutCancelled:"Pago cancelado. No se realizó ningún cargo.", opening:"Abriendo tu espacio de trabajo protegido…" },
+  ro: { emailVerified:"Adresa de email a fost verificată cu succes.", verificationFailed:"Verificarea a eșuat.", ageVerified:"Verificarea ta de vârstă 18+ a fost confirmată cu succes.", ageProcessing:"Verificarea de vârstă este încă în procesare. Încearcă din nou în scurt timp.", ageIncomplete:"Verificarea vârstei nu a fost finalizată.", ageCancelled:"Verificarea vârstei a fost anulată. Nu a fost stocat niciun rezultat.", subscriptionConfirmed:"Abonament confirmat: {plan}.", checkoutCancelled:"Plata a fost anulată. Nu a fost efectuată nicio plată.", opening:"Se deschide spațiul tău de lucru protejat…" },
+};
+
 function App() {
   const operatorPath = location.pathname === "/operator";
   const query = new URLSearchParams(location.search);
@@ -5048,6 +5053,7 @@ function App() {
   const [language, setLanguage] = useState(
     () => localStorage.getItem("content-protect-language") || "en",
   );
+  const appCopy = APP_COPY[language] || APP_COPY.en;
   useEffect(() => {
     localStorage.setItem("content-protect-language", language);
     document.documentElement.lang = language;
@@ -5066,8 +5072,8 @@ function App() {
           history.replaceState({}, "", location.pathname);
           alert(
             verification.ok
-              ? "Email verified successfully."
-              : result.error || "Verification failed.",
+              ? appCopy.emailVerified
+              : result.error || appCopy.verificationFailed,
           );
         }
         const me = await fetch("/api/me");
@@ -5092,15 +5098,15 @@ function App() {
             if (r.ok) {
               if (d.verified) {
                 u = d.user;
-                alert("Your 18+ age check was verified successfully.");
+                alert(appCopy.ageVerified);
               } else
                 alert(
-                  "Your age check is still processing. Please try again shortly.",
+                  appCopy.ageProcessing,
                 );
-            } else alert(d.error || "Age verification was not completed.");
+            } else alert(d.error || appCopy.ageIncomplete);
           } else if (q.get("age_check") === "cancelled") {
             history.replaceState({}, "", location.pathname);
-            alert("Age verification was cancelled. No result was stored.");
+            alert(appCopy.ageCancelled);
           } else if (q.get("checkout") === "success" && sessionId) {
             const r = await fetch(
                 `/api/billing/session?session_id=${encodeURIComponent(sessionId)}`,
@@ -5109,11 +5115,11 @@ function App() {
             if (r.ok) {
               u = d.user;
               history.replaceState({}, "", location.pathname);
-              alert(`Subscription confirmed: ${d.subscription.plan}.`);
+              alert(appCopy.subscriptionConfirmed.replace("{plan}", d.subscription.plan));
             }
           } else if (q.get("checkout") === "cancelled") {
             history.replaceState({}, "", location.pathname);
-            alert("Checkout cancelled. No payment was taken.");
+            alert(appCopy.checkoutCancelled);
           }
           setUser(u);
           setView("dashboard");
@@ -5138,7 +5144,7 @@ function App() {
     return (
       <div className="boot-screen">
         <Logo />
-        <span>Opening your protected workspace…</span>
+        <span>{appCopy.opening}</span>
       </div>
     );
   return (
