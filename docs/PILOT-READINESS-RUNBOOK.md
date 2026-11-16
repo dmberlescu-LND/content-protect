@@ -1,6 +1,6 @@
 # Content Protect pilot readiness runbook
 
-Status: preparation only — 8 September 2026. Do not invite or charge a creator until every applicable gate below has a named owner and recorded evidence.
+Status: preparation only — 16 November 2026. Do not invite or charge a creator until every applicable gate below has a named owner and recorded evidence.
 
 ## Purpose
 
