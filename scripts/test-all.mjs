@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 const checks = [
   "test-billing-policy.mjs",
   "test-pilot-policy.mjs",
+  "test-free-pilot-deployment.mjs",
   "test-audit-integrity.mjs",
   "test-audit-export-policy.mjs",
   "test-backup-restore-policy.mjs",
