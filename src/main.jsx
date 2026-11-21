@@ -351,6 +351,36 @@ const PILOT_COPY = {
   },
 };
 
+const BASIC_SEARCH_COPY = {
+  en: {
+    title: "Basic Search preview",
+    lead: "Your reference is protected and ready. Public-web matching is not run in the free pilot.",
+    stored: "Reference encrypted",
+    consent: "Rights and processing consent recorded",
+    provider: "External discovery provider not activated",
+    unlock: "Actual results require TinEye commercial activation and the approved privacy/DPA gate.",
+    honesty: "No simulated matches are shown.",
+  },
+  es: {
+    title: "Vista previa de búsqueda básica",
+    lead: "Tu referencia está protegida y lista. La búsqueda web pública no se ejecuta en el piloto gratuito.",
+    stored: "Referencia cifrada",
+    consent: "Consentimiento de derechos y procesamiento registrado",
+    provider: "Proveedor externo de descubrimiento no activado",
+    unlock: "Los resultados reales requieren activar TinEye comercialmente y aprobar la privacidad/DPA.",
+    honesty: "No se muestran coincidencias simuladas.",
+  },
+  ro: {
+    title: "Previzualizare Basic Search",
+    lead: "Referința este protejată și pregătită. Căutarea publică pe web nu rulează în pilotul gratuit.",
+    stored: "Referință criptată",
+    consent: "Consimțământul pentru drepturi și procesare este înregistrat",
+    provider: "Furnizorul extern de discovery nu este activat",
+    unlock: "Rezultatele reale necesită activarea comercială TinEye și aprobarea de confidențialitate/DPA.",
+    honesty: "Nu afișăm potriviri simulate.",
+  },
+};
+
 const DASHBOARD_DETAIL = {
   en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved", billingLiveTitle:"Secure Stripe billing is active", billingTestTitle:"Stripe test billing is active", billingPendingTitle:"Billing activation is pending", billingLiveLead:"Subscriptions and payment details are handled by Stripe.", billingTestLead:"Only Stripe test cards are accepted; no live charge is made.", billingPendingLead:"Checkout is disabled until Stripe products, prices and webhook verification are configured.", recommended:"RECOMMENDED", creatorPlan:"CREATOR PLAN", monthly:"/mo", choosePlan:"Choose plan", testCheckout:"Test checkout", unavailable:"Unavailable", planDescriptions:["files · scan every 30 days","files · daily scan + cases","files · daily scan + priority"] },
   es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada", billingLiveTitle:"La facturación segura de Stripe está activa", billingTestTitle:"La facturación de prueba de Stripe está activa", billingPendingTitle:"La activación de facturación está pendiente", billingLiveLead:"Stripe gestiona las suscripciones y los datos de pago.", billingTestLead:"Solo se aceptan tarjetas de prueba de Stripe; no se realiza ningún cargo real.", billingPendingLead:"El pago está desactivado hasta que se configuren productos, precios y verificación de webhooks de Stripe.", recommended:"RECOMENDADO", creatorPlan:"PLAN PARA CREADORES", monthly:"/mes", choosePlan:"Elegir plan", testCheckout:"Probar pago", unavailable:"No disponible", planDescriptions:["archivos · escaneo cada 30 días","archivos · escaneo diario + casos","archivos · escaneo diario + prioridad"] },
@@ -1966,6 +1996,25 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                     : copy.waiting}
                 </span>
               </button>
+              {data.pilotMode === "free" && imageAssetCount > 0 && (
+                <div className="basic-search-preview">
+                  <div className="basic-search-preview-head">
+                    <div>
+                      <span className="basic-search-eyebrow">BASIC</span>
+                      <h2>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).title}</h2>
+                      <p>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).lead}</p>
+                    </div>
+                    <Search size={20} />
+                  </div>
+                  <div className="basic-search-checks">
+                    <span><Check size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).stored}</span>
+                    <span><Check size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).consent}</span>
+                    <span className="pending"><Clock3 size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).provider}</span>
+                  </div>
+                  <p className="basic-search-unlock">{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).unlock}</p>
+                  <small>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).honesty}</small>
+                </div>
+              )}
             </>
           )}
           {tab === "My content" && (
