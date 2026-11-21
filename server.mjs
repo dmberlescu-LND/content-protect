@@ -222,6 +222,7 @@ const TAKEDOWN_DELIVERY_LIVE = Boolean(
   TAKEDOWN_DELIVERY_CONFIGURED && TAKEDOWNS_MODE === "live",
 );
 const PILOT_CONFIGURATION = pilotConfiguration();
+const FREE_PILOT_ASSET_LIMIT = 1;
 let key;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function emailFromAddress(value) {
@@ -3568,7 +3569,16 @@ const appServer = http.createServer(async (req, res) => {
         scans = d.scans.filter((x) => x.userId === u.id),
         subscription = activeSubscription(d, u.id),
         planPolicy = planEntitlements(subscription?.plan),
-        planAssetAllowance = assetAllowance(subscription?.plan, assets.length),
+        planAssetAllowance = subscription
+          ? assetAllowance(subscription.plan, assets.length)
+          : PILOT_CONFIGURATION.mode === "free"
+            ? {
+                limit: FREE_PILOT_ASSET_LIMIT,
+                used: assets.length,
+                remaining: Math.max(0, FREE_PILOT_ASSET_LIMIT - assets.length),
+                canAdd: assets.length < FREE_PILOT_ASSET_LIMIT,
+              }
+            : assetAllowance(undefined, assets.length),
         matches = d.matches
           .filter((m) => m.userId === u.id)
           .map(({ confidence, ...m }) => ({
@@ -3598,7 +3608,10 @@ const appServer = http.createServer(async (req, res) => {
         entitlements: {
           plan: subscription?.plan || "Unsubscribed",
           canScan: Boolean(subscription),
-          canUpload: Boolean(subscription),
+          canUpload:
+            Boolean(subscription) ||
+            (PILOT_CONFIGURATION.mode === "free" &&
+              planAssetAllowance.canAdd),
           canCreateCases: Boolean(planPolicy?.canCreateCases),
           assetLimit: planAssetAllowance.limit,
           assetSlotsRemaining: planAssetAllowance.remaining,
@@ -3652,17 +3665,29 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "Verify your email, age and eligibility before uploading content.",
         });
-      const subscription = activeSubscription(d, u.id);
-      if (!subscription)
+      const subscription = activeSubscription(d, u.id),
+        freePilotUpload =
+          PILOT_CONFIGURATION.mode === "free" && !subscription;
+      if (!subscription && !freePilotUpload)
         return send(res, 402, {
           error:
             "An active Content Protect subscription is required before adding reference files.",
         });
       const currentAssetCount = referenceAssets(d.assets, u.id).length,
-        allowance = assetAllowance(subscription.plan, currentAssetCount);
+        allowance = freePilotUpload
+          ? {
+              limit: FREE_PILOT_ASSET_LIMIT,
+              used: currentAssetCount,
+              remaining: Math.max(
+                0,
+                FREE_PILOT_ASSET_LIMIT - currentAssetCount,
+              ),
+              canAdd: currentAssetCount < FREE_PILOT_ASSET_LIMIT,
+            }
+          : assetAllowance(subscription.plan, currentAssetCount);
       if (!allowance.canAdd)
         return send(res, 409, {
-          error: `${subscription.plan} includes up to ${allowance.limit} reference files. Delete a file or change plan before uploading another.`,
+          error: `${freePilotUpload ? "The free pilot" : subscription.plan} includes up to ${allowance.limit} reference files. Delete a file or change plan before uploading another.`,
           assetLimit: allowance.limit,
           currentAssetCount,
         });
