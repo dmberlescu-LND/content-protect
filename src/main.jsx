@@ -1426,6 +1426,7 @@ function RightsDeclarationFields({ value, onChange, language }) {
 
 function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
+  const trialLabel = language === "es" ? "prueba" : "trial";
   const pilotCopy = PILOT_COPY[language] || PILOT_COPY.en;
   const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
   const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
@@ -1784,7 +1785,11 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
           <span>{initials}</span>
           <div>
             <b>{user?.stageName || user?.name || "Creator"}</b>
-            <small>{data.entitlements.plan} {copy.plan}</small>
+            <small>
+              {data.entitlements.trialPlan
+                ? `${data.entitlements.trialPlan} ${trialLabel}`
+                : data.entitlements.plan} {copy.plan}
+            </small>
           </div>
           <ChevronDown size={15} />
         </button>
