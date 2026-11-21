@@ -87,6 +87,7 @@ import {
 } from "./stripe-subscription-policy.mjs";
 import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
 import { pilotActionError, pilotConfiguration } from "./pilot-policy.mjs";
+import { trialAccessForUser } from "./trial-policy.mjs";
 import { BACKUP_TABLES } from "./backup-snapshot.mjs";
 import {
   accountDeletionBlockedByLegalHold,
@@ -558,6 +559,15 @@ function safe(u, d) {
       item.status === "verified" &&
       item.evidence?.mode === YOTI_MODE,
   );
+  const trialRightsDeclared = (d?.assets || [])
+    .filter((item) => item.userId === u.id)
+    .some((item) =>
+      Boolean(
+        contentRightsSnapshot(
+          contentRightsRecordForAsset(d?.verifications, u.id, item.id),
+        ),
+      ),
+    );
   return {
     id: u.id,
     name: u.name,
@@ -573,6 +583,11 @@ function safe(u, d) {
     mfaEnabled: Boolean(u.mfaEnabledAt),
     mfaRecoveryCodesRemaining: (u.mfaRecoveryHashes || []).length,
     createdAt: u.createdAt,
+    trialEvaluation: trialAccessForUser(u, {
+      environment: process.env,
+      now: new Date(),
+      rightsDeclared: trialRightsDeclared,
+    }),
   };
 }
 function hasCurrentAgeVerification(u, d) {
@@ -3607,6 +3622,11 @@ const appServer = http.createServer(async (req, res) => {
         assets,
         cases: creatorCases,
         scans,
+        trialEvaluation: trialAccessForUser(u, {
+          environment: process.env,
+          now: new Date(),
+          rightsDeclared: assets.some((asset) => Boolean(asset.rights)),
+        }),
         subscription:
           subscription || d.subscriptions.find((x) => x.userId === u.id),
         entitlements: {
