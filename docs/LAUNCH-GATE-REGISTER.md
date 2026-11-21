@@ -8,10 +8,10 @@ For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXT
 
 | Control                     | Current status        | Evidence                                                                                                                                                         |
 | --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production release          | deployed, pre-launch  | Render release `17681074b8dd` is healthy with PostgreSQL, private storage, external key management and a valid audit chain.                                      |
+| Production release          | deployed, pre-launch  | Live release `9f9800da5697` was checked on 21 November 2026 and is healthy with PostgreSQL, private storage, external key management and a valid audit chain.    |
 | Dependency security         | completed             | Production dependency audit returned no known moderate/high/critical vulnerabilities after the Yoti transitive dependency overrides; 37 automated checks passed. |
 | Backup and isolated restore | completed and current | Authenticated restore evidence is bound to `022_subscription_consent_binding.sql`.                                                                               |
-| External monitoring         | completed and current | GitHub monitor evidence is bound to release `17681074b8dd`.                                                                                                      |
+| External monitoring         | configured and current for live release | The live readiness endpoint reports monitoring evidence for release `9f9800da5697`; the Render monitor-heartbeat redundancy is deployed and the operational gate is true. |
 | Retention execution         | deliberately disabled | A schema-bound preview completed without deleting data; executing lifecycle automation is not approved.                                                          |
 | Launch governance           | blocked               | No signed approval manifest exists.                                                                                                                              |
 
@@ -19,7 +19,7 @@ For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXT
 
 | Gate                                              | Status  | Owner                               | Required evidence before approval                                                                                                        |
 | ------------------------------------------------- | ------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Companies House filings                           | completed | Director / accountant             | Official Companies House register rechecked on 1 August 2026: company active; accounts made up to 31 July 2025, next due 30 April 2027; confirmation statement dated 3 July 2026, next due 17 July 2027. |
+| Companies House filings                           | completed | Director / accountant             | Official Companies House register rechecked on 12 November 2026: company active; accounts made up to 31 July 2025, next due 30 April 2027; confirmation statement dated 3 July 2026, next due 17 July 2027. |
 | ICO registration or exemption                     | completed | Director / privacy counsel        | ICO public register verified on 25 August 2026: reference `ZC211293`, registered 1 August 2026, Tier 1, expires 31 July 2027.          |
 | DPIA, Article 6/9 basis and creator-safety review | blocked | UK privacy counsel                  | Approved DPIA, lawful-basis review, special-category condition, safety escalation process and published privacy notice/version.          |
 | Processor contracts and transfers                 | blocked | Director / privacy counsel          | DPA, subprocessor review and UK transfer assessment for every enabled processor.                                                         |

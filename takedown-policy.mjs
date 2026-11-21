@@ -4,6 +4,15 @@ export function textDigest(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+// Delivery is intentionally restricted to the notice type that has a complete,
+// reviewed declaration and approval flow.  Other harms (for example
+// impersonation, non-consensual imagery or publication of personal data) need
+// their own counsel-approved notice, claimant declarations and review steps;
+// they must never inherit the copyright email route by accident.
+export function deliveryNoticeTypeSupported(noticeType) {
+  return noticeType === "copyright";
+}
+
 export function noticeText(caseRecord, creator) {
   const rightsReview = caseRecord.noticeDraft?.rightsReview,
     professionalName = creator.stageName

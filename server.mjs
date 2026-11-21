@@ -68,6 +68,7 @@ import {
   YOTI_SHARE_ID,
 } from "./yoti-digital-identity.mjs";
 import {
+  deliveryNoticeTypeSupported,
   exactNoticeApproved,
   noticeText,
   textDigest,
@@ -85,6 +86,7 @@ import {
   validateStripeSubscriptionForAccount,
 } from "./stripe-subscription-policy.mjs";
 import { COMPLIANCE_VERSIONS } from "./compliance-versions.mjs";
+import { pilotActionError, pilotConfiguration } from "./pilot-policy.mjs";
 import { BACKUP_TABLES } from "./backup-snapshot.mjs";
 import {
   accountDeletionBlockedByLegalHold,
@@ -219,6 +221,8 @@ const TAKEDOWN_DELIVERY_CONFIGURED = Boolean(
 const TAKEDOWN_DELIVERY_LIVE = Boolean(
   TAKEDOWN_DELIVERY_CONFIGURED && TAKEDOWNS_MODE === "live",
 );
+const PILOT_CONFIGURATION = pilotConfiguration();
+const FREE_PILOT_ASSET_LIMIT = 1;
 let key;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function emailFromAddress(value) {
@@ -733,6 +737,7 @@ function customerConsumerCase(caseRecord) {
     statement: details.statement,
     desiredResolution: details.desiredResolution,
     orderReference: details.orderReference,
+    reportedUrl: details.reportedUrl || null,
     timeline: (caseRecord.events || []).map((event) => ({
       id: event.id,
       type: event.type,
@@ -1425,6 +1430,7 @@ const appServer = http.createServer(async (req, res) => {
         auditExport: readiness.operationalGates.auditExport
           ? "verified-recently"
           : "unconfigured-or-expired",
+        pilot: PILOT_CONFIGURATION.mode,
       });
     }
     const d = await load();
@@ -2772,6 +2778,8 @@ const appServer = http.createServer(async (req, res) => {
     ) {
       if (!operatorAuthorised(req, d))
         return send(res, 401, { error: "Operator authentication required." });
+      const pilotLock = pilotActionError(process.env, "notice-delivery");
+      if (pilotLock) return send(res, 409, { error: pilotLock });
       if (!TAKEDOWN_DELIVERY_LIVE)
         return send(res, 503, {
           error:
@@ -2782,6 +2790,14 @@ const appServer = http.createServer(async (req, res) => {
       const caseId = route.split("/")[4],
         b = await parse(req),
         caseRecord = d.cases.find((item) => item.id === caseId);
+      if (!caseRecord) return send(res, 404, { error: "Case not found." });
+      if (caseRecord.status !== "Approved — delivery pending")
+        return send(res, 409, { error: "Case is not ready for delivery." });
+      if (!deliveryNoticeTypeSupported(caseRecord.noticeType))
+        return send(res, 409, {
+          error:
+            "This case type has no counsel-approved delivery workflow. Keep it in operator-led legal review.",
+        });
       if (!operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode))
         return send(res, 401, {
           error: "A current authenticator code is required before delivery.",
@@ -2801,9 +2817,6 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "That authenticator code was already used. Wait for a new code.",
         });
-      if (!caseRecord) return send(res, 404, { error: "Case not found." });
-      if (caseRecord.status !== "Approved — delivery pending")
-        return send(res, 409, { error: "Case is not ready for delivery." });
       if (
         !EMAIL.test(caseRecord.recipientEmail || "") ||
         !safeHttpsReference(caseRecord.recipientSource) ||
@@ -3246,7 +3259,11 @@ const appServer = http.createServer(async (req, res) => {
       }
     }
     if (route === "/api/verification/age/config" && req.method === "GET") {
-      if (YOTI_MODE === "sandbox") {
+      const freePilotSandbox =
+        PILOT_CONFIGURATION.mode === "free" &&
+        YOTI_SANDBOX_TEST_CONFIGURATION.configured &&
+        yotiSandboxTestAllowed(YOTI_SANDBOX_TEST_CONFIGURATION, u.email);
+      if (YOTI_MODE === "sandbox" || freePilotSandbox) {
         if (
           !YOTI_SANDBOX_TEST_CONFIGURATION.configured ||
           !yotiSandboxTestAllowed(YOTI_SANDBOX_TEST_CONFIGURATION, u.email)
@@ -3556,7 +3573,16 @@ const appServer = http.createServer(async (req, res) => {
         scans = d.scans.filter((x) => x.userId === u.id),
         subscription = activeSubscription(d, u.id),
         planPolicy = planEntitlements(subscription?.plan),
-        planAssetAllowance = assetAllowance(subscription?.plan, assets.length),
+        planAssetAllowance = subscription
+          ? assetAllowance(subscription.plan, assets.length)
+          : PILOT_CONFIGURATION.mode === "free"
+            ? {
+                limit: FREE_PILOT_ASSET_LIMIT,
+                used: assets.length,
+                remaining: Math.max(0, FREE_PILOT_ASSET_LIMIT - assets.length),
+                canAdd: assets.length < FREE_PILOT_ASSET_LIMIT,
+              }
+            : assetAllowance(undefined, assets.length),
         matches = d.matches
           .filter((m) => m.userId === u.id)
           .map(({ confidence, ...m }) => ({
@@ -3586,7 +3612,10 @@ const appServer = http.createServer(async (req, res) => {
         entitlements: {
           plan: subscription?.plan || "Unsubscribed",
           canScan: Boolean(subscription),
-          canUpload: Boolean(subscription),
+          canUpload:
+            Boolean(subscription) ||
+            (PILOT_CONFIGURATION.mode === "free" &&
+              planAssetAllowance.canAdd),
           canCreateCases: Boolean(planPolicy?.canCreateCases),
           assetLimit: planAssetAllowance.limit,
           assetSlotsRemaining: planAssetAllowance.remaining,
@@ -3600,6 +3629,7 @@ const appServer = http.createServer(async (req, res) => {
         billingMode: STRIPE_CONFIGURED
           ? `stripe_${PAYMENTS_MODE}`
           : "unconfigured",
+        pilotMode: PILOT_CONFIGURATION.mode,
         scannerMode: scannerMode(),
         videoScannerMode: videoScannerMode(),
         audit: d.audit.filter((x) => x.userId === u.id).slice(0, 20),
@@ -3639,17 +3669,29 @@ const appServer = http.createServer(async (req, res) => {
           error:
             "Verify your email, age and eligibility before uploading content.",
         });
-      const subscription = activeSubscription(d, u.id);
-      if (!subscription)
+      const subscription = activeSubscription(d, u.id),
+        freePilotUpload =
+          PILOT_CONFIGURATION.mode === "free" && !subscription;
+      if (!subscription && !freePilotUpload)
         return send(res, 402, {
           error:
             "An active Content Protect subscription is required before adding reference files.",
         });
       const currentAssetCount = referenceAssets(d.assets, u.id).length,
-        allowance = assetAllowance(subscription.plan, currentAssetCount);
+        allowance = freePilotUpload
+          ? {
+              limit: FREE_PILOT_ASSET_LIMIT,
+              used: currentAssetCount,
+              remaining: Math.max(
+                0,
+                FREE_PILOT_ASSET_LIMIT - currentAssetCount,
+              ),
+              canAdd: currentAssetCount < FREE_PILOT_ASSET_LIMIT,
+            }
+          : assetAllowance(subscription.plan, currentAssetCount);
       if (!allowance.canAdd)
         return send(res, 409, {
-          error: `${subscription.plan} includes up to ${allowance.limit} reference files. Delete a file or change plan before uploading another.`,
+          error: `${freePilotUpload ? "The free pilot" : subscription.plan} includes up to ${allowance.limit} reference files. Delete a file or change plan before uploading another.`,
           assetLimit: allowance.limit,
           currentAssetCount,
         });
@@ -4059,6 +4101,8 @@ const appServer = http.createServer(async (req, res) => {
       });
     }
     if (route === "/api/scans" && req.method === "POST") {
+      const pilotLock = pilotActionError(process.env, "scan");
+      if (pilotLock) return send(res, 409, { error: pilotLock });
       if (
         !u.emailVerifiedAt ||
         !u.eligibilityAcceptedAt ||
@@ -4227,6 +4271,8 @@ const appServer = http.createServer(async (req, res) => {
       }
     }
     if (route === "/api/billing/checkout" && req.method === "POST") {
+      const pilotLock = pilotActionError(process.env, "billing");
+      if (pilotLock) return send(res, 409, { error: pilotLock });
       const b = await parse(req);
       if (!STRIPE_PRICES[b.plan])
         return send(res, 400, { error: "Invalid plan." });

@@ -7,8 +7,7 @@ Use [the launch-gate register](LAUNCH-GATE-REGISTER.md) as the single operationa
 ## Company and tax
 
 - Companies House was checked on 19 July 2026 and confirms **WHITE EAGLES DIGITAL MARKETING LTD**, company **14978662**, as an active private limited company incorporated on 4 July 2023. The registered office is **The Spaceworks, Flat 7, Plumbers Row, London, England, E1 1AG**. Evidence: [official Companies House record](https://find-and-update.company-information.service.gov.uk/company/14978662).
-- **Commercial launch blocker:** Companies House reports the accounts made up to 31 July 2025 as overdue; they were due by 30 April 2026. File them and confirm the register no longer shows the warning before launch.
-- **Commercial launch blocker:** Companies House reports the confirmation statement dated 3 July 2026 as overdue; it was due by 17 July 2026. File it and confirm the register no longer shows the warning before launch.
+- Companies House was rechecked on 12 November 2026: the company is active; accounts made up to 31 July 2025 are now next due by 30 April 2027, and the confirmation statement dated 3 July 2026 is next due by 17 July 2027. This historic filing gate is closed, but the register must be rechecked immediately before launch.
 - Confirm the UK business bank account and responsible directors operationally; do not store bank details in this repository.
 - Confirm corporation tax, VAT threshold and cross-border digital-service treatment with an accountant.
 - Use “Content Protect is a trading name of White Eagles Digital Marketing LTD” in the next counsel-approved version of each customer-facing legal page.
@@ -41,7 +40,7 @@ Use [the launch-gate register](LAUNCH-GATE-REGISTER.md) as the single operationa
 - Separate identity verification data from creator content.
 - Keep Sandbox testing restricted to the expressly approved test-account allowlist. A Sandbox result must be labelled test-only, require password reauthentication and stop counting automatically when the application changes to live Yoti mode.
 - Require explicit creator approval before the first real takedown.
-- Provide emergency paths for intimate-image abuse, doxxing, stalking and credible threats.
+- Provide emergency paths for intimate-image abuse, doxxing, stalking and credible threats. Use the restricted [urgent impersonation and personal-data removal playbook](compliance/URGENT-IMPERSONATION-REMOVAL-PLAYBOOK.md); complete the named safety/legal ownership and escalation contacts before launch.
 - Prohibit searches for people who have not authorised the account.
 
 ## Copyright and takedowns

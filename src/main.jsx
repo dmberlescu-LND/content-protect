@@ -90,6 +90,16 @@ async function saveDownload(response, fallbackName) {
 }
 
 let yotiShareClientPromise;
+const VERIFICATION_COPY = {
+  en: { providerPending:"Provider activation pending", sandboxRunning:"Running sandbox test…", sandboxStart:"Run approved sandbox test", sandboxNote:"Test account only · no Yoti phone or identity check", startAge:"Start private Yoti age verification", loading:"Loading secure age check…", emailTitle:"Verify your email before uploading content", emailLead:"We sent a secure 24-hour verification link to {email}.", resend:"Resend email", ageTitle:"Complete a private 18+ age check", ageLead:"Production verification uses Yoti and retains only the outcome and method, never your document or face image.", sandboxPassword:"Enter the test account password to confirm this controlled sandbox check.", sandboxFailed:"Sandbox age testing failed.", sandboxSuccess:"Controlled sandbox test passed. This is not a real Yoti identity check and cannot enable production." },
+  es: { providerPending:"Pendiente de activación del proveedor", sandboxRunning:"Ejecutando prueba sandbox…", sandboxStart:"Ejecutar prueba sandbox aprobada", sandboxNote:"Solo cuenta de prueba · sin comprobación de teléfono o identidad Yoti", startAge:"Iniciar verificación privada de edad Yoti", loading:"Cargando comprobación segura de edad…", emailTitle:"Verifica tu correo antes de subir contenido", emailLead:"Enviamos un enlace de verificación seguro de 24 horas a {email}.", resend:"Reenviar correo", ageTitle:"Completa una comprobación privada de 18+", ageLead:"La verificación de producción usa Yoti y conserva solo el resultado y el método, nunca tu documento ni imagen facial.", sandboxPassword:"Introduce la contraseña de la cuenta de prueba para confirmar esta comprobación sandbox controlada.", sandboxFailed:"La prueba sandbox de edad falló.", sandboxSuccess:"La prueba sandbox controlada pasó. No es una comprobación de identidad real de Yoti y no puede activar producción." },
+  ro: { providerPending:"Activarea furnizorului este în așteptare", sandboxRunning:"Se rulează testul sandbox…", sandboxStart:"Rulează testul sandbox aprobat", sandboxNote:"Doar cont de test · fără verificare Yoti de telefon sau identitate", startAge:"Pornește verificarea privată de vârstă Yoti", loading:"Se încarcă verificarea securizată de vârstă…", emailTitle:"Verifică e-mailul înainte de a încărca conținut", emailLead:"Am trimis un link securizat de verificare valabil 24 de ore la {email}.", resend:"Retrimite e-mailul", ageTitle:"Finalizează o verificare privată 18+", ageLead:"Verificarea de producție utilizează Yoti și păstrează doar rezultatul și metoda, niciodată documentul sau imaginea feței tale.", sandboxPassword:"Introdu parola contului de test pentru a confirma această verificare sandbox controlată.", sandboxFailed:"Testarea sandbox pentru vârstă a eșuat.", sandboxSuccess:"Testul sandbox controlat a trecut. Nu este o verificare reală de identitate Yoti și nu poate activa producția." }
+};
+const RECOVERY_COPY = {
+  en: { closeRecovery:"Close password recovery", closeReset:"Close password reset", eyebrow:"SECURE ACCOUNT RECOVERY", checkEmail:"Check your email", resetTitle:"Reset your password", sentLead:"If an account exists for that address, a secure link is on its way. It expires in 30 minutes.", resetLead:"Enter the email address used for your protected workspace.", received:"Request received", privacy:"For privacy, we do not confirm whether an address is registered.", email:"Email address", sending:"Sending secure link…", send:"Send reset link", back:"Back to login", linkHelp:"Reset links are single-use and expire after 30 minutes.", choose:"Choose a new password", unique:"Use a unique password you do not use on creator platforms.", newPassword:"New password", passwordHelp:"At least 10 characters", confirm:"Confirm new password", updating:"Updating password…", set:"Set new password", sessionHelp:"Completing this reset signs out all existing sessions.", mismatch:"Passwords do not match.", failed:"Password could not be reset." },
+  es: { closeRecovery:"Cerrar recuperación de contraseña", closeReset:"Cerrar restablecimiento de contraseña", eyebrow:"RECUPERACIÓN SEGURA DE CUENTA", checkEmail:"Revisa tu correo", resetTitle:"Restablece tu contraseña", sentLead:"Si existe una cuenta para esa dirección, el enlace seguro está en camino. Caduca en 30 minutos.", resetLead:"Introduce la dirección de correo usada para tu espacio de trabajo protegido.", received:"Solicitud recibida", privacy:"Por privacidad, no confirmamos si una dirección está registrada.", email:"Dirección de correo", sending:"Enviando enlace seguro…", send:"Enviar enlace de restablecimiento", back:"Volver al inicio de sesión", linkHelp:"Los enlaces de restablecimiento son de un solo uso y caducan en 30 minutos.", choose:"Elige una nueva contraseña", unique:"Usa una contraseña única que no uses en plataformas de creadores.", newPassword:"Nueva contraseña", passwordHelp:"Al menos 10 caracteres", confirm:"Confirmar nueva contraseña", updating:"Actualizando contraseña…", set:"Establecer nueva contraseña", sessionHelp:"Completar este restablecimiento cierra todas las sesiones existentes.", mismatch:"Las contraseñas no coinciden.", failed:"No se pudo restablecer la contraseña." },
+  ro: { closeRecovery:"Închide recuperarea parolei", closeReset:"Închide resetarea parolei", eyebrow:"RECUPERARE SECURIZATĂ A CONTULUI", checkEmail:"Verifică e-mailul", resetTitle:"Resetează parola", sentLead:"Dacă există un cont pentru această adresă, un link securizat este pe drum. Expiră în 30 de minute.", resetLead:"Introdu adresa de e-mail folosită pentru spațiul tău de lucru protejat.", received:"Solicitare primită", privacy:"Din motive de confidențialitate, nu confirmăm dacă o adresă este înregistrată.", email:"Adresă de e-mail", sending:"Se trimite linkul securizat…", send:"Trimite linkul de resetare", back:"Înapoi la autentificare", linkHelp:"Linkurile de resetare sunt de unică folosință și expiră în 30 de minute.", choose:"Alege o parolă nouă", unique:"Folosește o parolă unică, pe care nu o utilizezi pe platforme pentru creatori.", newPassword:"Parolă nouă", passwordHelp:"Cel puțin 10 caractere", confirm:"Confirmă parola nouă", updating:"Se actualizează parola…", set:"Setează parola nouă", sessionHelp:"Finalizarea acestei resetări deconectează toate sesiunile existente.", mismatch:"Parolele nu coincid.", failed:"Parola nu a putut fi resetată." }
+};
 function loadYotiShareClient() {
   if (window.Yoti) return Promise.resolve(window.Yoti);
   if (!yotiShareClientPromise)
@@ -107,7 +117,8 @@ function loadYotiShareClient() {
   return yotiShareClientPromise;
 }
 
-function YotiAgeButton({ onVerified }) {
+function YotiAgeButton({ onVerified, language }) {
+  const copy = VERIFICATION_COPY[language] || VERIFICATION_COPY.en;
   const container = useRef(null),
     currentSessionId = useRef(null),
     completing = useRef(false),
@@ -194,7 +205,7 @@ function YotiAgeButton({ onVerified }) {
   }, []);
   const runSandboxTest = async () => {
     const password = prompt(
-      "Enter the test account password to confirm this controlled sandbox check.",
+      copy.sandboxPassword,
     );
     if (!password) return;
     setSandboxRunning(true);
@@ -206,13 +217,13 @@ function YotiAgeButton({ onVerified }) {
         }),
         result = await response.json();
       if (!response.ok || !result.verified)
-        throw new Error(result.error || "Sandbox age testing failed.");
+        throw new Error(result.error || copy.sandboxFailed);
       onVerifiedRef.current(result.user);
       alert(
-        "Controlled sandbox test passed. This is not a real Yoti identity check and cannot enable production.",
+        copy.sandboxSuccess,
       );
     } catch (error) {
-      alert(error.message || "Sandbox age testing failed.");
+      alert(error.message || copy.sandboxFailed);
     } finally {
       setSandboxRunning(false);
     }
@@ -220,7 +231,7 @@ function YotiAgeButton({ onVerified }) {
   if (status === "unavailable")
     return (
       <button className="btn btn-outline" disabled>
-        Provider activation pending
+        {copy.providerPending}
       </button>
     );
   if (status === "sandbox")
@@ -232,10 +243,10 @@ function YotiAgeButton({ onVerified }) {
           onClick={runSandboxTest}
         >
           {sandboxRunning
-            ? "Running sandbox test…"
-            : "Run approved sandbox test"}
+            ? copy.sandboxRunning
+            : copy.sandboxStart}
         </button>
-        <small>Test account only · no Yoti phone or identity check</small>
+        <small>{copy.sandboxNote}</small>
       </div>
     );
   return (
@@ -244,9 +255,9 @@ function YotiAgeButton({ onVerified }) {
         ref={container}
         id="yoti-age-share-button"
         aria-busy={status === "loading"}
-        aria-label="Start private Yoti age verification"
+        aria-label={copy.startAge}
       />
-      {status === "loading" && <span>Loading secure age check…</span>}
+      {status === "loading" && <span>{copy.loading}</span>}
     </div>
   );
 }
@@ -275,7 +286,7 @@ const LANDING_DETAIL = {
     plans: [["Monitor", "Know where your content appears.", "Choose Monitor"], ["Protect", "Find copies and act quickly.", "Start protecting"], ["Pro", "High-volume, priority protection.", "Choose Pro"]],
     faqLabel: "Clear answers", faqTitle: "Questions creators ask before trusting a protection service.",
     faq: [["Does Content Protect automatically remove content?", "No. A similarity result is reviewed, evidence is preserved and you must approve the required declarations before a trained operator can send a notice."], ["Is uploaded content public?", "No. Reference media is private and encrypted, is not used for advertising or public profiles, and can be deleted by you."], ["Who can use Content Protect?", "Verified adults aged 18 or over who own the relevant rights or are authorised to act for the rights holder."], ["Does a match prove copyright infringement?", "No. Matching is an evidence lead, not a legal conclusion. Ownership, licence, context and jurisdiction must be reviewed."], ["Can you guarantee removal?", "No service can guarantee an outcome. Platforms, hosts and search engines make their own decisions, and contested cases may require specialist legal advice."], ["Do you store card details?", "No. Stripe processes card information. Content Protect stores only the subscription and billing references needed to manage your account."]],
-    legal: ["Privacy", "Terms", "Safety", "Cookies", "Disputes"],
+    legal: ["Privacy", "Terms", "Safety", "Cookies", "Disputes"], legalNotice: null,
     visual: ["PRODUCT WORKFLOW PREVIEW", "Review", "PROTECTED ASSET", "8 reference images", "Sources checked", "Provider-dependent", "Potential matches", "Human-reviewed", "Match verified", "Similarity lead — review required", "Private by design", "Encrypted & deleted anytime"],
     proof: [["Private", "encrypted reference vault"], ["Creator-led", "approval before action"], ["Transparent", "clear evidence and status"], ["UK", "company and GBP billing"]],
     chips: ["Encrypted storage", "You control access"],
@@ -287,7 +298,7 @@ const LANDING_DETAIL = {
     plans: [["Monitor", "Sabe dónde aparece tu contenido.", "Elegir Monitor"], ["Protect", "Encuentra copias y actúa rápido.", "Empezar a proteger"], ["Pro", "Protección prioritaria y de mayor volumen.", "Elegir Pro"]],
     faqLabel: "Respuestas claras", faqTitle: "Preguntas que los creadores hacen antes de confiar en un servicio de protección.",
     faq: [["¿Content Protect elimina contenido automáticamente?", "No. Se revisa cada resultado de similitud, se conservan las pruebas y debes aprobar las declaraciones necesarias antes de que un operador formado pueda enviar un aviso."], ["¿El contenido subido es público?", "No. El material de referencia es privado y cifrado, no se usa para publicidad ni perfiles públicos, y puedes eliminarlo."], ["¿Quién puede usar Content Protect?", "Adultos verificados de 18 años o más que sean titulares de los derechos relevantes o estén autorizados para actuar por el titular."], ["¿Una coincidencia prueba una infracción de derechos de autor?", "No. Una coincidencia es una pista de evidencia, no una conclusión legal. Deben revisarse propiedad, licencia, contexto y jurisdicción."], ["¿Podéis garantizar la eliminación?", "Ningún servicio puede garantizar un resultado. Las plataformas, los hosts y los buscadores toman sus propias decisiones, y los casos disputados pueden requerir asesoramiento legal especializado."], ["¿Guardáis los datos de la tarjeta?", "No. Stripe procesa la información de la tarjeta. Content Protect solo conserva las referencias de suscripción y facturación necesarias para gestionar tu cuenta."]],
-    legal: ["Privacidad", "Términos", "Seguridad", "Cookies", "Disputas"],
+    legal: ["Privacidad", "Términos", "Seguridad", "Cookies", "Disputas"], legalNotice: "Los documentos legales están disponibles actualmente en inglés; la versión en inglés es la que rige.",
     visual: ["VISTA PREVIA DEL FLUJO", "Revisión", "ARCHIVO PROTEGIDO", "8 imágenes de referencia", "Fuentes comprobadas", "Depende del proveedor", "Posibles coincidencias", "Revisadas por personas", "Coincidencia verificada", "Indicio de similitud — requiere revisión", "Privado por diseño", "Cifrado y eliminable en cualquier momento"],
     proof: [["Privado", "bóveda cifrada de referencias"], ["Dirigido por el creador", "aprobación antes de actuar"], ["Transparente", "pruebas y estado claros"], ["Reino Unido", "empresa y facturación en GBP"]],
     chips: ["Almacenamiento cifrado", "Tú controlas el acceso"],
@@ -299,12 +310,138 @@ const LANDING_DETAIL = {
     plans: [["Monitor", "Află unde apare conținutul tău.", "Alege Monitor"], ["Protect", "Găsește copii și acționează rapid.", "Începe protecția"], ["Pro", "Protecție prioritară, pentru volum mare.", "Alege Pro"]],
     faqLabel: "Răspunsuri clare", faqTitle: "Întrebări puse de creatori înainte de a avea încredere într-un serviciu de protecție.",
     faq: [["Content Protect elimină automat conținutul?", "Nu. Fiecare rezultat de similitudine este verificat, dovezile sunt păstrate și trebuie să aprobi declarațiile necesare înainte ca un operator instruit să poată trimite o notificare."], ["Conținutul încărcat devine public?", "Nu. Materialul de referință este privat și criptat, nu este utilizat pentru publicitate sau profiluri publice și îl poți șterge."], ["Cine poate folosi Content Protect?", "Adulți verificați, de minimum 18 ani, care dețin drepturile relevante sau sunt autorizați să acționeze pentru titularul drepturilor."], ["O potrivire dovedește încălcarea drepturilor de autor?", "Nu. O potrivire este o pistă de dovezi, nu o concluzie juridică. Trebuie verificate proprietatea, licența, contextul și jurisdicția."], ["Puteți garanta eliminarea?", "Niciun serviciu nu poate garanta un rezultat. Platformele, hosturile și motoarele de căutare decid independent, iar cazurile contestate pot necesita consultanță juridică specializată."], ["Stocați datele cardului?", "Nu. Stripe procesează datele cardului. Content Protect păstrează doar referințele de abonament și facturare necesare pentru gestionarea contului."]],
-    legal: ["Confidențialitate", "Termeni", "Siguranță", "Cookie-uri", "Contestații"],
+    legal: ["Confidențialitate", "Termeni", "Siguranță", "Cookie-uri", "Contestații"], legalNotice: "Documentele juridice sunt disponibile momentan în engleză; versiunea în engleză este cea care se aplică.",
     visual: ["PREVIZUALIZARE FLUX PRODUS", "Verificare", "FIȘIER PROTEJAT", "8 imagini de referință", "Surse verificate", "Depinde de furnizor", "Posibile potriviri", "Verificate de oameni", "Potrivire verificată", "Indiciu de similitudine — necesită verificare", "Privat prin design", "Criptat și ștergibil oricând"],
     proof: [["Privat", "seif criptat pentru referințe"], ["Condus de creator", "aprobare înainte de acțiune"], ["Transparent", "dovezi și status clar"], ["UK", "companie și facturare în GBP"]],
     chips: ["Stocare criptată", "Tu controlezi accesul"],
     pricing: ["/ lună", "CEL MAI ALES", "Până la", "fișiere private de referință", "O scanare compatibilă la fiecare 30 de zile", "Alerte de potrivire și dovezi", "O scanare compatibilă la fiecare 24 de ore", "Dovezi și cazuri ghidate de eliminare", "Verificare prioritară de specialitate", "Plata rămâne indisponibilă până devin active controalele furnizorului, verificării și facturării. Funcțiile și prețul recurent sunt confirmate din nou înainte de cumpărare. Rezultatele nu sunt garantate; nu sunt incluse ordine judecătorești sau reprezentare juridică."]
   }
+};
+
+const AUTH_COPY = {
+  en: { private:"PRIVATE CREATOR PROTECTION", createTitle:"Create your secure workspace", welcome:"Welcome back", createLead:"Create your account free. Choose a protection plan after verification.", loginLead:"Sign in to your protected workspace.", fullName:"Full name", stageName:"Stage name", email:"Email address", password:"Password", passwordNew:"10–128 characters", passwordLogin:"Enter your account password", age:"I confirm that I am at least 18 years old.", rights:"I own or am authorised to protect the content I submit.", accept:"I accept the", terms:"Terms", and:"and", privacy:"Privacy Notice", forgot:"Forgot your password?", creating:"Securing workspace…", create:"Create protected account", verify:"Verify and log in", login:"Log in securely", protected:"Already protected?", new:"New to Content Protect?", switchLogin:"Log in", switchCreate:"Create an account", trust:"Passwords are cryptographically protected. Sessions use secure HTTP-only cookies.", code:"Authenticator or recovery code", codeHelp:"Open your authenticator app or use one recovery code." },
+  es: { private:"PROTECCIÓN PRIVADA PARA CREADORES", createTitle:"Crea tu espacio seguro", welcome:"Bienvenido de nuevo", createLead:"Crea tu cuenta sin coste. Elige un plan de protección después de la verificación.", loginLead:"Inicia sesión en tu espacio protegido.", fullName:"Nombre completo", stageName:"Nombre artístico", email:"Dirección de correo", password:"Contraseña", passwordNew:"10–128 caracteres", passwordLogin:"Introduce la contraseña de tu cuenta", age:"Confirmo que tengo al menos 18 años.", rights:"Soy titular o estoy autorizado a proteger el contenido que envío.", accept:"Acepto los", terms:"Términos", and:"y el", privacy:"Aviso de privacidad", forgot:"¿Olvidaste la contraseña?", creating:"Protegiendo el espacio…", create:"Crear cuenta protegida", verify:"Verificar e iniciar sesión", login:"Iniciar sesión de forma segura", protected:"¿Ya tienes protección?", new:"¿Nuevo en Content Protect?", switchLogin:"Iniciar sesión", switchCreate:"Crear una cuenta", trust:"Las contraseñas están protegidas criptográficamente. Las sesiones usan cookies seguras solo HTTP.", code:"Código de autenticación o recuperación", codeHelp:"Abre tu aplicación de autenticación o usa un código de recuperación." },
+  ro: { private:"PROTECȚIE PRIVATĂ PENTRU CREATORI", createTitle:"Creează spațiul tău securizat", welcome:"Bine ai revenit", createLead:"Creează gratuit contul. Alegi un plan de protecție după verificare.", loginLead:"Autentifică-te în spațiul tău protejat.", fullName:"Nume complet", stageName:"Nume de scenă", email:"Adresă de email", password:"Parolă", passwordNew:"10–128 caractere", passwordLogin:"Introdu parola contului", age:"Confirm că am cel puțin 18 ani.", rights:"Dețin sau sunt autorizat să protejez conținutul pe care îl trimit.", accept:"Accept", terms:"Termenii", and:"și", privacy:"Notificarea de confidențialitate", forgot:"Ai uitat parola?", creating:"Se securizează spațiul…", create:"Creează contul protejat", verify:"Verifică și autentifică-te", login:"Autentificare securizată", protected:"Ai deja protecție?", new:"Ești nou în Content Protect?", switchLogin:"Autentificare", switchCreate:"Creează un cont", trust:"Parolele sunt protejate criptografic. Sesiunile folosesc cookie-uri securizate numai HTTP.", code:"Cod de autentificare sau recuperare", codeHelp:"Deschide aplicația de autentificare sau folosește un cod de recuperare." }
+};
+
+const ONBOARDING_COPY = {
+  en: { step:"STEP", of:"OF 3", headings:["Build your identity shield", "Connect your public presence", "Protection rules"], leads:["Add public aliases that could be used to find impersonations.", "Only enter public profile URLs—never passwords.", "Content Protect starts safely, with your approval required."], aliasLabel:"Stage names and aliases", aliasPlaceholder:"NameOne, NameTwo", aliasesHelp:"Separate names with commas", profileLabel:"Public creator profile URLs", profilePlaceholder:"https://… , https://…", profileHelp:"We never request passwords for creator platforms", rules:[["Creator approval required", "No notice is sent before you approve the evidence."], ["Private reference vault", "Your source content remains encrypted and private."], ["Transparent provider status", "Unavailable services are clearly identified and never replaced with simulated results."]], continue:"Continue", activate:"Activate protected workspace", back:"Back" },
+  es: { step:"PASO", of:"DE 3", headings:["Crea tu escudo de identidad", "Conecta tu presencia pública", "Reglas de protección"], leads:["Añade alias públicos que puedan utilizarse para encontrar suplantaciones.", "Introduce solo URLs de perfiles públicos; nunca contraseñas.", "Content Protect empieza de forma segura y requiere tu aprobación."], aliasLabel:"Nombres artísticos y alias", aliasPlaceholder:"NombreUno, NombreDos", aliasesHelp:"Separa los nombres con comas", profileLabel:"URLs de perfiles públicos de creador", profilePlaceholder:"https://… , https://…", profileHelp:"Nunca pedimos contraseñas de plataformas de creadores", rules:[["Se requiere aprobación del creador", "No se envía ningún aviso antes de que apruebes las pruebas."], ["Bóveda privada de referencias", "Tu contenido de origen permanece cifrado y privado."], ["Estado transparente del proveedor", "Los servicios no disponibles se identifican claramente y nunca se sustituyen por resultados simulados."]], continue:"Continuar", activate:"Activar espacio protegido", back:"Volver" },
+  ro: { step:"PASUL", of:"DIN 3", headings:["Construiește-ți scutul de identitate", "Conectează-ți prezența publică", "Reguli de protecție"], leads:["Adaugă aliasuri publice ce pot fi folosite pentru a găsi impersonări.", "Introdu doar URL-uri de profil public; niciodată parole.", "Content Protect începe în siguranță și necesită aprobarea ta."], aliasLabel:"Nume de scenă și aliasuri", aliasPlaceholder:"NumeUnu, NumeDoi", aliasesHelp:"Separă numele prin virgule", profileLabel:"URL-uri de profil public ale creatorului", profilePlaceholder:"https://… , https://…", profileHelp:"Nu cerem niciodată parole pentru platformele de creatori", rules:[["Este necesară aprobarea creatorului", "Nicio notificare nu este trimisă înainte să aprobi dovezile."], ["Seif privat pentru referințe", "Conținutul tău sursă rămâne criptat și privat."], ["Status transparent al furnizorului", "Serviciile indisponibile sunt identificate clar și nu sunt înlocuite cu rezultate simulate."]], continue:"Continuă", activate:"Activează spațiul protejat", back:"Înapoi" }
+};
+
+const DASHBOARD_COPY = {
+  en: { workspace:"WORKSPACE", account:"ACCOUNT", plan:"plan", nav:{Overview:"Overview",Matches:"Matches","My content":"My content",Takedowns:"Takedowns",Billing:"Plans & billing",Account:"Account & security","Help & safety":"Help & safety"}, protectionActive:"Commercial scanning active", protectionPending:"Protection setup pending", choosePlan:"Choose a plan", scansEnabled:"scans enabled", scanningInactive:"Scanning is not active", casesIncluded:"Takedown cases included", privateVault:"Private creator vault", logout:"Log out", breadcrumb:"Workspace", notifications:"Notifications", accountMenu:"Account menu", openNavigation:"Open navigation", closeNavigation:"Close navigation", greeting:"Good morning", overviewLead:"Review your workspace status and the actions awaiting your approval.", manageLead:"Review and manage your protection workspace.", addContent:"Add content", limitReached:"File limit reached", stats:[["Matches found","reference assets"],["Need your review","Creator approval required"],["Takedown cases","active"],["Successfully removed","Verified outcomes only"]], loading:"Loading…", scanTitle:"Run protected", scanImage:"image", scanMedia:"media", choosePlanBefore:"Choose an active plan before scanning", addReference:"Add a supported reference image before scanning", videoAwaiting:"Video scanning awaits privacy and provider approval", commercialScan:"Search the commercial provider using private reference copies", scanningAwaiting:"Commercial scanning awaits provider activation", scanFailed:"Scan could not start", scanCompleted:"Live image scan completed.", billingUnavailable:"Billing is not available yet. No payment was taken.", checkoutConfirm:"Continue with the {plan} monthly subscription: {limit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.", planLimits:{Monitor:"up to {count} reference files and one image scan every 30 days",Protect:"up to {count} reference files, one image scan every 24 hours and takedown cases",Pro:"up to {count} reference files, one image scan every 24 hours and priority support"}, live:"LIVE", waiting:"WAITING" },
+  es: { workspace:"ESPACIO DE TRABAJO", account:"CUENTA", plan:"plan", nav:{Overview:"Resumen",Matches:"Coincidencias","My content":"Mi contenido",Takedowns:"Retiradas",Billing:"Planes y facturación",Account:"Cuenta y seguridad","Help & safety":"Ayuda y seguridad"}, protectionActive:"Escaneo comercial activo", protectionPending:"Configuración de protección pendiente", choosePlan:"Elegir un plan", scansEnabled:"escaneos activados", scanningInactive:"El escaneo no está activo", casesIncluded:"Casos de retirada incluidos", privateVault:"Bóveda privada del creador", logout:"Cerrar sesión", breadcrumb:"Espacio de trabajo", notifications:"Notificaciones", accountMenu:"Menú de cuenta", openNavigation:"Abrir navegación", closeNavigation:"Cerrar navegación", greeting:"Buenos días", overviewLead:"Revisa el estado de tu espacio y las acciones que requieren tu aprobación.", manageLead:"Revisa y gestiona tu espacio de protección.", addContent:"Añadir contenido", limitReached:"Límite de archivos alcanzado", stats:[["Coincidencias encontradas","archivos de referencia"],["Necesitan tu revisión","Se requiere aprobación del creador"],["Casos de retirada","activos"],["Eliminados correctamente","Solo resultados verificados"]], loading:"Cargando…", scanTitle:"Ejecutar escaneo protegido de", scanImage:"imagen", scanMedia:"contenido multimedia", choosePlanBefore:"Elige un plan activo antes de escanear", addReference:"Añade una imagen de referencia compatible antes de escanear", videoAwaiting:"El escaneo de vídeo espera aprobación de privacidad y proveedor", commercialScan:"Busca en el proveedor comercial usando copias privadas de referencia", scanningAwaiting:"El escaneo comercial espera activación del proveedor", scanFailed:"No se pudo iniciar el escaneo", scanCompleted:"El escaneo de imagen en vivo se completó.", billingUnavailable:"La facturación aún no está disponible. No se realizó ningún pago.", checkoutConfirm:"¿Continuar con la suscripción mensual {plan}: {limit}?\n\nLos vídeos ocupan una plaza de archivo y no se escanean hasta que se active la aprobación de privacidad y proveedor para fotogramas de vídeo minimizados. Al seleccionar Aceptar, aceptas los Términos del servicio, solicitas expresamente que Content Protect inicie el servicio digital de inmediato y entiendes que, si cancelas en 14 días, es posible que tengas que pagar por el servicio ya suministrado. Tus derechos legales no se ven afectados.", planLimits:{Monitor:"hasta {count} archivos de referencia y un escaneo de imagen cada 30 días",Protect:"hasta {count} archivos de referencia, un escaneo de imagen cada 24 horas y casos de retirada",Pro:"hasta {count} archivos de referencia, un escaneo de imagen cada 24 horas y soporte prioritario"}, live:"EN DIRECTO", waiting:"EN ESPERA" },
+  ro: { workspace:"SPAȚIU DE LUCRU", account:"CONT", plan:"plan", nav:{Overview:"Prezentare generală",Matches:"Potriviri","My content":"Conținutul meu",Takedowns:"Eliminări",Billing:"Planuri și facturare",Account:"Cont și securitate","Help & safety":"Ajutor și siguranță"}, protectionActive:"Scanare comercială activă", protectionPending:"Configurarea protecției este în așteptare", choosePlan:"Alege un plan", scansEnabled:"scanări activate", scanningInactive:"Scanarea nu este activă", casesIncluded:"Cazuri de eliminare incluse", privateVault:"Seif privat al creatorului", logout:"Deconectare", breadcrumb:"Spațiu de lucru", notifications:"Notificări", accountMenu:"Meniu cont", openNavigation:"Deschide navigarea", closeNavigation:"Închide navigarea", greeting:"Bună dimineața", overviewLead:"Verifică starea spațiului tău și acțiunile care așteaptă aprobarea ta.", manageLead:"Verifică și gestionează spațiul tău de protecție.", addContent:"Adaugă conținut", limitReached:"Limita de fișiere a fost atinsă", stats:[["Potriviri găsite","fișiere de referință"],["Necesită verificarea ta","Este necesară aprobarea creatorului"],["Cazuri de eliminare","active"],["Eliminate cu succes","Doar rezultate verificate"]], loading:"Se încarcă…", scanTitle:"Pornește scanarea protejată pentru", scanImage:"imagini", scanMedia:"conținut media", choosePlanBefore:"Alege un plan activ înainte de scanare", addReference:"Adaugă o imagine de referință compatibilă înainte de scanare", videoAwaiting:"Scanarea video așteaptă aprobarea de confidențialitate și a furnizorului", commercialScan:"Caută la furnizorul comercial folosind copii private de referință", scanningAwaiting:"Scanarea comercială așteaptă activarea furnizorului", scanFailed:"Scanarea nu a putut porni", scanCompleted:"Scanarea live a imaginii a fost finalizată.", billingUnavailable:"Facturarea nu este disponibilă încă. Nu a fost efectuată nicio plată.", checkoutConfirm:"Continui cu abonamentul lunar {plan}: {limit}?\n\nVideoclipurile ocupă un loc de fișier și nu sunt scanate până la activarea aprobării de confidențialitate și furnizor pentru cadre video minimizate. Prin selectarea OK, accepți Termenii serviciului, soliciți expres ca Content Protect să înceapă imediat serviciul digital și înțelegi că, dacă anulezi în 14 zile, este posibil să fie nevoie să plătești pentru serviciul deja furnizat. Drepturile tale legale nu sunt afectate.", planLimits:{Monitor:"până la {count} fișiere de referință și o scanare de imagine la fiecare 30 de zile",Protect:"până la {count} fișiere de referință, o scanare de imagine la fiecare 24 de ore și cazuri de eliminare",Pro:"până la {count} fișiere de referință, o scanare de imagine la fiecare 24 de ore și suport prioritar"}, live:"LIVE", waiting:"ÎN AȘTEPTARE" }
+};
+
+const PILOT_COPY = {
+  en: {
+    title: "Free controlled pilot",
+    lead: "No payment, external scan or live notice can be sent from this workspace while pilot safeguards are active.",
+  },
+  es: {
+    title: "Piloto gratuito controlado",
+    lead: "No se puede enviar ningún pago, escaneo externo ni aviso en vivo desde este espacio mientras estén activos los controles del piloto.",
+  },
+  ro: {
+    title: "Pilot gratuit controlat",
+    lead: "Nu se poate trimite nicio plată, scanare externă sau notificare live din acest spațiu cât timp protecțiile pilotului sunt active.",
+  },
+};
+
+const BASIC_SEARCH_COPY = {
+  en: {
+    title: "Basic Search preview",
+    lead: "Your reference is protected and ready. Public-web matching is not run in the free pilot.",
+    stored: "Reference encrypted",
+    consent: "Rights and processing consent recorded",
+    provider: "External discovery provider not activated",
+    unlock: "Actual results require TinEye commercial activation and the approved privacy/DPA gate.",
+    honesty: "No simulated matches are shown.",
+    manualTitle: "Already found a public page?",
+    manualLead: "Submit its exact HTTPS URL for a free human-reviewed safety case. We will not upload your private reference image to a provider.",
+    manualAction: "Submit a page for review",
+  },
+  es: {
+    title: "Vista previa de búsqueda básica",
+    lead: "Tu referencia está protegida y lista. La búsqueda web pública no se ejecuta en el piloto gratuito.",
+    stored: "Referencia cifrada",
+    consent: "Consentimiento de derechos y procesamiento registrado",
+    provider: "Proveedor externo de descubrimiento no activado",
+    unlock: "Los resultados reales requieren activar TinEye comercialmente y aprobar la privacidad/DPA.",
+    honesty: "No se muestran coincidencias simuladas.",
+    manualTitle: "¿Ya encontraste una página pública?",
+    manualLead: "Envía su URL HTTPS exacta para una revisión humana gratuita. No subiremos tu referencia privada a un proveedor.",
+    manualAction: "Enviar una página a revisión",
+  },
+  ro: {
+    title: "Previzualizare Basic Search",
+    lead: "Referința este protejată și pregătită. Căutarea publică pe web nu rulează în pilotul gratuit.",
+    stored: "Referință criptată",
+    consent: "Consimțământul pentru drepturi și procesare este înregistrat",
+    provider: "Furnizorul extern de discovery nu este activat",
+    unlock: "Rezultatele reale necesită activarea comercială TinEye și aprobarea de confidențialitate/DPA.",
+    honesty: "Nu afișăm potriviri simulate.",
+    manualTitle: "Ai găsit deja o pagină publică?",
+    manualLead: "Trimite URL-ul HTTPS exact pentru o verificare umană gratuită. Nu încărcăm referința ta privată la un furnizor.",
+    manualAction: "Trimite pagina pentru verificare",
+  },
+};
+
+const DASHBOARD_DETAIL = {
+  en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved", billingLiveTitle:"Secure Stripe billing is active", billingTestTitle:"Stripe test billing is active", billingPendingTitle:"Billing activation is pending", billingLiveLead:"Subscriptions and payment details are handled by Stripe.", billingTestLead:"Only Stripe test cards are accepted; no live charge is made.", billingPendingLead:"Checkout is disabled until Stripe products, prices and webhook verification are configured.", recommended:"RECOMMENDED", creatorPlan:"CREATOR PLAN", monthly:"/mo", choosePlan:"Choose plan", testCheckout:"Test checkout", unavailable:"Unavailable", planDescriptions:["files · scan every 30 days","files · daily scan + cases","files · daily scan + priority"] },
+  es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada", billingLiveTitle:"La facturación segura de Stripe está activa", billingTestTitle:"La facturación de prueba de Stripe está activa", billingPendingTitle:"La activación de facturación está pendiente", billingLiveLead:"Stripe gestiona las suscripciones y los datos de pago.", billingTestLead:"Solo se aceptan tarjetas de prueba de Stripe; no se realiza ningún cargo real.", billingPendingLead:"El pago está desactivado hasta que se configuren productos, precios y verificación de webhooks de Stripe.", recommended:"RECOMENDADO", creatorPlan:"PLAN PARA CREADORES", monthly:"/mes", choosePlan:"Elegir plan", testCheckout:"Probar pago", unavailable:"No disponible", planDescriptions:["archivos · escaneo cada 30 días","archivos · escaneo diario + casos","archivos · escaneo diario + prioridad"] },
+  ro: { vaultTitle:"Seif privat pentru referințe", vaultOwned:"Fișiere criptate deținute de acest cont", vaultUsed:"folosite", vaultChoose:"alege un plan pentru a adăuga fișiere", encrypted:"Criptat", rightsReviewed:"Drepturi verificate", rightsDeclared:"Drepturi declarate", rightsMissing:"Lipsește declarația de drepturi", replaceRights:"Înlocuiește declarația de drepturi", addRights:"Adaugă declarația de drepturi", downloadOriginal:"Descarcă originalul", deletePermanently:"Șterge permanent", vaultEmpty:"Încă nu există conținut de referință. Alege „Adaugă conținut” pentru a testa seiful securizat.", casesTitle:"Cazuri de eliminare", casesLead:"Fiecare acțiune necesită aprobarea creatorului", caseOpened:"Caz deschis", disputeOpen:"Contestație primită · acțiunile ulterioare sunt oprite pentru verificare umană", reviewApprove:"Verifică și aprobă", casesEmpty:"Încă nu există cazuri. Deschide Potriviri și selectează un rezultat pentru a păstra dovezile.", recentMatches:"Potriviri recente", matchesLead:"Posibile utilizări neautorizate detectate prin similitudine vizuală", filters:["Toate potrivirile","Acțiune necesară","Monitorizare","Verificare caz","Aprobarea ta","Livrare în așteptare","Raportat","Eliminat"], columns:["CONȚINUT GĂSIT","SURSĂ","SCOR POTRIVIRE","STATUS"], matchesEmpty:"Încă nu există potriviri publice verificate. Adaugă o imagine de referință și pornește scanarea după activarea furnizorului.", publicPage:"Pagină publică", captureRequired:"Este necesară capturarea paginii pentru un caz", capturePreserved:"Captură păstrată", billingLiveTitle:"Facturarea securizată Stripe este activă", billingTestTitle:"Facturarea de test Stripe este activă", billingPendingTitle:"Activarea facturării este în așteptare", billingLiveLead:"Abonamentele și datele de plată sunt gestionate de Stripe.", billingTestLead:"Sunt acceptate doar carduri Stripe de test; nu se face nicio plată reală.", billingPendingLead:"Plata este dezactivată până când produsele, prețurile și verificarea webhook Stripe sunt configurate.", recommended:"RECOMANDAT", creatorPlan:"PLAN PENTRU CREATORI", monthly:"/lună", choosePlan:"Alege planul", testCheckout:"Testează plata", unavailable:"Indisponibil", planDescriptions:["fișiere · scanare la fiecare 30 zile","fișiere · scanare zilnică + cazuri","fișiere · scanare zilnică + prioritate"] }
+};
+
+const ACCOUNT_COPY = {
+  en: { security:"Account security", currentPassword:"Current password", newPassword:"New password", passwordHelp:"At least 10 characters", updating:"Updating…", changePassword:"Change password", personalData:"Your personal data", dataLead:"Download a machine-readable copy of your profile, verification outcomes, asset metadata, scans, matches, cases, billing records and audit history.", downloadExport:"Download data export", exportHelp:"Your password is required. Original reference files are downloaded separately from My content.", mfa:"Two-step verification", mfaEnabled:"Enabled", recovery:"recovery codes remaining", mfaLead:"Protect sign-in with a time-based code from your authenticator app.", enableMfa:"Enable two-step verification", disableMfa:"Disable two-step verification", mfaHelp:"Enabling or disabling this control signs out every other session.", subscription:"Subscription", noSubscription:"No completed Stripe subscription", manageSubscription:"Manage subscription", liveBilling:"Secure billing is managed by Stripe.", testBilling:"Stripe test mode — test cards only, no live charges.", billingPending:"Billing activation is not complete; no payment can be taken.", deleteAccount:"Delete account", deleteLead:"Permanently removes your profile, encrypted reference files, scans, cases and active sessions.", deleteMine:"Delete my account" },
+  es: { security:"Seguridad de la cuenta", currentPassword:"Contraseña actual", newPassword:"Nueva contraseña", passwordHelp:"Al menos 10 caracteres", updating:"Actualizando…", changePassword:"Cambiar contraseña", personalData:"Tus datos personales", dataLead:"Descarga una copia legible por máquina de tu perfil, resultados de verificación, metadatos de archivos, escaneos, coincidencias, casos, registros de facturación e historial de auditoría.", downloadExport:"Descargar exportación de datos", exportHelp:"Se requiere tu contraseña. Los archivos originales de referencia se descargan por separado desde Mi contenido.", mfa:"Verificación en dos pasos", mfaEnabled:"Activada", recovery:"códigos de recuperación restantes", mfaLead:"Protege el inicio de sesión con un código temporal de tu aplicación de autenticación.", enableMfa:"Activar verificación en dos pasos", disableMfa:"Desactivar verificación en dos pasos", mfaHelp:"Activar o desactivar este control cierra las demás sesiones.", subscription:"Suscripción", noSubscription:"No hay suscripción Stripe completada", manageSubscription:"Gestionar suscripción", liveBilling:"Stripe gestiona la facturación segura.", testBilling:"Modo de prueba de Stripe: solo tarjetas de prueba, sin cargos reales.", billingPending:"La activación de facturación no está completa; no se puede realizar ningún pago.", deleteAccount:"Eliminar cuenta", deleteLead:"Elimina permanentemente tu perfil, archivos cifrados de referencia, escaneos, casos y sesiones activas.", deleteMine:"Eliminar mi cuenta" },
+  ro: { security:"Securitatea contului", currentPassword:"Parola actuală", newPassword:"Parola nouă", passwordHelp:"Cel puțin 10 caractere", updating:"Se actualizează…", changePassword:"Schimbă parola", personalData:"Datele tale personale", dataLead:"Descarcă o copie prelucrabilă automat a profilului, rezultatelor verificării, metadatelor fișierelor, scanărilor, potrivirilor, cazurilor, înregistrărilor de facturare și istoricului de audit.", downloadExport:"Descarcă exportul de date", exportHelp:"Este necesară parola. Fișierele originale de referință se descarcă separat din Conținutul meu.", mfa:"Verificare în doi pași", mfaEnabled:"Activată", recovery:"coduri de recuperare rămase", mfaLead:"Protejează autentificarea cu un cod temporar din aplicația ta de autentificare.", enableMfa:"Activează verificarea în doi pași", disableMfa:"Dezactivează verificarea în doi pași", mfaHelp:"Activarea sau dezactivarea acestui control închide toate celelalte sesiuni.", subscription:"Abonament", noSubscription:"Nu există un abonament Stripe finalizat", manageSubscription:"Gestionează abonamentul", liveBilling:"Facturarea securizată este gestionată de Stripe.", testBilling:"Mod de test Stripe — doar carduri de test, fără plăți reale.", billingPending:"Activarea facturării nu este finalizată; nu poate fi făcută nicio plată.", deleteAccount:"Șterge contul", deleteLead:"Elimină permanent profilul, fișierele de referință criptate, scanările, cazurile și sesiunile active.", deleteMine:"Șterge contul meu" }
+};
+
+const HELP_COPY = {
+  en: { title:"Private support and complaints", lead:"Open a tracked request about billing, cancellation, refunds, privacy, accessibility, safety or the service. Sensitive details are encrypted and reviewed only by an authorised operator.", category:"Category", categories:["Billing","Cancellation","14-day cooling-off","Refund","Service","Privacy","Accessibility","Urgent creator safety","Other"], order:"Order reference (optional)", orderPlaceholder:"Opaque Stripe or account reference", reportedUrl:"Public page to review (optional)", reportedUrlHelp:"For urgent safety only: use the exact HTTPS page URL. Do not add private media or passwords.", subject:"Subject", happened:"What happened?", resolution:"Requested resolution (optional)", accurate:"I confirm this request is accurate.", noSecrets:"I have not included passwords, identity documents or private media.", privacy:"I understand this request is processed under the Privacy Notice.", submitting:"Submitting…", open:"Open tracked request", requests:"Your requests", response:"Response target:", resolutionTarget:"Resolution target:", followUp:"Add a safe follow-up message (no passwords or private media)", addMessage:"Add message", noRequests:"No tracked requests yet.", safetyTitle:"Safety guidance", safetyLead:"Practical steps for intimate-image abuse, account security and situations where contacting an uploader may increase risk.", safetyButton:"Open safety centre", safetyNote:"Content Protect is not an emergency or law-enforcement service.", reportTitle:"Report a problem", reportLead:"Report a suspected security issue, incorrect match, disputed ownership claim or accessibility problem.", reportButton:"Send a problem report", reportNote:"For security reports, describe the issue without including live passwords or private content." },
+  es: { title:"Soporte privado y reclamaciones", lead:"Abre una solicitud con seguimiento sobre facturación, cancelación, reembolsos, privacidad, accesibilidad, seguridad o el servicio. Los datos sensibles se cifran y solo los revisa un operador autorizado.", category:"Categoría", categories:["Facturación","Cancelación","Desistimiento de 14 días","Reembolso","Servicio","Privacidad","Accesibilidad","Seguridad urgente del creador","Otro"], order:"Referencia de pedido (opcional)", orderPlaceholder:"Referencia opaca de Stripe o de cuenta", reportedUrl:"Página pública que se debe revisar (opcional)", reportedUrlHelp:"Solo para seguridad urgente: utiliza la URL HTTPS exacta de la página. No añadas contenido privado ni contraseñas.", subject:"Asunto", happened:"¿Qué ocurrió?", resolution:"Resolución solicitada (opcional)", accurate:"Confirmo que esta solicitud es exacta.", noSecrets:"No he incluido contraseñas, documentos de identidad ni contenido privado.", privacy:"Entiendo que esta solicitud se procesa conforme al Aviso de privacidad.", submitting:"Enviando…", open:"Abrir solicitud con seguimiento", requests:"Tus solicitudes", response:"Objetivo de respuesta:", resolutionTarget:"Objetivo de resolución:", followUp:"Añade un mensaje seguro de seguimiento (sin contraseñas ni contenido privado)", addMessage:"Añadir mensaje", noRequests:"Aún no hay solicitudes con seguimiento.", safetyTitle:"Guía de seguridad", safetyLead:"Pasos prácticos para abuso de imágenes íntimas, seguridad de cuenta y situaciones en las que contactar al usuario que subió el contenido puede aumentar el riesgo.", safetyButton:"Abrir centro de seguridad", safetyNote:"Content Protect no es un servicio de emergencia ni de las fuerzas de seguridad.", reportTitle:"Informar de un problema", reportLead:"Informa de un posible problema de seguridad, coincidencia incorrecta, reclamación de propiedad disputada o problema de accesibilidad.", reportButton:"Enviar informe de problema", reportNote:"Para informes de seguridad, describe el problema sin incluir contraseñas activas ni contenido privado." },
+  ro: { title:"Suport privat și reclamații", lead:"Deschide o solicitare urmărită pentru facturare, anulare, rambursare, confidențialitate, accesibilitate, siguranță sau serviciu. Detaliile sensibile sunt criptate și verificate doar de un operator autorizat.", category:"Categorie", categories:["Facturare","Anulare","Retragere în 14 zile","Rambursare","Serviciu","Confidențialitate","Accesibilitate","Siguranță urgentă pentru creator","Altul"], order:"Referință comandă (opțional)", orderPlaceholder:"Referință opacă Stripe sau cont", reportedUrl:"Pagină publică pentru verificare (opțional)", reportedUrlHelp:"Doar pentru siguranță urgentă: folosește URL-ul HTTPS exact al paginii. Nu adăuga materiale private sau parole.", subject:"Subiect", happened:"Ce s-a întâmplat?", resolution:"Soluție solicitată (opțional)", accurate:"Confirm că această solicitare este corectă.", noSecrets:"Nu am inclus parole, documente de identitate sau conținut privat.", privacy:"Înțeleg că această solicitare este procesată conform Notificării de confidențialitate.", submitting:"Se trimite…", open:"Deschide solicitare urmărită", requests:"Solicitările tale", response:"Termen răspuns:", resolutionTarget:"Termen soluționare:", followUp:"Adaugă un mesaj de follow-up sigur (fără parole sau conținut privat)", addMessage:"Adaugă mesaj", noRequests:"Încă nu există solicitări urmărite.", safetyTitle:"Ghid de siguranță", safetyLead:"Pași practici pentru abuzul de imagini intime, securitatea contului și situațiile în care contactarea persoanei care a încărcat materialul poate crește riscul.", safetyButton:"Deschide centrul de siguranță", safetyNote:"Content Protect nu este un serviciu de urgență sau de aplicare a legii.", reportTitle:"Raportează o problemă", reportLead:"Raportează o posibilă problemă de securitate, o potrivire incorectă, o reclamație de proprietate contestată sau o problemă de accesibilitate.", reportButton:"Trimite raportul de problemă", reportNote:"Pentru rapoarte de securitate, descrie problema fără parole active sau conținut privat." }
+};
+
+const RIGHTS_COPY = {
+  en: { title:"Rights and authority declaration", lead:"A trained operator reviews this before any notice can be prepared. Do not upload contracts or private documents here.", relationship:"Your legal relationship to this work", roles:["Copyright owner","Authorised agent for the rights holder","Exclusive licensee authorised to enforce"], holderName:"Legal or business name of rights holder", workTitle:"Work title or internal name (optional)", publicationUrl:"Original publication URL (optional, HTTPS)", evidenceReference:"Evidence reference", evidencePlaceholder:"Example: original source file or agency agreement CP-2026-004", evidenceHelp:"Use a short reference only. Keep the underlying document in the approved restricted company record.", authorityConfirm:"I own the copyright or am authorised to enforce it for the named rights holder.", accuracyConfirm:"I confirm this per-file declaration is accurate and understand that false claims may result in suspension." },
+  es: { title:"Declaración de derechos y facultad", lead:"Un operador formado revisa esta información antes de preparar un aviso. No subas contratos ni documentos privados aquí.", relationship:"Tu relación legal con esta obra", roles:["Titular de los derechos de autor","Agente autorizado del titular de derechos","Licenciatario exclusivo autorizado para reclamar"], holderName:"Nombre legal o empresarial del titular de derechos", workTitle:"Título de la obra o nombre interno (opcional)", publicationUrl:"URL de publicación original (opcional, HTTPS)", evidenceReference:"Referencia de prueba", evidencePlaceholder:"Ejemplo: archivo fuente original o acuerdo de agencia CP-2026-004", evidenceHelp:"Usa solo una referencia breve. Guarda el documento subyacente en el registro corporativo restringido aprobado.", authorityConfirm:"Soy titular de los derechos de autor o estoy autorizado para reclamar en nombre del titular indicado.", accuracyConfirm:"Confirmo que esta declaración por archivo es exacta y entiendo que las reclamaciones falsas pueden causar suspensión." },
+  ro: { title:"Declarație privind drepturile și autoritatea", lead:"Un operator instruit verifică aceste informații înainte de pregătirea unei notificări. Nu încărca aici contracte sau documente private.", relationship:"Relația ta legală cu această lucrare", roles:["Titular al drepturilor de autor","Agent autorizat al titularului de drepturi","Licențiat exclusiv autorizat să aplice drepturile"], holderName:"Numele legal sau comercial al titularului drepturilor", workTitle:"Titlul lucrării sau nume intern (opțional)", publicationUrl:"URL-ul publicării originale (opțional, HTTPS)", evidenceReference:"Referință dovezi", evidencePlaceholder:"Exemplu: fișierul sursă original sau acordul agenției CP-2026-004", evidenceHelp:"Folosește doar o referință scurtă. Păstrează documentul original în registrul corporativ restricționat aprobat.", authorityConfirm:"Dețin drepturile de autor sau sunt autorizat să le aplic în numele titularului indicat.", accuracyConfirm:"Confirm că această declarație pentru fișier este corectă și înțeleg că declarațiile false pot duce la suspendare." }
+};
+
+const UPLOAD_COPY = {
+  en: { closeUpload:"Close upload dialog", title:"Add reference content", lead:"Upload content you own so Content Protect can look for likely copies. Nothing is published.", usage:"plan files are currently used. Videos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated.", consentTitle:"Explicit media-processing consent", consent:"I consent to Content Protect processing this file for private matching and case evidence. I understand it may reveal special-category information, including information about sex life or sexual orientation, and I can withdraw consent by deleting the file.", choose:"Choose a supported photo or short video", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB · videos up to 10 minutes", privacyTitle:"Your privacy comes first", privacy:"Files are validated and encrypted before storage. Provider scan copies are resized and stripped of EXIF/GPS metadata.", closeRights:"Close rights declaration", declareTitle:"Declare rights for this file", record:"Record declaration" },
+  es: { closeUpload:"Cerrar el diálogo de subida", title:"Añadir contenido de referencia", lead:"Sube contenido del que eres titular para que Content Protect pueda buscar posibles copias. No se publica nada.", usage:"archivos del plan están en uso. Los vídeos ocupan un espacio de archivo y no se escanean hasta que se active la aprobación de privacidad y del proveedor para fotogramas de vídeo minimizados.", consentTitle:"Consentimiento explícito para el procesamiento de medios", consent:"Consiento que Content Protect procese este archivo para coincidencias privadas y pruebas de casos. Entiendo que puede revelar información de categoría especial, incluida información sobre vida sexual u orientación sexual, y que puedo retirar el consentimiento eliminando el archivo.", choose:"Elige una foto compatible o un vídeo corto", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV o WebM · 8 MB · vídeos de hasta 10 minutos", privacyTitle:"Tu privacidad es lo primero", privacy:"Los archivos se validan y cifran antes de almacenarse. Las copias para escaneo del proveedor se redimensionan y se eliminan los metadatos EXIF/GPS.", closeRights:"Cerrar la declaración de derechos", declareTitle:"Declarar derechos para este archivo", record:"Registrar declaración" },
+  ro: { closeUpload:"Închide fereastra de încărcare", title:"Adaugă conținut de referință", lead:"Încarcă un conținut asupra căruia ai drepturi, astfel încât Content Protect să poată căuta posibile copii. Nu se publică nimic.", usage:"fișiere din plan sunt utilizate în prezent. Videoclipurile ocupă un loc de fișier și nu sunt scanate până nu este activată aprobarea de confidențialitate și a furnizorului pentru cadre video minimizate.", consentTitle:"Consimțământ explicit pentru procesarea conținutului media", consent:"Sunt de acord ca Content Protect să proceseze acest fișier pentru potrivire privată și dovezi de caz. Înțeleg că poate dezvălui informații din categorii speciale, inclusiv despre viața sexuală sau orientarea sexuală, și îmi pot retrage consimțământul prin ștergerea fișierului.", choose:"Alege o fotografie compatibilă sau un videoclip scurt", formats:"JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV sau WebM · 8 MB · videoclipuri de până la 10 minute", privacyTitle:"Confidențialitatea ta este pe primul loc", privacy:"Fișierele sunt validate și criptate înainte de stocare. Copiile pentru scanare ale furnizorului sunt redimensionate și nu păstrează metadate EXIF/GPS.", closeRights:"Închide declarația de drepturi", declareTitle:"Declară drepturile pentru acest fișier", record:"Înregistrează declarația" }
+};
+
+const EVIDENCE_COPY = {
+  en: { close:"Close page-capture dialog", title:"Preserve the matched page", lead:"Take a current screenshot that clearly shows the matched content and page context. It is encrypted and its integrity hash is bound to the case.", existing:"Existing SHA-256:", download:"Download preserved capture", immutableTitle:"Immutable case evidence", immutable:"This capture is already bound to a case and cannot be replaced.", consentTitle:"Explicit evidence-processing consent", consent:"I consent to private processing of this screenshot as case evidence. It may contain sensitive or special-category information.", targetTitle:"Target-page confirmation", target:"This screenshot shows the public URL identified above and the suspected copied content.", accuracyTitle:"Accuracy confirmation", accuracy:"The relevant page and content have not been manipulated; only unrelated material may have been cropped out.", choose:"Choose a screenshot", chooseReplacement:"Choose a replacement screenshot", formats:"JPEG, PNG or WebP · maximum 8 MB", privateTitle:"Evidence is not published", private:"The original encrypted file and its SHA-256 checksum remain private. A trained operator must still review the live URL and the capture." },
+  es: { close:"Cerrar el diálogo de captura de página", title:"Conservar la página coincidente", lead:"Haz una captura actual que muestre claramente el contenido coincidente y el contexto de la página. Se cifra y su hash de integridad queda vinculado al caso.", existing:"SHA-256 existente:", download:"Descargar captura conservada", immutableTitle:"Prueba de caso inmutable", immutable:"Esta captura ya está vinculada a un caso y no puede sustituirse.", consentTitle:"Consentimiento explícito para el procesamiento de pruebas", consent:"Consiento el procesamiento privado de esta captura como prueba del caso. Puede contener información sensible o de categoría especial.", targetTitle:"Confirmación de página de destino", target:"Esta captura muestra la URL pública identificada arriba y el contenido presuntamente copiado.", accuracyTitle:"Confirmación de exactitud", accuracy:"La página y el contenido relevantes no se han manipulado; solo se puede haber recortado material no relacionado.", choose:"Elige una captura", chooseReplacement:"Elige una captura de reemplazo", formats:"JPEG, PNG o WebP · máximo 8 MB", privateTitle:"La prueba no se publica", private:"El archivo original cifrado y su checksum SHA-256 se mantienen privados. Un operador formado debe revisar igualmente la URL activa y la captura." },
+  ro: { close:"Închide fereastra de captură a paginii", title:"Păstrează pagina potrivită", lead:"Fă o captură actuală care arată clar conținutul potrivit și contextul paginii. Este criptată, iar hash-ul de integritate este legat de caz.", existing:"SHA-256 existent:", download:"Descarcă captura păstrată", immutableTitle:"Dovadă de caz imuabilă", immutable:"Această captură este deja legată de un caz și nu poate fi înlocuită.", consentTitle:"Consimțământ explicit pentru procesarea dovezilor", consent:"Sunt de acord cu procesarea privată a acestei capturi ca dovadă de caz. Poate conține informații sensibile sau din categorii speciale.", targetTitle:"Confirmarea paginii-țintă", target:"Această captură arată URL-ul public identificat mai sus și conținutul suspectat ca fiind copiat.", accuracyTitle:"Confirmarea exactității", accuracy:"Pagina și conținutul relevante nu au fost manipulate; este posibil să fi fost decupat doar material nerelevant.", choose:"Alege o captură", chooseReplacement:"Alege o captură de înlocuire", formats:"JPEG, PNG sau WebP · maximum 8 MB", privateTitle:"Dovada nu este publicată", private:"Fișierul original criptat și suma sa de control SHA-256 rămân private. Un operator instruit trebuie totuși să verifice URL-ul activ și captura." }
+};
+
+const MATCH_ACTION_COPY = {
+  en: { reviewPreserved:"Review the capture preserved in the case", reviewReplace:"Review or replace page capture", addCapture:"Add page capture", createCase:"Create protected case", sandbox:"Sandbox", live:"Live" },
+  es: { reviewPreserved:"Revisar la captura conservada en el caso", reviewReplace:"Revisar o sustituir la captura de página", addCapture:"Añadir captura de página", createCase:"Crear caso protegido", sandbox:"Entorno de pruebas", live:"Activo" },
+  ro: { reviewPreserved:"Verifică captura păstrată în caz", reviewReplace:"Verifică sau înlocuiește captura paginii", addCapture:"Adaugă captură de pagină", createCase:"Creează caz protejat", sandbox:"Mediu de test", live:"Activ" }
+};
+
+const STATUS_COPY = {
+  en: { "Action needed":"Action needed", Monitoring:"Monitoring", Removed:"Removed", "Awaiting operator preparation":"Awaiting operator preparation", "Awaiting creator approval":"Awaiting creator approval", "Approved — delivery pending":"Approved — delivery pending", "Submitted — awaiting delivery confirmation":"Submitted — awaiting delivery confirmation", "Delivered — monitoring":"Delivered — monitoring" },
+  es: { "Action needed":"Acción necesaria", Monitoring:"Supervisión", Removed:"Eliminado", "Awaiting operator preparation":"Pendiente de preparación del operador", "Awaiting creator approval":"Pendiente de aprobación del creador", "Approved — delivery pending":"Aprobado — entrega pendiente", "Submitted — awaiting delivery confirmation":"Enviado — pendiente de confirmación de entrega", "Delivered — monitoring":"Entregado — en supervisión" },
+  ro: { "Action needed":"Acțiune necesară", Monitoring:"Monitorizare", Removed:"Eliminat", "Awaiting operator preparation":"Așteaptă pregătirea operatorului", "Awaiting creator approval":"Așteaptă aprobarea creatorului", "Approved — delivery pending":"Aprobat — livrare în așteptare", "Submitted — awaiting delivery confirmation":"Trimis — se așteaptă confirmarea livrării", "Delivered — monitoring":"Livrat — în monitorizare" }
+};
+
+const ACTION_NOTICE_COPY = {
+  en: { uploadFailed:"Upload failed", uploadSuccess:"Content encrypted and added to your private vault.", rightsFailed:"Rights declaration could not be saved.", rightsSuccess:"The per-file rights declaration was recorded for operator review.", captureFailed:"The page capture could not be preserved.", captureSuccess:"The encrypted page capture and its SHA-256 integrity hash were preserved.", capturePassword:"Enter your password to decrypt and download this preserved page capture.", captureDownloadFailed:"The page capture could not be downloaded.", captureBeforeCase:"Preserve a current screenshot of the matched public page before opening the case.", caseFailed:"Could not create case", caseCreated:"Evidence preserved. A trained operator must verify the recipient and jurisdiction before the exact notice returns to you for approval.", deleteConfirm:"Permanently delete “{name}” from your encrypted vault?", deleteFailed:"Could not delete asset", assetPassword:"Enter your password to decrypt and download “{name}”.", assetDownloadFailed:"The reference file could not be downloaded.", noticeNotReady:"The exact notice has not been prepared for review yet.", caseApproveFailed:"Could not approve case", verificationSent:"Verification email sent.", verificationFailed:"Could not send verification email." },
+  es: { uploadFailed:"No se pudo subir el archivo", uploadSuccess:"El contenido se cifró y se añadió a tu bóveda privada.", rightsFailed:"No se pudo guardar la declaración de derechos.", rightsSuccess:"La declaración de derechos por archivo se registró para revisión del operador.", captureFailed:"No se pudo conservar la captura de página.", captureSuccess:"Se conservaron la captura de página cifrada y su hash de integridad SHA-256.", capturePassword:"Introduce tu contraseña para descifrar y descargar esta captura de página conservada.", captureDownloadFailed:"No se pudo descargar la captura de página.", captureBeforeCase:"Conserva una captura actual de la página pública coincidente antes de abrir el caso.", caseFailed:"No se pudo crear el caso", caseCreated:"Pruebas conservadas. Un operador formado debe verificar el destinatario y la jurisdicción antes de que el aviso exacto vuelva para tu aprobación.", deleteConfirm:"¿Eliminar permanentemente “{name}” de tu bóveda cifrada?", deleteFailed:"No se pudo eliminar el archivo", assetPassword:"Introduce tu contraseña para descifrar y descargar “{name}”.", assetDownloadFailed:"No se pudo descargar el archivo de referencia.", noticeNotReady:"El aviso exacto aún no se ha preparado para su revisión.", caseApproveFailed:"No se pudo aprobar el caso", verificationSent:"Correo de verificación enviado.", verificationFailed:"No se pudo enviar el correo de verificación." },
+  ro: { uploadFailed:"Încărcarea a eșuat", uploadSuccess:"Conținutul a fost criptat și adăugat în seiful tău privat.", rightsFailed:"Declarația de drepturi nu a putut fi salvată.", rightsSuccess:"Declarația de drepturi pentru fișier a fost înregistrată pentru verificarea operatorului.", captureFailed:"Captura paginii nu a putut fi păstrată.", captureSuccess:"Captura criptată a paginii și hash-ul său de integritate SHA-256 au fost păstrate.", capturePassword:"Introdu parola pentru a decripta și descărca această captură de pagină păstrată.", captureDownloadFailed:"Captura paginii nu a putut fi descărcată.", captureBeforeCase:"Păstrează o captură actuală a paginii publice potrivite înainte de a deschide cazul.", caseFailed:"Nu s-a putut crea cazul", caseCreated:"Dovezile au fost păstrate. Un operator instruit trebuie să verifice destinatarul și jurisdicția înainte ca notificarea exactă să revină pentru aprobarea ta.", deleteConfirm:"Ștergi definitiv „{name}” din seiful tău criptat?", deleteFailed:"Fișierul nu a putut fi șters", assetPassword:"Introdu parola pentru a decripta și descărca „{name}”.", assetDownloadFailed:"Fișierul de referință nu a putut fi descărcat.", noticeNotReady:"Notificarea exactă nu a fost încă pregătită pentru verificare.", caseApproveFailed:"Cazul nu a putut fi aprobat", verificationSent:"E-mailul de verificare a fost trimis.", verificationFailed:"E-mailul de verificare nu a putut fi trimis." }
 };
 
 function LanguagePicker({ language, onChange }) {
@@ -621,6 +758,7 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
             <a href="/safety.html">{detail.legal[2]}</a>
             <a href="/cookies.html">{detail.legal[3]}</a>
             <a href="/disputes.html">{detail.legal[4]}</a>
+            {detail.legalNotice && <small className="legal-language-notice">{detail.legalNotice}</small>}
           </div>
         </div>
       </footer>
@@ -628,7 +766,8 @@ function Landing({ onStart, onLogin, language, setLanguage }) {
   );
 }
 
-function AccountSettings({ user, subscription, billingMode, onDeleted }) {
+function AccountSettings({ user, subscription, billingMode, onDeleted, language }) {
+  const copy = ACCOUNT_COPY[language] || ACCOUNT_COPY.en;
   const [passwords, setPasswords] = useState({
     currentPassword: "",
     newPassword: "",
@@ -767,11 +906,11 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
   return (
     <div className="account-grid">
       <section className="account-card">
-        <h2>Account security</h2>
+        <h2>{copy.security}</h2>
         <p>{user.email}</p>
         <form onSubmit={changePassword}>
           <label>
-            Current password
+            {copy.currentPassword}
             <input
               type="password"
               required
@@ -782,7 +921,7 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
             />
           </label>
           <label>
-            New password
+            {copy.newPassword}
             <input
               type="password"
               required
@@ -792,34 +931,29 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
                 setPasswords({ ...passwords, newPassword: e.target.value })
               }
             />
-            <small>At least 10 characters</small>
+            <small>{copy.passwordHelp}</small>
           </label>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? "Updating…" : "Change password"}
+            {busy ? copy.updating : copy.changePassword}
           </button>
         </form>
       </section>
       <section className="account-card">
-        <h2>Your personal data</h2>
-        <p>
-          Download a machine-readable copy of your profile, verification
-          outcomes, asset metadata, scans, matches, cases, billing records and
-          audit history.
-        </p>
+        <h2>{copy.personalData}</h2>
+        <p>{copy.dataLead}</p>
         <button className="btn btn-outline" onClick={exportData}>
-          <Download size={16} /> Download data export
+          <Download size={16} /> {copy.downloadExport}
         </button>
         <small>
-          Your password is required. Original reference files are downloaded
-          separately from My content.
+          {copy.exportHelp}
         </small>
       </section>
       <section className="account-card">
-        <h2>Two-step verification</h2>
+        <h2>{copy.mfa}</h2>
         <p>
           {user.mfaEnabled
-            ? `Enabled · ${user.mfaRecoveryCodesRemaining} recovery codes remaining`
-            : "Protect sign-in with a time-based code from your authenticator app."}
+            ? `${copy.mfaEnabled} · ${user.mfaRecoveryCodesRemaining} ${copy.recovery}`
+            : copy.mfaLead}
         </p>
         <button
           className={user.mfaEnabled ? "btn danger-btn" : "btn btn-primary"}
@@ -827,45 +961,43 @@ function AccountSettings({ user, subscription, billingMode, onDeleted }) {
         >
           <ShieldCheck size={16} />
           {user.mfaEnabled
-            ? "Disable two-step verification"
-            : "Enable two-step verification"}
+            ? copy.disableMfa
+            : copy.enableMfa}
         </button>
         <small>
-          Enabling or disabling this control signs out every other session.
+          {copy.mfaHelp}
         </small>
       </section>
       <section className="account-card">
-        <h2>Subscription</h2>
+        <h2>{copy.subscription}</h2>
         <p>
           <b>{subscription?.plan || user.plan}</b> ·{" "}
-          {subscription?.status || "No completed Stripe subscription"}
+          {subscription?.status || copy.noSubscription}
         </p>
         <button className="btn btn-outline" onClick={openPortal}>
-          Manage subscription
+          {copy.manageSubscription}
         </button>
         <small>
           {billingMode === "stripe_live"
-            ? "Secure billing is managed by Stripe."
+            ? copy.liveBilling
             : billingMode === "stripe_test"
-              ? "Stripe test mode — test cards only, no live charges."
-              : "Billing activation is not complete; no payment can be taken."}
+              ? copy.testBilling
+              : copy.billingPending}
         </small>
       </section>
       <section className="account-card danger-zone">
-        <h2>Delete account</h2>
-        <p>
-          Permanently removes your profile, encrypted reference files, scans,
-          cases and active sessions.
-        </p>
+        <h2>{copy.deleteAccount}</h2>
+        <p>{copy.deleteLead}</p>
         <button className="btn danger-btn" onClick={deleteAccount}>
-          Delete my account
+          {copy.deleteMine}
         </button>
       </section>
     </div>
   );
 }
 
-function HelpSafety() {
+function HelpSafety({ language }) {
+  const copy = { ...HELP_COPY.en, ...(HELP_COPY[language] || {}) };
   const [cases, setCases] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -876,6 +1008,7 @@ function HelpSafety() {
     statement: "",
     desiredResolution: "",
     orderReference: "",
+    reportedUrl: "",
     confirmAccuracy: false,
     confirmNoSecretsOrMedia: false,
     privacyAccepted: false,
@@ -909,6 +1042,7 @@ function HelpSafety() {
         statement: "",
         desiredResolution: "",
         orderReference: "",
+        reportedUrl: "",
         confirmAccuracy: false,
         confirmNoSecretsOrMedia: false,
         privacyAccepted: false,
@@ -951,48 +1085,51 @@ function HelpSafety() {
         <div className="support-icon">
           <HelpCircle />
         </div>
-        <h2>Private support and complaints</h2>
-        <p>
-          Open a tracked request about billing, cancellation, refunds, privacy,
-          accessibility, safety or the service. Sensitive details are encrypted
-          and reviewed only by an authorised operator.
-        </p>
+        <h2>{copy.title}</h2>
+        <p>{copy.lead}</p>
         {error && <div className="operator-error">{error}</div>}
         <form className="support-case-form" onSubmit={submitCase}>
           <div className="support-case-fields">
             <label>
-              Category
+              {copy.category}
               <select
                 value={form.category}
                 onChange={(event) =>
                   setForm({ ...form, category: event.target.value })
                 }
               >
-                <option value="billing">Billing</option>
-                <option value="cancellation">Cancellation</option>
-                <option value="cooling-off">14-day cooling-off</option>
-                <option value="refund">Refund</option>
-                <option value="service">Service</option>
-                <option value="privacy">Privacy</option>
-                <option value="accessibility">Accessibility</option>
-                <option value="safety">Urgent creator safety</option>
-                <option value="other">Other</option>
+                {["billing","cancellation","cooling-off","refund","service","privacy","accessibility","safety","other"].map((value, index) => <option key={value} value={value}>{copy.categories[index]}</option>)}
               </select>
             </label>
             <label>
-              Order reference (optional)
+              {copy.order}
               <input
                 maxLength="160"
-                placeholder="Opaque Stripe or account reference"
+                placeholder={copy.orderPlaceholder}
                 value={form.orderReference}
                 onChange={(event) =>
                   setForm({ ...form, orderReference: event.target.value })
                 }
               />
             </label>
+            {form.category === "safety" && (
+              <label>
+                {copy.reportedUrl}
+                <input
+                  type="url"
+                  maxLength="2000"
+                  placeholder="https://…"
+                  value={form.reportedUrl}
+                  onChange={(event) =>
+                    setForm({ ...form, reportedUrl: event.target.value })
+                  }
+                />
+                <small>{copy.reportedUrlHelp}</small>
+              </label>
+            )}
           </div>
           <label>
-            Subject
+            {copy.subject}
             <input
               required
               minLength="8"
@@ -1004,7 +1141,7 @@ function HelpSafety() {
             />
           </label>
           <label>
-            What happened?
+            {copy.happened}
             <textarea
               required
               minLength="30"
@@ -1017,7 +1154,7 @@ function HelpSafety() {
             />
           </label>
           <label>
-            Requested resolution (optional)
+            {copy.resolution}
             <textarea
               maxLength="1000"
               rows="3"
@@ -1036,7 +1173,7 @@ function HelpSafety() {
                   setForm({ ...form, confirmAccuracy: event.target.checked })
                 }
               />
-              I confirm this request is accurate.
+              {copy.accurate}
             </label>
             <label>
               <input
@@ -1049,8 +1186,7 @@ function HelpSafety() {
                   })
                 }
               />
-              I have not included passwords, identity documents or private
-              media.
+              {copy.noSecrets}
             </label>
             <label>
               <input
@@ -1060,7 +1196,7 @@ function HelpSafety() {
                   setForm({ ...form, privacyAccepted: event.target.checked })
                 }
               />
-              I understand this request is processed under the Privacy Notice.
+              {copy.privacy}
             </label>
           </div>
           <button
@@ -1072,11 +1208,11 @@ function HelpSafety() {
               !form.privacyAccepted
             }
           >
-            {busy ? "Submitting…" : "Open tracked request"}
+            {busy ? copy.submitting : copy.open}
           </button>
         </form>
         <div className="support-case-list">
-          <h3>Your requests</h3>
+          <h3>{copy.requests}</h3>
           {cases.length ? (
             cases.map((item) => (
               <article key={item.id}>
@@ -1086,9 +1222,9 @@ function HelpSafety() {
                 </div>
                 <strong>{item.subject}</strong>
                 <small>
-                  Response target:{" "}
+                  {copy.response}{" "}
                   {new Date(item.responseDueAt).toLocaleDateString()} ·
-                  Resolution target:{" "}
+                  {copy.resolutionTarget}{" "}
                   {new Date(item.resolutionDueAt).toLocaleDateString()}
                 </small>
                 <p>{item.statement}</p>
@@ -1097,7 +1233,7 @@ function HelpSafety() {
                     <textarea
                       rows="2"
                       maxLength="3000"
-                      placeholder="Add a safe follow-up message (no passwords or private media)"
+                      placeholder={copy.followUp}
                       value={messageDrafts[item.id] || ""}
                       onChange={(event) =>
                         setMessageDrafts({
@@ -1112,14 +1248,14 @@ function HelpSafety() {
                       disabled={busy}
                       onClick={() => addMessage(item.id)}
                     >
-                      Add message
+                      {copy.addMessage}
                     </button>
                   </div>
                 )}
               </article>
             ))
           ) : (
-            <small>No tracked requests yet.</small>
+            <small>{copy.noRequests}</small>
           )}
         </div>
       </section>
@@ -1127,36 +1263,29 @@ function HelpSafety() {
         <div className="support-icon urgent">
           <ShieldCheck />
         </div>
-        <h2>Safety guidance</h2>
-        <p>
-          Practical steps for intimate-image abuse, account security and
-          situations where contacting an uploader may increase risk.
-        </p>
+        <h2>{copy.safetyTitle}</h2>
+        <p>{copy.safetyLead}</p>
         <a className="btn btn-outline" href="/safety.html">
-          Open safety centre
+          {copy.safetyButton}
         </a>
         <small>
-          Content Protect is not an emergency or law-enforcement service.
+          {copy.safetyNote}
         </small>
       </section>
       <section className="account-card">
         <div className="support-icon">
           <FileCheck2 />
         </div>
-        <h2>Report a problem</h2>
-        <p>
-          Report a suspected security issue, incorrect match, disputed ownership
-          claim or accessibility problem.
-        </p>
+        <h2>{copy.reportTitle}</h2>
+        <p>{copy.reportLead}</p>
         <a
           className="btn btn-outline"
           href="mailto:white.eagles.dm@gmail.com?subject=Content%20Protect%20problem%20report"
         >
-          Send a problem report
+          {copy.reportButton}
         </a>
         <small>
-          For security reports, describe the issue without including live
-          passwords or private content.
+          {copy.reportNote}
         </small>
       </section>
     </div>
@@ -1175,36 +1304,34 @@ function blankRightsDeclaration(name = "") {
   };
 }
 
-function RightsDeclarationFields({ value, onChange }) {
+function RightsDeclarationFields({ value, onChange, language }) {
+  const copy = RIGHTS_COPY[language] || RIGHTS_COPY.en;
   const update = (field, next) => onChange({ ...value, [field]: next });
   return (
     <div className="rights-form">
       <div className="rights-form-heading">
-        <b>Rights and authority declaration</b>
-        <span>
-          This is reviewed by a trained operator before any notice can be
-          prepared. Do not upload contracts or private documents here.
-        </span>
+        <b>{copy.title}</b>
+        <span>{copy.lead}</span>
       </div>
       <div className="rights-field-row">
         <label>
-          Your legal relationship to this work
+          {copy.relationship}
           <select
             required
             value={value.rightsRole}
             onChange={(event) => update("rightsRole", event.target.value)}
           >
-            <option value="copyright-owner">Copyright owner</option>
-            <option value="authorised-agent">
-              Authorised agent for the rights holder
-            </option>
-            <option value="exclusive-licensee">
-              Exclusive licensee authorised to enforce
-            </option>
+            {[
+              "copyright-owner",
+              "authorised-agent",
+              "exclusive-licensee",
+            ].map((role, index) => (
+              <option key={role} value={role}>{copy.roles[index]}</option>
+            ))}
           </select>
         </label>
         <label>
-          Legal or business name of rights holder
+          {copy.holderName}
           <input
             type="text"
             required
@@ -1216,7 +1343,7 @@ function RightsDeclarationFields({ value, onChange }) {
       </div>
       <div className="rights-field-row">
         <label>
-          Work title or internal name (optional)
+          {copy.workTitle}
           <input
             type="text"
             maxLength="160"
@@ -1225,7 +1352,7 @@ function RightsDeclarationFields({ value, onChange }) {
           />
         </label>
         <label>
-          Original publication URL (optional, HTTPS)
+          {copy.publicationUrl}
           <input
             type="url"
             placeholder="https://…"
@@ -1237,21 +1364,18 @@ function RightsDeclarationFields({ value, onChange }) {
         </label>
       </div>
       <label>
-        Evidence reference
+        {copy.evidenceReference}
         <input
           type="text"
           required
           maxLength="200"
-          placeholder="Example: original source file or agency agreement CP-2026-004"
+          placeholder={copy.evidencePlaceholder}
           value={value.authorityEvidenceReference}
           onChange={(event) =>
             update("authorityEvidenceReference", event.target.value)
           }
         />
-        <small>
-          Use a short reference only. Keep the underlying document in the
-          approved restricted company record.
-        </small>
+        <small>{copy.evidenceHelp}</small>
       </label>
       <label className="rights-check">
         <input
@@ -1262,8 +1386,7 @@ function RightsDeclarationFields({ value, onChange }) {
             update("confirmRightsAuthority", event.target.checked)
           }
         />
-        I own the copyright or am authorised to enforce it for the named rights
-        holder.
+        {copy.authorityConfirm}
       </label>
       <label className="rights-check">
         <input
@@ -1274,14 +1397,24 @@ function RightsDeclarationFields({ value, onChange }) {
             update("confirmRightsAccurate", event.target.checked)
           }
         />
-        I confirm this per-file declaration is accurate and understand that
-        false claims may result in suspension.
+        {copy.accuracyConfirm}
       </label>
     </div>
   );
 }
 
-function Dashboard({ onLogout, onUserUpdate, user }) {
+function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
+  const copy = DASHBOARD_COPY[language] || DASHBOARD_COPY.en;
+  const pilotCopy = PILOT_COPY[language] || PILOT_COPY.en;
+  const detail = DASHBOARD_DETAIL[language] || DASHBOARD_DETAIL.en;
+  const uploadCopy = UPLOAD_COPY[language] || UPLOAD_COPY.en;
+  const evidenceCopy = EVIDENCE_COPY[language] || EVIDENCE_COPY.en;
+  const matchActionCopy = MATCH_ACTION_COPY[language] || MATCH_ACTION_COPY.en;
+  const statusCopy = STATUS_COPY[language] || STATUS_COPY.en;
+  const actionNoticeCopy = ACTION_NOTICE_COPY[language] || ACTION_NOTICE_COPY.en;
+  const verificationCopy = VERIFICATION_COPY[language] || VERIFICATION_COPY.en;
+  const localizeStatus = (status) => statusCopy[status] || status;
+  const dateLocale = language === "ro" ? "ro-RO" : language === "es" ? "es-ES" : "en-GB";
   const [tab, setTab] = useState("Overview");
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -1309,6 +1442,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       assetSlotsRemaining: 0,
       scanFrequency: "unavailable",
     },
+    pilotMode: "standard",
     scannerMode: "unconfigured",
     videoScannerMode: "unconfigured",
     stats: { matches: 0, review: 0, active: 0, removed: 0, sources: 0 },
@@ -1334,6 +1468,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     videoAssetCount = data.assets.filter((asset) =>
       asset.mime?.startsWith("video/"),
     ).length,
+    commercialScanningActive =
+      data.entitlements.canScan && data.scannerMode === "tineye-commercial",
     videoScanningActive = data.videoScannerMode === "tineye-keyframes",
     scannableAssetCount =
       imageAssetCount + (videoScanningActive ? videoAssetCount : 0),
@@ -1344,6 +1480,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       rightsForm.confirmRightsAccurate,
     pageCaptureReady =
       pageCaptureConsent && confirmTargetPage && confirmUnaltered;
+  const canUploadContent =
+    data.entitlements.canUpload || data.pilotMode === "free";
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -1379,14 +1517,14 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     });
     if (!response.ok) {
       const result = await response.json();
-      alert(result.error || "Upload failed");
+      alert(result.error || actionNoticeCopy.uploadFailed);
       return;
     }
     setModal(false);
     setMediaConsent(false);
     setRightsForm(blankRightsDeclaration(user?.name));
     await refresh();
-    alert("Content encrypted and added to your private vault.");
+    alert(actionNoticeCopy.uploadSuccess);
   };
   const saveAssetRights = async (event) => {
     event.preventDefault();
@@ -1398,13 +1536,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Rights declaration could not be saved.");
+      alert(result.error || actionNoticeCopy.rightsFailed);
       return;
     }
     setRightsAsset(null);
     setRightsForm(blankRightsDeclaration(user?.name));
     await refresh();
-    alert("The per-file rights declaration was recorded for operator review.");
+    alert(actionNoticeCopy.rightsSuccess);
   };
   const openPageCapture = (match) => {
     setCaptureMatch(match);
@@ -1444,18 +1582,16 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     );
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "The page capture could not be preserved.");
+      alert(result.error || actionNoticeCopy.captureFailed);
       return;
     }
     closePageCapture();
     await refresh();
-    alert(
-      "The encrypted page capture and its SHA-256 integrity hash were preserved.",
-    );
+    alert(actionNoticeCopy.captureSuccess);
   };
   const downloadPageCapture = async (match) => {
     const password = prompt(
-      "Enter your password to decrypt and download this preserved page capture.",
+      actionNoticeCopy.capturePassword,
     );
     if (!password) return;
     const response = await fetch(
@@ -1468,7 +1604,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     );
     if (!response.ok) {
       const result = await response.json();
-      alert(result.error || "The page capture could not be downloaded.");
+      alert(result.error || actionNoticeCopy.captureDownloadFailed);
       return;
     }
     await saveDownload(response, `page-capture-${match.id}.png`);
@@ -1478,7 +1614,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     if (!match?.pageCapture) {
       if (match) openPageCapture(match);
       alert(
-        "Preserve a current screenshot of the matched public page before opening the case.",
+        actionNoticeCopy.captureBeforeCase,
       );
       return;
     }
@@ -1489,34 +1625,31 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Could not create case");
+      alert(result.error || actionNoticeCopy.caseFailed);
       return;
     }
     await refresh();
     setTab("Takedowns");
-    alert(
-      "Evidence preserved. A trained operator must verify the recipient and jurisdiction before the exact notice returns to you for approval.",
-    );
+    alert(actionNoticeCopy.caseCreated);
   };
   const runScan = async () => {
     const response = await fetch("/api/scans", { method: "POST" });
     const result = await response.json();
     if (!response.ok) {
-      alert(result.error || "Scan could not start");
+      alert(result.error || copy.scanFailed);
       return;
     }
     await refresh();
-    alert(result.notice || "Live image scan completed.");
+    alert(result.notice || copy.scanCompleted);
   };
   const selectPlan = async (plan) => {
     const entitlement = PLAN_ENTITLEMENTS[plan];
-    const planLimit = {
-      Monitor: `up to ${entitlement.assetLimit} reference files and one image scan every 30 days`,
-      Protect: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and takedown cases`,
-      Pro: `up to ${entitlement.assetLimit} reference files, one image scan every 24 hours and priority support`,
-    }[plan];
+    const planLimit = (copy.planLimits[plan] || copy.planLimits.Monitor).replace(
+      "{count}",
+      entitlement.assetLimit,
+    );
     const accepted = confirm(
-      `Continue with the ${plan} monthly subscription: ${planLimit}?\n\nVideos use a file slot and are not scanned until privacy and provider approval for minimized video frames is activated. By selecting OK, you accept the Service Terms, expressly request Content Protect to begin the digital service immediately, and understand that if you cancel within 14 days you may have to pay for service already supplied. Your statutory rights are not affected.`,
+      copy.checkoutConfirm.replace("{plan}", plan).replace("{limit}", planLimit),
     );
     if (!accepted) return;
     const r = await fetch("/api/billing/checkout", {
@@ -1538,24 +1671,24 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       location.assign(d.checkoutUrl);
       return;
     }
-    alert(d.notice || "Billing is not available yet. No payment was taken.");
+    alert(d.notice || copy.billingUnavailable);
   };
   const deleteAsset = async (asset) => {
     if (
-      !confirm(`Permanently delete “${asset.name}” from your encrypted vault?`)
+      !confirm(actionNoticeCopy.deleteConfirm.replace("{name}", asset.name))
     )
       return;
     const r = await fetch(`/api/assets/${asset.id}`, { method: "DELETE" });
     const d = await r.json();
     if (!r.ok) {
-      alert(d.error || "Could not delete asset");
+      alert(d.error || actionNoticeCopy.deleteFailed);
       return;
     }
     await refresh();
   };
   const downloadAsset = async (asset) => {
     const password = prompt(
-      `Enter your password to decrypt and download “${asset.name}”.`,
+      actionNoticeCopy.assetPassword.replace("{name}", asset.name),
     );
     if (!password) return;
     const response = await fetch(`/api/assets/${asset.id}/download`, {
@@ -1565,7 +1698,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     });
     if (!response.ok) {
       const result = await response.json();
-      alert(result.error || "The reference file could not be downloaded.");
+      alert(result.error || actionNoticeCopy.assetDownloadFailed);
       return;
     }
     await saveDownload(response, asset.name || "reference-file");
@@ -1573,7 +1706,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
   const approveCase = async (caseId) => {
     const currentCase = data.cases.find((item) => item.id === caseId);
     if (!currentCase?.noticeText || !currentCase?.noticeHash) {
-      alert("The exact notice has not been prepared for review yet.");
+      alert(actionNoticeCopy.noticeNotReady);
       return;
     }
     if (
@@ -1595,7 +1728,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     });
     const d = await r.json();
     if (!r.ok) {
-      alert(d.error || "Could not approve case");
+      alert(d.error || actionNoticeCopy.caseApproveFailed);
       return;
     }
     await refresh();
@@ -1610,8 +1743,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
     const d = await r.json();
     alert(
       r.ok
-        ? d.notice || "Verification email sent."
-        : d.error || "Could not send verification email.",
+        ? d.notice || actionNoticeCopy.verificationSent
+        : d.error || actionNoticeCopy.verificationFailed,
     );
   };
   return (
@@ -1619,7 +1752,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
       <aside className={navOpen ? "mobile-open" : ""}>
         <button
           className="mobile-close"
-          aria-label="Close navigation"
+          aria-label={copy.closeNavigation}
           onClick={() => setNavOpen(false)}
         >
           <X />
@@ -1629,11 +1762,11 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
           <span>{initials}</span>
           <div>
             <b>{user?.stageName || user?.name || "Creator"}</b>
-            <small>{data.entitlements.plan} plan</small>
+            <small>{data.entitlements.plan} {copy.plan}</small>
           </div>
           <ChevronDown size={15} />
         </button>
-        <div className="side-label">WORKSPACE</div>
+        <div className="side-label">{copy.workspace}</div>
         {["Overview", "Matches", "My content", "Takedowns"].map((x, i) => {
           const Icon = [LayoutDashboard, Search, Image, FileCheck2][i];
           return (
@@ -1643,56 +1776,60 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               onClick={() => setTab(x)}
             >
               <Icon size={18} />
-              {x}
+              {copy.nav[x]}
               {x === "Matches" && data.matches.length > 0 && (
                 <em>{data.matches.length}</em>
               )}
             </button>
           );
         })}
-        <div className="side-label lower">ACCOUNT</div>
+        <div className="side-label lower">{copy.account}</div>
         <button
           className={`side-link ${tab === "Billing" ? "active" : ""}`}
           onClick={() => setTab("Billing")}
         >
           <Sparkles size={18} />
-          Plans & billing
+          {copy.nav.Billing}
         </button>
         <button
           className={`side-link ${tab === "Account" ? "active" : ""}`}
           onClick={() => setTab("Account")}
         >
           <LockKeyhole size={18} />
-          Account & security
+          {copy.nav.Account}
         </button>
         <button
           className={`side-link ${tab === "Help & safety" ? "active" : ""}`}
           onClick={() => setTab("Help & safety")}
         >
           <HelpCircle size={18} />
-          Help & safety
+          {copy.nav["Help & safety"]}
         </button>
         <div className="upgrade">
           <Sparkles />
           <b>
-            {data.entitlements.canScan ? "Protection active" : "Choose a plan"}
+            {commercialScanningActive
+              ? copy.protectionActive
+              : data.entitlements.canScan
+                ? copy.protectionPending
+                : copy.choosePlan}
           </b>
           <span>
-            {data.entitlements.canScan
-              ? `${data.entitlements.scanFrequency} scans enabled`
-              : "Scanning is not active"}
+            {commercialScanningActive
+              ? `${data.entitlements.scanFrequency} ${copy.scansEnabled}`
+              : copy.scanningInactive}
           </span>
           <div>
             <i></i>
           </div>
           <small>
             {data.entitlements.canCreateCases
-              ? "Takedown cases included"
-              : "Private creator vault"}
+              ? copy.casesIncluded
+              : copy.privateVault}
           </small>
         </div>
         <button className="logout" onClick={logout}>
-          Log out
+          {copy.logout}
         </button>
       </aside>
       <main className="dashboard">
@@ -1700,21 +1837,22 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
           <div>
             <button
               className="mobile-menu"
-              aria-label="Open navigation"
+              aria-label={copy.openNavigation}
               onClick={() => setNavOpen(true)}
             >
               <Menu />
             </button>
-            <span>Workspace</span>
+            <span>{copy.breadcrumb}</span>
             <ChevronRight size={15} />
-            <b>{tab}</b>
+            <b>{copy.nav[tab]}</b>
           </div>
           <div>
-            <button className="icon-button" aria-label="Notifications">
+            <LanguagePicker language={language} onChange={setLanguage} />
+            <button className="icon-button" aria-label={copy.notifications}>
               <Bell size={19} />
               <i></i>
             </button>
-            <button className="avatar" aria-label="Account menu">
+            <button className="avatar" aria-label={copy.accountMenu}>
               {initials}
             </button>
           </div>
@@ -1724,13 +1862,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="verification-banner">
               <ShieldCheck />
               <div>
-                <b>Verify your email before uploading content</b>
+                <b>{verificationCopy.emailTitle}</b>
                 <span>
-                  We sent a secure 24-hour verification link to {user.email}.
+                  {verificationCopy.emailLead.replace("{email}", user.email)}
                 </span>
               </div>
               <button className="btn btn-outline" onClick={resendVerification}>
-                Resend email
+                {verificationCopy.resend}
               </button>
             </div>
           )}
@@ -1738,13 +1876,21 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="verification-banner">
               <ShieldCheck />
               <div>
-                <b>Complete a private 18+ age check</b>
+                <b>{verificationCopy.ageTitle}</b>
                 <span>
-                  Production verification uses Yoti and retains only the outcome
-                  and method, never your document or face image.
+                  {verificationCopy.ageLead}
                 </span>
               </div>
-              <YotiAgeButton onVerified={onUserUpdate} />
+              <YotiAgeButton onVerified={onUserUpdate} language={language} />
+            </div>
+          )}
+          {data.pilotMode === "free" && (
+            <div className="verification-banner">
+              <ShieldCheck />
+              <div>
+                <b>{pilotCopy.title}</b>
+                <span>{pilotCopy.lead}</span>
+              </div>
             </div>
           )}
           <div className="dash-title">
@@ -1752,23 +1898,23 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <p>Saturday, 18 July</p>
               <h1>
                 {tab === "Overview"
-                  ? `Good morning, ${user?.name?.split(" ")[0] || "Creator"}.`
-                  : tab}
+                  ? `${copy.greeting}, ${user?.name?.split(" ")[0] || "Creator"}.`
+                  : copy.nav[tab]}
               </h1>
               <span>
                 {tab === "Overview"
-                  ? "Your content is protected. Here’s what changed since your last visit."
-                  : "Review and manage your protection workspace."}
+                  ? copy.overviewLead
+                  : copy.manageLead}
               </span>
             </div>
             <button
               className="btn btn-primary"
               disabled={
-                data.entitlements.canUpload &&
+                canUploadContent &&
                 data.entitlements.assetSlotsRemaining === 0
               }
               onClick={() => {
-                if (!data.entitlements.canUpload) {
+                if (!canUploadContent) {
                   setTab("Billing");
                   return;
                 }
@@ -1776,11 +1922,11 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               }}
             >
               <Plus size={18} />
-              {data.entitlements.canUpload
+              {canUploadContent
                 ? data.entitlements.assetSlotsRemaining
-                  ? "Add content"
-                  : "File limit reached"
-                : "Choose a plan"}
+                  ? copy.addContent
+                  : copy.limitReached
+                : copy.choosePlan}
             </button>
           </div>
           {tab === "Overview" && (
@@ -1790,37 +1936,37 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <div className="stat-icon purple">
                     <Search />
                   </div>
-                  <span>Matches found</span>
+                  <span>{copy.stats[0][0]}</span>
                   <strong>{data.stats.matches}</strong>
                   <small>
                     {loading
-                      ? "Loading…"
-                      : `${data.assets.length} protected assets`}
+                      ? copy.loading
+                      : `${data.assets.length} ${copy.stats[0][1]}`}
                   </small>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon amber">
                     <Clock3 />
                   </div>
-                  <span>Need your review</span>
+                  <span>{copy.stats[1][0]}</span>
                   <strong>{data.stats.review}</strong>
-                  <small>Creator approval required</small>
+                  <small>{copy.stats[1][1]}</small>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon blue">
                     <FileCheck2 />
                   </div>
-                  <span>Takedown cases</span>
+                  <span>{copy.stats[2][0]}</span>
                   <strong>{data.cases.length}</strong>
-                  <small>{data.stats.active} active</small>
+                  <small>{data.stats.active} {copy.stats[2][1]}</small>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon green">
                     <ShieldCheck />
                   </div>
-                  <span>Successfully removed</span>
+                  <span>{copy.stats[3][0]}</span>
                   <strong>{data.stats.removed}</strong>
-                  <small>Verified outcomes only</small>
+                  <small>{copy.stats[3][1]}</small>
                 </div>
               </div>
               <button
@@ -1838,39 +1984,68 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 </div>
                 <div>
                   <b>
-                    Run protected {videoScanningActive ? "media" : "image"} scan
+                    {copy.scanTitle} {videoScanningActive ? copy.scanMedia : copy.scanImage}
                   </b>
                   <span>
                     {!data.entitlements.canScan
-                      ? "Choose an active plan before scanning"
+                      ? copy.choosePlanBefore
                       : !scannableAssetCount
                         ? videoAssetCount
-                          ? "Video scanning awaits privacy and provider approval"
-                          : "Add a supported reference image before scanning"
+                          ? copy.videoAwaiting
+                          : copy.addReference
                         : data.scannerMode === "tineye-commercial"
-                          ? "Search the commercial provider using private reference copies"
-                          : "Commercial scanning awaits provider activation"}
+                          ? copy.commercialScan
+                          : copy.scanningAwaiting}
                   </span>
                 </div>
                 <span className="live">
                   <i></i>{" "}
                   {data.scannerMode === "tineye-commercial"
-                    ? "LIVE"
-                    : "WAITING"}
+                    ? copy.live
+                    : copy.waiting}
                 </span>
               </button>
+              {data.pilotMode === "free" && imageAssetCount > 0 && (
+                <div className="basic-search-preview">
+                  <div className="basic-search-preview-head">
+                    <div>
+                      <span className="basic-search-eyebrow">BASIC</span>
+                      <h2>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).title}</h2>
+                      <p>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).lead}</p>
+                    </div>
+                    <Search size={20} />
+                  </div>
+                  <div className="basic-search-checks">
+                    <span><Check size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).stored}</span>
+                    <span><Check size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).consent}</span>
+                    <span className="pending"><Clock3 size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).provider}</span>
+                  </div>
+                  <p className="basic-search-unlock">{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).unlock}</p>
+                  <small>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).honesty}</small>
+                  <div className="basic-search-manual">
+                    <div>
+                      <b>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualTitle}</b>
+                      <p>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualLead}</p>
+                    </div>
+                    <button className="btn btn-outline" onClick={() => setTab("Help & safety")}>
+                      {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualAction}
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
           {tab === "My content" && (
             <div className="matches-card">
               <div className="matches-head">
                 <div>
-                  <h2>Private reference vault</h2>
+                  <h2>{detail.vaultTitle}</h2>
                   <p>
-                    Encrypted files owned by this account
+                    {detail.vaultOwned}
                     {data.entitlements.assetLimit
-                      ? ` · ${data.assets.length} of ${data.entitlements.assetLimit} used`
-                      : " · choose a plan to add files"}
+                      ? ` · ${data.assets.length} / ${data.entitlements.assetLimit} ${detail.vaultUsed}`
+                      : ` · ${detail.vaultChoose}`}
                   </p>
                 </div>
               </div>
@@ -1887,13 +2062,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                       </span>
                     </div>
                     <div className="confidence">
-                      <b>Encrypted</b>
+                      <b>{detail.encrypted}</b>
                       <span className="rights-state">
                         {a.rights
                           ? a.rights.status === "verified"
-                            ? "Rights reviewed"
-                            : "Rights declared"
-                          : "Rights declaration missing"}
+                            ? detail.rightsReviewed
+                            : detail.rightsDeclared
+                          : detail.rightsMissing}
                       </span>
                     </div>
                     <div>
@@ -1903,8 +2078,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                       <button
                         title={
                           a.rights
-                            ? "Replace rights declaration"
-                            : "Add rights declaration"
+                            ? detail.replaceRights
+                            : detail.addRights
                         }
                         onClick={() => {
                           setRightsAsset(a);
@@ -1918,13 +2093,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                         <FileCheck2 />
                       </button>
                       <button
-                        title="Download original"
+                        title={detail.downloadOriginal}
                         onClick={() => downloadAsset(a)}
                       >
                         <Download />
                       </button>
                       <button
-                        title="Delete permanently"
+                        title={detail.deletePermanently}
                         onClick={() => deleteAsset(a)}
                       >
                         <X />
@@ -1934,8 +2109,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 ))
               ) : (
                 <div className="empty-state">
-                  No reference content yet. Choose “Add content” to test the
-                  secure vault.
+                  {detail.vaultEmpty}
                 </div>
               )}
             </div>
@@ -1944,8 +2118,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="matches-card">
               <div className="matches-head">
                 <div>
-                  <h2>Takedown cases</h2>
-                  <p>Every action requires creator approval</p>
+                  <h2>{detail.casesTitle}</h2>
+                  <p>{detail.casesLead}</p>
                 </div>
               </div>
               {data.cases.length ? (
@@ -1957,37 +2131,36 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     <div className="source">
                       <b>{c.source}</b>
                       <span>
-                        Case opened{" "}
-                        {new Date(c.createdAt).toLocaleDateString("en-GB")}
+                        {detail.caseOpened}{" "}
+                        {new Date(c.createdAt).toLocaleDateString(dateLocale)}
                       </span>
                       {c.disputes?.some(
                         (dispute) => dispute.status === "open",
                       ) && (
                         <span>
-                          Dispute received · follow-ups frozen for human review
+                          {detail.disputeOpen}
                         </span>
                       )}
                     </div>
                     <div className="confidence">
-                      <b>{c.mode === "sandbox" ? "Sandbox" : "Live"}</b>
+                      <b>{c.mode === "sandbox" ? matchActionCopy.sandbox : matchActionCopy.live}</b>
                     </div>
                     <div>
-                      <span className="status monitoring">{c.status}</span>
+                      <span className="status monitoring">{localizeStatus(c.status)}</span>
                     </div>
                     {c.status === "Awaiting creator approval" && (
                       <button
                         className="btn btn-primary"
                         onClick={() => approveCase(c.id)}
                       >
-                        Review & approve
+                        {detail.reviewApprove}
                       </button>
                     )}
                   </div>
                 ))
               ) : (
                 <div className="empty-state">
-                  No cases yet. Open Matches and select a result to preserve
-                  evidence.
+                  {detail.casesEmpty}
                 </div>
               )}
             </div>
@@ -1998,9 +2171,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               subscription={data.subscription}
               billingMode={data.billingMode}
               onDeleted={onLogout}
+              language={language}
             />
           )}
-          {tab === "Help & safety" && <HelpSafety />}
+          {tab === "Help & safety" && <HelpSafety language={language} />}
           {tab === "Billing" ? (
             <div className="sandbox-plans">
               <div className="sandbox-note">
@@ -2008,17 +2182,17 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 <div>
                   <b>
                     {data.billingMode === "stripe_live"
-                      ? "Secure Stripe billing is active"
+                      ? detail.billingLiveTitle
                       : data.billingMode === "stripe_test"
-                        ? "Stripe test billing is active"
-                        : "Billing activation is pending"}
+                        ? detail.billingTestTitle
+                        : detail.billingPendingTitle}
                   </b>
                   <span>
                     {data.billingMode === "stripe_live"
-                      ? "Subscriptions and payment details are handled by Stripe."
+                      ? detail.billingLiveLead
                       : data.billingMode === "stripe_test"
-                        ? "Only Stripe test cards are accepted; no live charge is made."
-                        : "Checkout is disabled until Stripe products, prices and webhook verification are configured."}
+                        ? detail.billingTestLead
+                        : detail.billingPendingLead}
                   </span>
                 </div>
               </div>
@@ -2027,17 +2201,17 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   [
                     "Monitor",
                     "£19",
-                    `${PLAN_ENTITLEMENTS.Monitor.assetLimit} files · scan every 30 days`,
+                    `${PLAN_ENTITLEMENTS.Monitor.assetLimit} ${detail.planDescriptions[0]}`,
                   ],
                   [
                     "Protect",
                     "£49",
-                    `${PLAN_ENTITLEMENTS.Protect.assetLimit} files · daily scan + cases`,
+                    `${PLAN_ENTITLEMENTS.Protect.assetLimit} ${detail.planDescriptions[1]}`,
                   ],
                   [
                     "Pro",
                     "£99",
-                    `${PLAN_ENTITLEMENTS.Pro.assetLimit} files · daily scan + priority`,
+                    `${PLAN_ENTITLEMENTS.Pro.assetLimit} ${detail.planDescriptions[2]}`,
                   ],
                 ].map(([name, price, desc]) => (
                   <div
@@ -2045,12 +2219,12 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     key={name}
                   >
                     <span>
-                      {name === "Protect" ? "RECOMMENDED" : "CREATOR PLAN"}
+                      {name === "Protect" ? detail.recommended : detail.creatorPlan}
                     </span>
                     <h3>{name}</h3>
                     <strong>
                       {price}
-                      <small>/mo</small>
+                      <small>{detail.monthly}</small>
                     </strong>
                     <p>{desc}</p>
                     <button
@@ -2059,10 +2233,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                       onClick={() => selectPlan(name)}
                     >
                       {data.billingMode === "stripe_live"
-                        ? "Choose plan"
+                        ? detail.choosePlan
                         : data.billingMode === "stripe_test"
-                          ? "Test checkout"
-                          : "Unavailable"}
+                          ? detail.testCheckout
+                          : detail.unavailable}
                     </button>
                   </div>
                 ))}
@@ -2073,37 +2247,26 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
               <div className="matches-head">
                 <div>
                   <h2>
-                    {tab === "Takedowns" ? "Takedown cases" : "Recent matches"}
+                    {tab === "Takedowns" ? detail.casesTitle : detail.recentMatches}
                   </h2>
                   <p>
-                    Potential unauthorized uses detected by visual similarity
+                    {detail.matchesLead}
                   </p>
                 </div>
                 <select
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
-                  <option>All matches</option>
-                  <option>Action needed</option>
-                  <option>Monitoring</option>
-                  <option>Case review</option>
-                  <option>Your approval</option>
-                  <option>Delivery pending</option>
-                  <option>Reported</option>
-                  <option>Removed</option>
+                  {detail.filters.map((label, index) => <option key={label} value={["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"][index]}>{label}</option>)}
                 </select>
               </div>
               <div className="table-head">
-                <span>FOUND CONTENT</span>
-                <span>SOURCE</span>
-                <span>MATCH SCORE</span>
-                <span>STATUS</span>
+                {detail.columns.map((label) => <span key={label}>{label}</span>)}
                 <span></span>
               </div>
               {!filtered.length && !loading && (
                 <div className="empty-state">
-                  No verified public matches yet. Add a reference image and run
-                  a live scan after provider activation.
+                  {detail.matchesEmpty}
                 </div>
               )}
               {filtered.map((m) => (
@@ -2115,13 +2278,13 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <div className="source">
                     <b>{m.site}</b>
                     <span>
-                      <Link2 /> Public page · {m.age}
+                      <Link2 /> {detail.publicPage} · {m.age}
                     </span>
                     <span className={m.pageCapture ? "capture-ok" : ""}>
                       <FileCheck2 />
                       {m.pageCapture
-                        ? `Capture preserved · ${m.pageCapture.checksumSha256.slice(0, 10)}…`
-                        : "Page capture required for a case"}
+                        ? `${detail.capturePreserved} · ${m.pageCapture.checksumSha256.slice(0, 10)}…`
+                        : detail.captureRequired}
                     </span>
                   </div>
                   <div className="confidence">
@@ -2134,7 +2297,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     <span
                       className={`status ${m.status.toLowerCase().replaceAll(" ", "-")}`}
                     >
-                      {m.status}
+                      {localizeStatus(m.status)}
                     </span>
                   </div>
                   <div className="match-actions">
@@ -2143,9 +2306,9 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                       title={
                         m.pageCapture
                           ? m.pageCaptureLocked
-                            ? "Review the capture preserved in the case"
-                            : "Review or replace page capture"
-                          : "Add page capture"
+                            ? matchActionCopy.reviewPreserved
+                            : matchActionCopy.reviewReplace
+                          : matchActionCopy.addCapture
                       }
                       onClick={() => openPageCapture(m)}
                     >
@@ -2153,7 +2316,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     </button>
                     <button
                       className="more"
-                      title="Create protected case"
+                      title={matchActionCopy.createCase}
                       onClick={() => createCase(m.id)}
                     >
                       <Plus />
@@ -2173,7 +2336,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
           >
             <button
               className="modal-x"
-              aria-label="Close page-capture dialog"
+              aria-label={evidenceCopy.close}
               onClick={closePageCapture}
             >
               <X />
@@ -2181,18 +2344,14 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="modal-icon">
               <FileCheck2 />
             </div>
-            <h2>Preserve the matched page</h2>
-            <p>
-              Take a current screenshot that clearly shows the matched content
-              and page context. It is encrypted and its integrity hash is bound
-              to the case.
-            </p>
+            <h2>{evidenceCopy.title}</h2>
+            <p>{evidenceCopy.lead}</p>
             <div className="capture-target">
               <b>{captureMatch.site}</b>
               <span>{captureMatch.sourceUrl}</span>
               {captureMatch.pageCapture && (
                 <small>
-                  Existing SHA-256: {captureMatch.pageCapture.checksumSha256}
+                  {evidenceCopy.existing} {captureMatch.pageCapture.checksumSha256}
                 </small>
               )}
             </div>
@@ -2201,15 +2360,14 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 className="btn btn-outline capture-download"
                 onClick={() => downloadPageCapture(captureMatch)}
               >
-                <Download /> Download preserved capture
+                <Download /> {evidenceCopy.download}
               </button>
             )}
             {captureMatch.pageCaptureLocked ? (
               <div className="consent">
                 <LockKeyhole />
                 <span>
-                  <b>Immutable case evidence</b>This capture is already bound to
-                  a case and cannot be replaced.
+                  <b>{evidenceCopy.immutableTitle}</b>{evidenceCopy.immutable}
                 </span>
               </div>
             ) : (
@@ -2224,9 +2382,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     }
                   />
                   <span>
-                    <b>Explicit evidence-processing consent</b>I consent to
-                    private processing of this screenshot as case evidence. It
-                    may contain sensitive or special-category information.
+                    <b>{evidenceCopy.consentTitle}</b>{evidenceCopy.consent}
                   </span>
                 </label>
                 <label className="consent consent-checkbox">
@@ -2239,9 +2395,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     }
                   />
                   <span>
-                    <b>Target-page confirmation</b>This screenshot shows the
-                    public URL identified above and the suspected copied
-                    content.
+                    <b>{evidenceCopy.targetTitle}</b>{evidenceCopy.target}
                   </span>
                 </label>
                 <label className="consent consent-checkbox">
@@ -2254,9 +2408,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                     }
                   />
                   <span>
-                    <b>Accuracy confirmation</b>The relevant page and content
-                    have not been manipulated; only unrelated material may have
-                    been cropped out.
+                    <b>{evidenceCopy.accuracyTitle}</b>{evidenceCopy.accuracy}
                   </span>
                 </label>
                 <label
@@ -2265,10 +2417,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                   <Upload />
                   <b>
                     {captureMatch.pageCapture
-                      ? "Choose a replacement screenshot"
-                      : "Choose a screenshot"}
+                      ? evidenceCopy.chooseReplacement
+                      : evidenceCopy.choose}
                   </b>
-                  <span>JPEG, PNG or WebP · maximum 8 MB</span>
+                  <span>{evidenceCopy.formats}</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -2281,9 +2433,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="consent">
               <ShieldCheck />
               <span>
-                <b>Evidence is not published</b>The original encrypted file and
-                its SHA-256 checksum remain private. A trained operator must
-                still review the live URL and the capture.
+                <b>{evidenceCopy.privateTitle}</b>{evidenceCopy.private}
               </span>
             </div>
           </div>
@@ -2297,7 +2447,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
           >
             <button
               className="modal-x"
-              aria-label="Close upload dialog"
+              aria-label={uploadCopy.closeUpload}
               onClick={() => setModal(false)}
             >
               <X />
@@ -2305,16 +2455,10 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="modal-icon">
               <Upload />
             </div>
-            <h2>Add reference content</h2>
+            <h2>{uploadCopy.title}</h2>
+            <p>{uploadCopy.lead}</p>
             <p>
-              Upload content you own so Content Protect can look for likely
-              copies. Nothing is published.
-            </p>
-            <p>
-              {data.assets.length} of {data.entitlements.assetLimit} plan files
-              are currently used. Videos use a file slot and are not scanned
-              until privacy and provider approval for minimized video frames is
-              activated.
+              {data.assets.length} of {data.entitlements.assetLimit} {uploadCopy.usage}
             </p>
             <div className="consent consent-checkbox">
               <input
@@ -2323,26 +2467,20 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
                 onChange={(event) => setMediaConsent(event.target.checked)}
               />
               <span>
-                <b>Explicit media-processing consent</b>I consent to Content
-                Protect processing this file for private matching and case
-                evidence. I understand it may reveal special-category
-                information, including information about sex life or sexual
-                orientation, and I can withdraw consent by deleting the file.
+                <b>{uploadCopy.consentTitle}</b>{uploadCopy.consent}
               </span>
             </div>
             <RightsDeclarationFields
               value={rightsForm}
               onChange={setRightsForm}
+              language={language}
             />
             <label
               className={`dropzone ${mediaConsent && rightsDeclarationReady ? "" : "disabled"}`}
             >
               <Upload />
-              <b>Choose a supported photo or short video</b>
-              <span>
-                JPEG, PNG, WebP, GIF, TIFF, HEIC/AVIF, MP4, MOV or WebM · 8 MB ·
-                videos up to 10 minutes
-              </span>
+              <b>{uploadCopy.choose}</b>
+              <span>{uploadCopy.formats}</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,image/avif,image/heic,video/mp4,video/quicktime,video/webm"
@@ -2353,9 +2491,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="consent">
               <ShieldCheck />
               <span>
-                <b>Your privacy comes first</b>Files are validated and encrypted
-                before storage. Provider scan copies are resized and stripped of
-                EXIF/GPS metadata.
+                <b>{uploadCopy.privacyTitle}</b>{uploadCopy.privacy}
               </span>
             </div>
           </div>
@@ -2374,7 +2510,7 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <button
               type="button"
               className="modal-x"
-              aria-label="Close rights declaration"
+              aria-label={uploadCopy.closeRights}
               onClick={() => setRightsAsset(null)}
             >
               <X />
@@ -2382,14 +2518,15 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
             <div className="modal-icon">
               <FileCheck2 />
             </div>
-            <h2>Declare rights for this file</h2>
+            <h2>{uploadCopy.declareTitle}</h2>
             <p>{rightsAsset.name}</p>
             <RightsDeclarationFields
               value={rightsForm}
               onChange={setRightsForm}
+              language={language}
             />
             <button className="btn btn-primary rights-submit" type="submit">
-              Record declaration
+              {uploadCopy.record}
             </button>
           </form>
         </div>
@@ -2398,7 +2535,8 @@ function Dashboard({ onLogout, onUserUpdate, user }) {
   );
 }
 
-function Auth({ mode, setMode, onSuccess, onClose }) {
+function Auth({ mode, setMode, onSuccess, onClose, language }) {
+  const copy = AUTH_COPY[language] || AUTH_COPY.en;
   const [form, setForm] = useState({
     name: "",
     stageName: "",
@@ -2445,22 +2583,22 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
         </button>
         <Logo />
         <div className="auth-heading">
-          <span>PRIVATE CREATOR PROTECTION</span>
+          <span>{copy.private}</span>
           <h2>
             {mode === "register"
-              ? "Create your secure workspace"
-              : "Welcome back"}
+              ? copy.createTitle
+              : copy.welcome}
           </h2>
           <p>
             {mode === "register"
-              ? "Create your account free. Choose a protection plan after verification."
-              : "Sign in to your protected workspace."}
+              ? copy.createLead
+              : copy.loginLead}
           </p>
         </div>
         {mode === "register" && (
           <div className="field-row">
             <label>
-              Full name
+              {copy.fullName}
               <input
                 required
                 maxLength="100"
@@ -2469,7 +2607,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
               />
             </label>
             <label>
-              Stage name
+              {copy.stageName}
               <input
                 maxLength="100"
                 value={form.stageName}
@@ -2481,7 +2619,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
           </div>
         )}
         <label>
-          Email address
+          {copy.email}
           <input
             type="email"
             autoComplete="email"
@@ -2492,7 +2630,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
         </label>
         {mode === "login" && mfaRequired && (
           <label>
-            Authenticator or recovery code
+          {copy.code}
             <input
               autoComplete="one-time-code"
               required
@@ -2502,11 +2640,11 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
               placeholder="123456 or XXXX-XXXX"
               autoFocus
             />
-            <small>Open your authenticator app or use one recovery code.</small>
+            <small>{copy.codeHelp}</small>
           </label>
         )}
         <label>
-          Password
+          {copy.password}
           <input
             type="password"
             autoComplete={
@@ -2520,8 +2658,8 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
           />
           <small>
             {mode === "register"
-              ? "10–128 characters"
-              : "Enter your account password"}
+              ? copy.passwordNew
+              : copy.passwordLogin}
           </small>
         </label>
         {mode === "register" && (
@@ -2535,7 +2673,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
                   setForm({ ...form, ageConfirmed: e.target.checked })
                 }
               />
-              <span>I confirm that I am at least 18 years old.</span>
+              <span>{copy.age}</span>
             </label>
             <label>
               <input
@@ -2547,7 +2685,7 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
                 }
               />
               <span>
-                I own or am authorised to protect the content I submit.
+                {copy.rights}
               </span>
             </label>
             <label>
@@ -2560,13 +2698,13 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
                 }
               />
               <span>
-                I accept the{" "}
+                {copy.accept}{" "}
                 <a href="/terms.html" target="_blank">
-                  Terms
+                  {copy.terms}
                 </a>{" "}
-                and{" "}
+                {copy.and}{" "}
                 <a href="/privacy.html" target="_blank">
-                  Privacy Notice
+                  {copy.privacy}
                 </a>
                 .
               </span>
@@ -2579,41 +2717,41 @@ function Auth({ mode, setMode, onSuccess, onClose }) {
             type="button"
             onClick={() => setMode("forgot")}
           >
-            Forgot your password?
+            {copy.forgot}
           </button>
         )}
         {error && <div className="auth-error">{error}</div>}
         <button className="btn btn-primary auth-submit" disabled={busy}>
           {busy
-            ? "Securing workspace…"
+            ? copy.creating
             : mode === "register"
-              ? "Create protected account"
+              ? copy.create
               : mfaRequired
-                ? "Verify and log in"
-                : "Log in securely"}{" "}
+                ? copy.verify
+                : copy.login}{" "}
           <ArrowRight size={17} />
         </button>
         <div className="auth-switch">
           {mode === "register"
-            ? "Already protected?"
-            : "New to Content Protect?"}{" "}
+            ? copy.protected
+            : copy.new}{" "}
           <button
             type="button"
             onClick={() => setMode(mode === "register" ? "login" : "register")}
           >
-            {mode === "register" ? "Log in" : "Create an account"}
+            {mode === "register" ? copy.switchLogin : copy.switchCreate}
           </button>
         </div>
         <div className="auth-trust">
-          <LockKeyhole /> Passwords are cryptographically protected. Sessions
-          use secure HTTP-only cookies.
+          <LockKeyhole /> {copy.trust}
         </div>
       </form>
     </div>
   );
 }
 
-function ForgotPassword({ onBack, onClose }) {
+function ForgotPassword({ onBack, onClose, language }) {
+  const copy = RECOVERY_COPY[language] || RECOVERY_COPY.en;
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -2643,35 +2781,35 @@ function ForgotPassword({ onBack, onClose }) {
         <button
           type="button"
           className="modal-x"
-          aria-label="Close password recovery"
+          aria-label={copy.closeRecovery}
           onClick={onClose}
         >
           <X />
         </button>
         <Logo />
         <div className="auth-heading">
-          <span>SECURE ACCOUNT RECOVERY</span>
-          <h2>{sent ? "Check your email" : "Reset your password"}</h2>
+          <span>{copy.eyebrow}</span>
+          <h2>{sent ? copy.checkEmail : copy.resetTitle}</h2>
           <p>
             {sent
-              ? "If an account exists for that address, a secure link is on its way. It expires in 30 minutes."
-              : "Enter the email address used for your protected workspace."}
+              ? copy.sentLead
+              : copy.resetLead}
           </p>
         </div>
         {sent ? (
           <div className="recovery-success">
             <CircleCheck />
             <div>
-              <b>Request received</b>
+              <b>{copy.received}</b>
               <span>
-                For privacy, we do not confirm whether an address is registered.
+                {copy.privacy}
               </span>
             </div>
           </div>
         ) : (
           <>
             <label>
-              Email address
+              {copy.email}
               <input
                 type="email"
                 autoComplete="email"
@@ -2682,24 +2820,24 @@ function ForgotPassword({ onBack, onClose }) {
             </label>
             {error && <div className="auth-error">{error}</div>}
             <button className="btn btn-primary auth-submit" disabled={busy}>
-              {busy ? "Sending secure link…" : "Send reset link"}{" "}
+              {busy ? copy.sending : copy.send}{" "}
               <ArrowRight size={17} />
             </button>
           </>
         )}
         <button className="recovery-back" type="button" onClick={onBack}>
-          Back to login
+          {copy.back}
         </button>
         <div className="auth-trust">
-          <LockKeyhole /> Reset links are single-use and expire after 30
-          minutes.
+          <LockKeyhole /> {copy.linkHelp}
         </div>
       </form>
     </div>
   );
 }
 
-function ResetPassword({ token, onDone, onClose }) {
+function ResetPassword({ token, onDone, onClose, language }) {
+  const copy = RECOVERY_COPY[language] || RECOVERY_COPY.en;
   const [form, setForm] = useState({ password: "", confirm: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -2707,7 +2845,7 @@ function ResetPassword({ token, onDone, onClose }) {
     e.preventDefault();
     setError("");
     if (form.password !== form.confirm) {
-      setError("Passwords do not match.");
+      setError(copy.mismatch);
       return;
     }
     setBusy(true);
@@ -2718,7 +2856,7 @@ function ResetPassword({ token, onDone, onClose }) {
         body: JSON.stringify({ token, password: form.password }),
       });
       const d = await r.json();
-      if (!r.ok) throw Error(d.error || "Password could not be reset.");
+      if (!r.ok) throw Error(d.error || copy.failed);
       history.replaceState({}, "", location.pathname);
       onDone();
     } catch (e) {
@@ -2733,19 +2871,19 @@ function ResetPassword({ token, onDone, onClose }) {
         <button
           type="button"
           className="modal-x"
-          aria-label="Close password reset"
+          aria-label={copy.closeReset}
           onClick={onClose}
         >
           <X />
         </button>
         <Logo />
         <div className="auth-heading">
-          <span>SECURE ACCOUNT RECOVERY</span>
-          <h2>Choose a new password</h2>
-          <p>Use a unique password you do not use on creator platforms.</p>
+          <span>{copy.eyebrow}</span>
+          <h2>{copy.choose}</h2>
+          <p>{copy.unique}</p>
         </div>
         <label>
-          New password
+          {copy.newPassword}
           <input
             type="password"
             autoComplete="new-password"
@@ -2754,10 +2892,10 @@ function ResetPassword({ token, onDone, onClose }) {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
-          <small>At least 10 characters</small>
+          <small>{copy.passwordHelp}</small>
         </label>
         <label>
-          Confirm new password
+          {copy.confirm}
           <input
             type="password"
             autoComplete="new-password"
@@ -2769,18 +2907,19 @@ function ResetPassword({ token, onDone, onClose }) {
         </label>
         {error && <div className="auth-error">{error}</div>}
         <button className="btn btn-primary auth-submit" disabled={busy}>
-          {busy ? "Updating password…" : "Set new password"}{" "}
+          {busy ? copy.updating : copy.set}{" "}
           <ArrowRight size={17} />
         </button>
         <div className="auth-trust">
-          <LockKeyhole /> Completing this reset signs out all existing sessions.
+          <LockKeyhole /> {copy.sessionHelp}
         </div>
       </form>
     </div>
   );
 }
 
-function Onboarding({ user, onDone }) {
+function Onboarding({ user, onDone, language }) {
+  const copy = ONBOARDING_COPY[language] || ONBOARDING_COPY.en;
   const [stage, setStage] = useState(1);
   const [aliases, setAliases] = useState("");
   const [platforms, setPlatforms] = useState("");
@@ -2812,42 +2951,34 @@ function Onboarding({ user, onDone }) {
         </div>
         <Logo />
         <div className="auth-heading">
-          <span>STEP {stage} OF 3</span>
+          <span>{copy.step} {stage} {copy.of}</span>
           <h2>
-            {stage === 1
-              ? "Build your identity shield"
-              : stage === 2
-                ? "Connect your public presence"
-                : "Protection rules"}
+            {copy.headings[stage - 1]}
           </h2>
           <p>
-            {stage === 1
-              ? "Add public aliases that could be used to find impersonations."
-              : stage === 2
-                ? "Only enter public profile URLs—never passwords."
-                : "Content Protect starts safely, with your approval required."}
+            {copy.leads[stage - 1]}
           </p>
         </div>
         {stage === 1 && (
           <label>
-            Stage names and aliases
+            {copy.aliasLabel}
             <input
-              placeholder="NameOne, NameTwo"
+              placeholder={copy.aliasPlaceholder}
               value={aliases}
               onChange={(e) => setAliases(e.target.value)}
             />
-            <small>Separate names with commas</small>
+            <small>{copy.aliasesHelp}</small>
           </label>
         )}
         {stage === 2 && (
           <label>
-            Public creator profile URLs
+            {copy.profileLabel}
             <input
-              placeholder="https://… , https://…"
+              placeholder={copy.profilePlaceholder}
               value={platforms}
               onChange={(e) => setPlatforms(e.target.value)}
             />
-            <small>We never request passwords for creator platforms</small>
+            <small>{copy.profileHelp}</small>
           </label>
         )}
         {stage === 3 && (
@@ -2855,22 +2986,19 @@ function Onboarding({ user, onDone }) {
             <div>
               <ShieldCheck />
               <span>
-                <b>Creator approval required</b>No notice is sent before you
-                approve the evidence.
+                <b>{copy.rules[0][0]}</b>{copy.rules[0][1]}
               </span>
             </div>
             <div>
               <LockKeyhole />
               <span>
-                <b>Private reference vault</b>Your source content remains
-                encrypted and private.
+                <b>{copy.rules[1][0]}</b>{copy.rules[1][1]}
               </span>
             </div>
             <div>
               <Eye />
               <span>
-                <b>Transparent provider status</b>Unavailable services are
-                clearly identified and never replaced with simulated results.
+                <b>{copy.rules[2][0]}</b>{copy.rules[2][1]}
               </span>
             </div>
           </div>
@@ -2879,7 +3007,7 @@ function Onboarding({ user, onDone }) {
           className="btn btn-primary auth-submit"
           onClick={() => (stage < 3 ? setStage(stage + 1) : finish())}
         >
-          {stage < 3 ? "Continue" : "Activate protected workspace"}{" "}
+          {stage < 3 ? copy.continue : copy.activate}{" "}
           <ArrowRight size={17} />
         </button>
         {stage > 1 && (
@@ -2887,7 +3015,7 @@ function Onboarding({ user, onDone }) {
             className="onboarding-back"
             onClick={() => setStage(stage - 1)}
           >
-            Back
+            {copy.back}
           </button>
         )}
       </div>
@@ -4978,6 +5106,12 @@ function OperatorConsole() {
   );
 }
 
+const APP_COPY = {
+  en: { emailVerified:"Email verified successfully.", verificationFailed:"Verification failed.", ageVerified:"Your 18+ age check was verified successfully.", ageProcessing:"Your age check is still processing. Please try again shortly.", ageIncomplete:"Age verification was not completed.", ageCancelled:"Age verification was cancelled. No result was stored.", subscriptionConfirmed:"Subscription confirmed: {plan}.", checkoutCancelled:"Checkout cancelled. No payment was taken.", opening:"Opening your protected workspace…" },
+  es: { emailVerified:"El correo electrónico se verificó correctamente.", verificationFailed:"La verificación falló.", ageVerified:"Tu comprobación de edad 18+ se verificó correctamente.", ageProcessing:"Tu comprobación de edad aún se está procesando. Inténtalo de nuevo en unos momentos.", ageIncomplete:"La verificación de edad no se completó.", ageCancelled:"La verificación de edad se canceló. No se guardó ningún resultado.", subscriptionConfirmed:"Suscripción confirmada: {plan}.", checkoutCancelled:"Pago cancelado. No se realizó ningún cargo.", opening:"Abriendo tu espacio de trabajo protegido…" },
+  ro: { emailVerified:"Adresa de email a fost verificată cu succes.", verificationFailed:"Verificarea a eșuat.", ageVerified:"Verificarea ta de vârstă 18+ a fost confirmată cu succes.", ageProcessing:"Verificarea de vârstă este încă în procesare. Încearcă din nou în scurt timp.", ageIncomplete:"Verificarea vârstei nu a fost finalizată.", ageCancelled:"Verificarea vârstei a fost anulată. Nu a fost stocat niciun rezultat.", subscriptionConfirmed:"Abonament confirmat: {plan}.", checkoutCancelled:"Plata a fost anulată. Nu a fost efectuată nicio plată.", opening:"Se deschide spațiul tău de lucru protejat…" },
+};
+
 function App() {
   const operatorPath = location.pathname === "/operator";
   const query = new URLSearchParams(location.search);
@@ -4989,6 +5123,7 @@ function App() {
   const [language, setLanguage] = useState(
     () => localStorage.getItem("content-protect-language") || "en",
   );
+  const appCopy = APP_COPY[language] || APP_COPY.en;
   useEffect(() => {
     localStorage.setItem("content-protect-language", language);
     document.documentElement.lang = language;
@@ -5007,8 +5142,8 @@ function App() {
           history.replaceState({}, "", location.pathname);
           alert(
             verification.ok
-              ? "Email verified successfully."
-              : result.error || "Verification failed.",
+              ? appCopy.emailVerified
+              : result.error || appCopy.verificationFailed,
           );
         }
         const me = await fetch("/api/me");
@@ -5033,15 +5168,15 @@ function App() {
             if (r.ok) {
               if (d.verified) {
                 u = d.user;
-                alert("Your 18+ age check was verified successfully.");
+                alert(appCopy.ageVerified);
               } else
                 alert(
-                  "Your age check is still processing. Please try again shortly.",
+                  appCopy.ageProcessing,
                 );
-            } else alert(d.error || "Age verification was not completed.");
+            } else alert(d.error || appCopy.ageIncomplete);
           } else if (q.get("age_check") === "cancelled") {
             history.replaceState({}, "", location.pathname);
-            alert("Age verification was cancelled. No result was stored.");
+            alert(appCopy.ageCancelled);
           } else if (q.get("checkout") === "success" && sessionId) {
             const r = await fetch(
                 `/api/billing/session?session_id=${encodeURIComponent(sessionId)}`,
@@ -5050,11 +5185,11 @@ function App() {
             if (r.ok) {
               u = d.user;
               history.replaceState({}, "", location.pathname);
-              alert(`Subscription confirmed: ${d.subscription.plan}.`);
+              alert(appCopy.subscriptionConfirmed.replace("{plan}", d.subscription.plan));
             }
           } else if (q.get("checkout") === "cancelled") {
             history.replaceState({}, "", location.pathname);
-            alert("Checkout cancelled. No payment was taken.");
+            alert(appCopy.checkoutCancelled);
           }
           setUser(u);
           setView("dashboard");
@@ -5079,7 +5214,7 @@ function App() {
     return (
       <div className="boot-screen">
         <Logo />
-        <span>Opening your protected workspace…</span>
+        <span>{appCopy.opening}</span>
       </div>
     );
   return (
@@ -5088,6 +5223,8 @@ function App() {
         <Dashboard
           user={user}
           onUserUpdate={setUser}
+          language={language}
+          setLanguage={setLanguage}
           onLogout={() => {
             setUser(null);
             setView("landing");
@@ -5105,6 +5242,7 @@ function App() {
         <ForgotPassword
           onBack={() => setAuth("login")}
           onClose={() => setAuth(null)}
+          language={language}
         />
       )}{" "}
       {auth === "reset" && (
@@ -5112,6 +5250,7 @@ function App() {
           token={resetToken}
           onDone={() => setAuth("login")}
           onClose={closeReset}
+          language={language}
         />
       )}{" "}
       {(auth === "login" || auth === "register") && (
@@ -5120,10 +5259,11 @@ function App() {
           setMode={setAuth}
           onSuccess={success}
           onClose={() => setAuth(null)}
+          language={language}
         />
       )}{" "}
       {user && !user.onboardingComplete && (
-        <Onboarding user={user} onDone={setUser} />
+        <Onboarding user={user} onDone={setUser} language={language} />
       )}
     </>
   );

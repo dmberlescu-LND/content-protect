@@ -1,10 +1,10 @@
 # Content Protect pilot readiness runbook
 
-Status: preparation only — 8 September 2026. Do not invite or charge a creator until every applicable gate below has a named owner and recorded evidence.
+Status: preparation only — 16 November 2026. Do not invite or charge a creator until every applicable gate below has a named owner and recorded evidence.
 
 ## Purpose
 
-The first pilot is to validate a limited, human-reviewed still-image discovery and evidence workflow. It is not a promise of complete internet coverage, automatic removal, video search, legal representation, or a platform/Google relationship.
+Phase A is a one-creator, invitation-only validation of the private-vault, rights-declaration, evidence and human-review workflow. It is not a promise of complete internet coverage, automatic removal, video search, legal representation, or a platform/Google relationship. Commercial still-image discovery is a separate Phase B decision after the provider, legal and transfer gates are evidenced.
 
 ## Entry gates
 
@@ -18,11 +18,16 @@ All of the following must be true before any real creator media is processed thr
 6. At least five non-explicit, consented acceptance tests have passed against the approved source.
 7. The operator on duty has completed the match-quality and evidence-capture process.
 
-## First cohort
+### Free controlled-pilot runtime lock
 
-- Start with **five** invited creators; expand only after a weekly review.
+Set `CONTENT_PROTECT_PILOT_MODE=free` only for a genuinely free, invitation-only cohort. In this mode the application refuses all checkout creation, external provider scans and live notice delivery, even if another integration is configured later. It still permits the private vault, consent, rights declarations and reviewed case preparation. An unrecognised value also fails closed for those external actions. Return to `standard` only in a separately approved release; changing this value does not itself approve any commercial launch gate.
+
+## Phase A — first creator
+
+- Start with **one** invited creator. Do not add a second creator merely because an account was created or a local test passed.
 - Only adults who are verified, control the submitted content, and understand the pilot scope.
 - Begin with non-explicit reference images. Do not introduce video frames, facial recognition, or high-risk media during the first cohort.
+- While `CONTENT_PROTECT_PILOT_MODE=free` is active, use the cohort only to validate private intake, consent, rights declarations, evidence capture, case preparation and creator/operator review. Provider transmission, checkout and live notice delivery remain technically blocked.
 - Do not ask for or accept creator-platform passwords.
 - Do not promise removals, deindexing, response times, or source coverage beyond what the dashboard evidence supports.
 
@@ -67,4 +72,6 @@ Pause new invitations immediately if there is an uncontained security issue, a m
 
 ## Exit criteria for expansion
 
-The pilot may expand from 5 to 20 creators only after four weeks of documented operation, zero unresolved high-severity privacy/security incidents, an evidence-backed quality report, and written approval from the business owner and relevant counsel. Pricing and automatic billing remain off until Stripe live acceptance tests and cancellation/refund controls are approved.
+The pilot may expand from one to five creators only after at least two weeks of documented operation, zero unresolved high-severity privacy/security incidents, completed withdrawal/deletion and case-review rehearsals, an evidence-backed weekly report, and written approval from the business owner and relevant counsel.
+
+Expansion from five to 20 creators belongs to Phase B and additionally requires an approved commercial discovery provider, DPA/transfer evidence, a fixed provider spend cap, five non-explicit provider acceptance tests, quality measurements, and written approval from the business owner and relevant counsel. Pricing and automatic billing remain off until Stripe live acceptance tests and cancellation/refund controls are approved.
