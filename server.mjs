@@ -3259,7 +3259,11 @@ const appServer = http.createServer(async (req, res) => {
       }
     }
     if (route === "/api/verification/age/config" && req.method === "GET") {
-      if (YOTI_MODE === "sandbox") {
+      const freePilotSandbox =
+        PILOT_CONFIGURATION.mode === "free" &&
+        YOTI_SANDBOX_TEST_CONFIGURATION.configured &&
+        yotiSandboxTestAllowed(YOTI_SANDBOX_TEST_CONFIGURATION, u.email);
+      if (YOTI_MODE === "sandbox" || freePilotSandbox) {
         if (
           !YOTI_SANDBOX_TEST_CONFIGURATION.configured ||
           !yotiSandboxTestAllowed(YOTI_SANDBOX_TEST_CONFIGURATION, u.email)
