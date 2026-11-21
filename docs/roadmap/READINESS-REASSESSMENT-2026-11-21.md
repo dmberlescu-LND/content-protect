@@ -154,3 +154,24 @@ Overall current maturity is **42/100** against the expectation set by a mature c
 - Independent tester: penetration-test report and remediation decision.
 
 **Current decision:** continue internal pilot rehearsal and evidence preparation; stop at the next external approval or paid-provider gate.
+
+## Free-pilot usability improvement — known-URL review
+
+**Status:** Prepared locally / targeted tests passed / not published.
+
+The free pilot now gives a creator a useful action even while external discovery is
+blocked: from the Basic Search preview, the creator can open Help & Safety and
+submit an exact public HTTPS URL that they already found. This is a manual review
+intake, not a reverse-image search and not proof that the platform discovered the
+page. The existing safety intake remains the boundary for the URL, and the operator
+must preserve evidence and obtain creator approval before any takedown workflow.
+
+This is the recommended free-tier value proposition: secure reference storage,
+rights/consent record, and one known-URL review path. Do not label the result a
+“match” until the page is captured, reviewed and linked to the creator's reference.
+Do not send the reference image to a third party, create simulated matches, or
+promise web-wide coverage.
+
+**Exit evidence for this improvement:** the multilingual CTA renders only in the
+free pilot after an image upload; the targeted Basic Search, pilot-admission and
+free-pilot deployment guards pass; no provider or notification route is activated.

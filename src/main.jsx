@@ -360,6 +360,9 @@ const BASIC_SEARCH_COPY = {
     provider: "External discovery provider not activated",
     unlock: "Actual results require TinEye commercial activation and the approved privacy/DPA gate.",
     honesty: "No simulated matches are shown.",
+    manualTitle: "Already found a public page?",
+    manualLead: "Submit its exact HTTPS URL for a free human-reviewed safety case. We will not upload your private reference image to a provider.",
+    manualAction: "Submit a page for review",
   },
   es: {
     title: "Vista previa de búsqueda básica",
@@ -369,6 +372,9 @@ const BASIC_SEARCH_COPY = {
     provider: "Proveedor externo de descubrimiento no activado",
     unlock: "Los resultados reales requieren activar TinEye comercialmente y aprobar la privacidad/DPA.",
     honesty: "No se muestran coincidencias simuladas.",
+    manualTitle: "¿Ya encontraste una página pública?",
+    manualLead: "Envía su URL HTTPS exacta para una revisión humana gratuita. No subiremos tu referencia privada a un proveedor.",
+    manualAction: "Enviar una página a revisión",
   },
   ro: {
     title: "Previzualizare Basic Search",
@@ -378,6 +384,9 @@ const BASIC_SEARCH_COPY = {
     provider: "Furnizorul extern de discovery nu este activat",
     unlock: "Rezultatele reale necesită activarea comercială TinEye și aprobarea de confidențialitate/DPA.",
     honesty: "Nu afișăm potriviri simulate.",
+    manualTitle: "Ai găsit deja o pagină publică?",
+    manualLead: "Trimite URL-ul HTTPS exact pentru o verificare umană gratuită. Nu încărcăm referința ta privată la un furnizor.",
+    manualAction: "Trimite pagina pentru verificare",
   },
 };
 
@@ -2013,6 +2022,16 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   </div>
                   <p className="basic-search-unlock">{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).unlock}</p>
                   <small>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).honesty}</small>
+                  <div className="basic-search-manual">
+                    <div>
+                      <b>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualTitle}</b>
+                      <p>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualLead}</p>
+                    </div>
+                    <button className="btn btn-outline" onClick={() => setTab("Help & safety")}>
+                      {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualAction}
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
                 </div>
               )}
             </>

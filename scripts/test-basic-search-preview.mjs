@@ -21,6 +21,8 @@ for (const required of [
   "No simulated matches are shown.",
   "External discovery provider not activated",
   "Actual results require TinEye commercial activation",
+  "Submit a page for review",
+  "Trimite pagina pentru verificare",
   'data.pilotMode === "free" && imageAssetCount > 0',
 ]) {
   assert.match(source, new RegExp(required.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")));
