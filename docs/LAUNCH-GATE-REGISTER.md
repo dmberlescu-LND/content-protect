@@ -1,6 +1,6 @@
 # Content Protect UK launch-gate register
 
-Status: working operational register — 20 July 2026. This register is not legal advice and does not itself approve a gate. A control is complete only when the stated evidence exists, has been reviewed and is included in the signed launch-governance manifest.
+Status: working operational register — 21 November 2026. This register is not legal advice and does not itself approve a gate. A control is complete only when the stated evidence exists, has been reviewed and is included in the signed launch-governance manifest.
 
 For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXTERNAL-APPROVAL-PACK.md`](EXTERNAL-APPROVAL-PACK.md).
 
@@ -8,12 +8,13 @@ For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXT
 
 | Control                     | Current status        | Evidence                                                                                                                                                         |
 | --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production release          | deployed, pre-launch  | Live release `9f9800da5697` was checked on 21 November 2026 and is healthy with PostgreSQL, private storage, external key management and a valid audit chain.    |
+| Production release          | deployed, pre-launch  | Live release `e093bc72b155` was checked on 21 November 2026 and is healthy with PostgreSQL, private storage, external key management and a valid audit chain.    |
 | Dependency security         | completed             | Production dependency audit returned no known moderate/high/critical vulnerabilities after the Yoti transitive dependency overrides; 37 automated checks passed. |
 | Backup and isolated restore | completed and current | Authenticated restore evidence is bound to `022_subscription_consent_binding.sql`.                                                                               |
-| External monitoring         | configured and current for live release | The live readiness endpoint reports monitoring evidence for release `9f9800da5697`; the Render monitor-heartbeat redundancy is deployed and the operational gate is true. |
+| External monitoring         | evidence stale for current release | The live readiness endpoint reports the last monitoring evidence for release `9f9800da5697`, while the live release is `e093bc72b155`; the monitoring gate therefore remains false until a current heartbeat is recorded. |
 | Retention execution         | deliberately disabled | A schema-bound preview completed without deleting data; executing lifecycle automation is not approved.                                                          |
 | Launch governance           | blocked               | No signed approval manifest exists.                                                                                                                              |
+| Luxandra sequential trial  | prepared, disabled    | Three 30-day evaluation phases are implemented behind a fail-closed invitation feature flag; no Stripe subscription or provider scan is created.                   |
 
 ## Commercial launch gates
 

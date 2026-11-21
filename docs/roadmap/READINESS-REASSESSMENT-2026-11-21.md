@@ -13,14 +13,15 @@ Overall current maturity is **42/100** against the expectation set by a mature c
 
 | Evidence | Result | State |
 | --- | --- | --- |
-| Render service `srv-d9drt2taeets739tqhmg` | `/api/health/ready` returned `ok: true`, release `9f9800da5697`, with PostgreSQL, private storage and audit integrity healthy | Verified |
+| Render service `srv-d9drt2taeets739tqhmg` | `/api/health/ready` returned `ok: true`, release `e093bc72b155`, with PostgreSQL, private storage and audit integrity healthy | Verified |
 | Live website | Free controlled-pilot dashboard, multilingual Basic Search Preview and known-URL human-review CTA visible at `content-protect.com` | Verified |
 | GitHub PR #19 | Merged to `main`; manual known-URL review path and pilot guards included | Verified |
 | Local pilot guards | Basic Search, admission pack, free-pilot deployment and Yoti policy tests passed | Verified |
 | Full local suite | Stops at the macOS `sharp` native-binding signature error; this is an environment issue, not a passing result | Blocked locally |
+| Trial entitlement policy | Sequential 30-day Monitor/Protect/Pro schedule, invitation binding and no-billing/provider-scan guard passed locally | Verified |
 | Paid discovery | TinEye commercial route is not activated; no image is transmitted to a provider | Intentionally blocked |
 | Takedown delivery | Live delivery remains disabled; creator approval and legal route are required | Intentionally blocked |
-| Launch readiness | `productionReady` must remain false until the signed governance gates are evidenced | Blocked |
+| Launch readiness | `productionReady` remains false; the current health response reports monitoring false because the last heartbeat evidence is bound to the prior release | Blocked |
 
 ## Comparative scorecard
 
