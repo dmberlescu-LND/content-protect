@@ -23,6 +23,8 @@ for (const required of [
   "Actual results require TinEye commercial activation",
   "Submit a page for review",
   "Trimite pagina pentru verificare",
+  "reportedUrlHelp",
+  "Pagină publică pentru verificare",
   'data.pilotMode === "free" && imageAssetCount > 0',
 ]) {
   assert.match(source, new RegExp(required.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")));
