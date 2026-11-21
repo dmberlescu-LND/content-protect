@@ -13,7 +13,7 @@ Overall current maturity is **42/100** against the expectation set by a mature c
 
 | Evidence | Result | State |
 | --- | --- | --- |
-| Render service `srv-d9drt2taeets739tqhmg` | `/api/health/ready` returned `ok: true`, release `fb8bc73a2014`, with PostgreSQL, private storage, audit integrity and backup/restore healthy; monitoring evidence is still bound to the previous release and is pending the next heartbeat | Verified / monitoring pending |
+| Render service `srv-d9drt2taeets739tqhmg` | `/api/health/ready` returned `ok: true`, release `4166a4956834`, with PostgreSQL, private storage, audit integrity and backup/restore healthy; monitoring heartbeat for this release succeeded at `2026-11-21T23:38:05.062Z` | Verified |
 | Live website | Free controlled-pilot dashboard, multilingual Basic Search Preview and known-URL human-review CTA visible at `content-protect.com` | Verified |
 | GitHub PR #19 | Merged to `main`; manual known-URL review path and pilot guards included | Verified |
 | Local pilot guards | Basic Search, admission pack, free-pilot deployment and Yoti policy tests passed | Verified |
@@ -21,7 +21,7 @@ Overall current maturity is **42/100** against the expectation set by a mature c
 | Trial entitlement policy | Sequential 30-day Monitor/Protect/Pro schedule, invitation binding and no-billing/provider-scan guard passed locally | Verified |
 | Paid discovery | TinEye commercial route is not activated; no image is transmitted to a provider | Intentionally blocked |
 | Takedown delivery | Live delivery remains disabled; creator approval and legal route are required | Intentionally blocked |
-| Launch readiness | `productionReady` remains false; backup/restore is true and monitoring is pending release-bound heartbeat evidence, while commercial, legal, retention, audit-export and governance gates remain intentionally closed | Blocked |
+| Launch readiness | `productionReady` remains false; backup/restore and release-bound monitoring are true, while commercial, legal, retention, audit-export and governance gates remain intentionally closed | Blocked |
 
 ## Comparative scorecard
 
