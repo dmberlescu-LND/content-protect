@@ -340,14 +340,35 @@ const PILOT_COPY = {
   en: {
     title: "Free controlled pilot",
     lead: "No payment, external scan or live notice can be sent from this workspace while pilot safeguards are active.",
+    trialTitle: "Creator trial access",
+    trialLead: "Each plan is available for 30 days in sequence. This preview never creates a Stripe subscription or activates an external provider.",
+    trialBlocked: "Trial access is waiting for the required account and rights checks.",
+    trialActive: "Active plan",
+    trialScheduled: "Scheduled",
+    trialEnded: "Ended",
+    trialNoCharge: "No charge · no automatic renewal",
   },
   es: {
     title: "Piloto gratuito controlado",
     lead: "No se puede enviar ningún pago, escaneo externo ni aviso en vivo desde este espacio mientras estén activos los controles del piloto.",
+    trialTitle: "Acceso de prueba del creador",
+    trialLead: "Cada plan está disponible durante 30 días en secuencia. Esta vista previa nunca crea una suscripción Stripe ni activa un proveedor externo.",
+    trialBlocked: "El acceso de prueba espera las comprobaciones de cuenta y derechos necesarias.",
+    trialActive: "Plan activo",
+    trialScheduled: "Programado",
+    trialEnded: "Finalizado",
+    trialNoCharge: "Sin cargo · sin renovación automática",
   },
   ro: {
     title: "Pilot gratuit controlat",
     lead: "Nu se poate trimite nicio plată, scanare externă sau notificare live din acest spațiu cât timp protecțiile pilotului sunt active.",
+    trialTitle: "Acces de test pentru creator",
+    trialLead: "Fiecare plan este disponibil 30 de zile, pe rând. Această previzualizare nu creează niciodată un abonament Stripe și nu activează un furnizor extern.",
+    trialBlocked: "Accesul de test așteaptă verificările necesare ale contului și drepturilor.",
+    trialActive: "Plan activ",
+    trialScheduled: "Programat",
+    trialEnded: "Încheiat",
+    trialNoCharge: "Fără plată · fără reînnoire automată",
   },
 };
 
@@ -1482,6 +1503,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
       pageCaptureConsent && confirmTargetPage && confirmUnaltered;
   const canUploadContent =
     data.entitlements.canUpload || data.pilotMode === "free";
+  const trialEvaluation = data.trialEvaluation;
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -1891,6 +1913,37 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                 <b>{pilotCopy.title}</b>
                 <span>{pilotCopy.lead}</span>
               </div>
+            </div>
+          )}
+          {trialEvaluation && (
+            <div className="trial-panel" data-trial-status={trialEvaluation.status}>
+              <div className="trial-panel-head">
+                <div>
+                  <span className="trial-eyebrow">CONTROLLED PREVIEW</span>
+                  <h2>{pilotCopy.trialTitle}</h2>
+                  <p>
+                    {trialEvaluation.status === "blocked"
+                      ? pilotCopy.trialBlocked
+                      : pilotCopy.trialLead}
+                  </p>
+                </div>
+                <ShieldCheck size={21} />
+              </div>
+              <div className="trial-phases">
+                {(trialEvaluation.phases || []).map((phase) => (
+                  <div className={`trial-phase ${phase.status}`} key={phase.plan}>
+                    <b>{phase.plan}</b>
+                    <span>
+                      {phase.status === "active"
+                        ? `${pilotCopy.trialActive} · 30 days`
+                        : phase.status === "scheduled"
+                          ? pilotCopy.trialScheduled
+                          : pilotCopy.trialEnded}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <small>{pilotCopy.trialNoCharge}</small>
             </div>
           )}
           <div className="dash-title">
