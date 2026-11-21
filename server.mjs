@@ -3588,8 +3588,24 @@ const appServer = http.createServer(async (req, res) => {
         scans = d.scans.filter((x) => x.userId === u.id),
         subscription = activeSubscription(d, u.id),
         planPolicy = planEntitlements(subscription?.plan),
+        trialEvaluation = trialAccessForUser(u, {
+          environment: process.env,
+          now: new Date(),
+          rightsDeclared: assets.some((asset) => Boolean(asset.rights)),
+        }),
+        trialEntitlement =
+          trialEvaluation?.status === "eligible"
+            ? trialEvaluation.entitlement
+            : null,
         planAssetAllowance = subscription
           ? assetAllowance(subscription.plan, assets.length)
+          : trialEntitlement
+            ? {
+                limit: trialEntitlement.assetLimit,
+                used: assets.length,
+                remaining: Math.max(0, trialEntitlement.assetLimit - assets.length),
+                canAdd: assets.length < trialEntitlement.assetLimit,
+              }
           : PILOT_CONFIGURATION.mode === "free"
             ? {
                 limit: FREE_PILOT_ASSET_LIMIT,
@@ -3622,18 +3638,16 @@ const appServer = http.createServer(async (req, res) => {
         assets,
         cases: creatorCases,
         scans,
-        trialEvaluation: trialAccessForUser(u, {
-          environment: process.env,
-          now: new Date(),
-          rightsDeclared: assets.some((asset) => Boolean(asset.rights)),
-        }),
+        trialEvaluation,
         subscription:
           subscription || d.subscriptions.find((x) => x.userId === u.id),
         entitlements: {
           plan: subscription?.plan || "Unsubscribed",
+          trialPlan: trialEvaluation?.activePlan || null,
           canScan: Boolean(subscription),
           canUpload:
             Boolean(subscription) ||
+            Boolean(trialEntitlement?.assetLimit && planAssetAllowance.canAdd) ||
             (PILOT_CONFIGURATION.mode === "free" &&
               planAssetAllowance.canAdd),
           canCreateCases: Boolean(planPolicy?.canCreateCases),
