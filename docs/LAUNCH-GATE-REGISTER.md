@@ -8,10 +8,10 @@ For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXT
 
 | Control                     | Current status        | Evidence                                                                                                                                                         |
 | --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production release          | deployed, pre-launch  | Live release `d5da9c225b61` was checked on 21 November 2026 and is healthy with PostgreSQL, private storage, external key management and a valid audit chain.    |
+| Production release          | deployed, pre-launch  | Live release `fb8bc73a2014` was checked on 21 November 2026 and is healthy with PostgreSQL, private storage, external key management, a valid audit chain and backup/restore evidence.    |
 | Dependency security         | completed             | Production dependency audit returned no known moderate/high/critical vulnerabilities after the Yoti transitive dependency overrides; 37 automated checks passed. |
 | Backup and isolated restore | completed and current | Authenticated restore evidence is bound to `022_subscription_consent_binding.sql`.                                                                               |
-| External monitoring         | completed for current release | The live readiness endpoint reports a successful GitHub Actions heartbeat for release `d5da9c225b61` at `2026-11-21T23:24:23.258Z`; the monitoring gate is true. |
+| External monitoring         | pending for current release | The latest deploy is `fb8bc73a2014`; the readiness endpoint still reports the previous release-bound heartbeat, so the monitoring gate remains false until the next successful heartbeat. |
 | Retention execution         | deliberately disabled | A schema-bound preview completed without deleting data; executing lifecycle automation is not approved.                                                          |
 | Launch governance           | blocked               | No signed approval manifest exists.                                                                                                                              |
 | Luxandra sequential trial  | prepared, disabled    | Three 30-day evaluation phases are implemented behind a fail-closed invitation feature flag; no Stripe subscription or provider scan is created.                   |
