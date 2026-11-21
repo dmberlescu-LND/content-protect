@@ -1441,6 +1441,8 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
       rightsForm.confirmRightsAccurate,
     pageCaptureReady =
       pageCaptureConsent && confirmTargetPage && confirmUnaltered;
+  const canUploadContent =
+    data.entitlements.canUpload || data.pilotMode === "free";
   const filtered = useMemo(
     () =>
       filter === "All matches"
@@ -1869,11 +1871,11 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
             <button
               className="btn btn-primary"
               disabled={
-                data.entitlements.canUpload &&
+                canUploadContent &&
                 data.entitlements.assetSlotsRemaining === 0
               }
               onClick={() => {
-                if (!data.entitlements.canUpload) {
+                if (!canUploadContent) {
                   setTab("Billing");
                   return;
                 }
@@ -1881,7 +1883,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
               }}
             >
               <Plus size={18} />
-              {data.entitlements.canUpload
+              {canUploadContent
                 ? data.entitlements.assetSlotsRemaining
                   ? copy.addContent
                   : copy.limitReached
