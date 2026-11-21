@@ -8,10 +8,10 @@ For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXT
 
 | Control                     | Current status        | Evidence                                                                                                                                                         |
 | --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production release          | deployed, pre-launch  | Live release `527f264f110e` was checked on 12 November 2026 and is healthy with PostgreSQL, private storage, external key management and a valid audit chain.    |
+| Production release          | deployed, pre-launch  | Live release `9f9800da5697` was checked on 21 November 2026 and is healthy with PostgreSQL, private storage, external key management and a valid audit chain.    |
 | Dependency security         | completed             | Production dependency audit returned no known moderate/high/critical vulnerabilities after the Yoti transitive dependency overrides; 37 automated checks passed. |
 | Backup and isolated restore | completed and current | Authenticated restore evidence is bound to `022_subscription_consent_binding.sql`.                                                                               |
-| External monitoring         | implemented; evidence currently stale | GitHub Actions last recorded a successful heartbeat for live release `527f264f110e` at 18:47 UTC on 12 November 2026, but it was older than the 15-minute readiness threshold when rechecked. The committed Render monitor-heartbeat redundancy is awaiting deploy and live verification. |
+| External monitoring         | configured and current for live release | The live readiness endpoint reports monitoring evidence for release `9f9800da5697`; the Render monitor-heartbeat redundancy is deployed and the operational gate is true. |
 | Retention execution         | deliberately disabled | A schema-bound preview completed without deleting data; executing lifecycle automation is not approved.                                                          |
 | Launch governance           | blocked               | No signed approval manifest exists.                                                                                                                              |
 

@@ -13,7 +13,7 @@ Overall current maturity is **42/100** against the expectation set by a mature c
 
 | Evidence | Result | State |
 | --- | --- | --- |
-| Render service `srv-d9drt2taeets739tqhmg` | `/api/health/ready` returned `ok: true`, release `3c9796a0e755`, with PostgreSQL, private storage and audit integrity healthy | Verified |
+| Render service `srv-d9drt2taeets739tqhmg` | `/api/health/ready` returned `ok: true`, release `9f9800da5697`, with PostgreSQL, private storage and audit integrity healthy | Verified |
 | Live website | Free controlled-pilot dashboard, multilingual Basic Search Preview and known-URL human-review CTA visible at `content-protect.com` | Verified |
 | GitHub PR #19 | Merged to `main`; manual known-URL review path and pilot guards included | Verified |
 | Local pilot guards | Basic Search, admission pack, free-pilot deployment and Yoti policy tests passed | Verified |
