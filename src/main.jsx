@@ -411,6 +411,124 @@ const BASIC_SEARCH_COPY = {
   },
 };
 
+const FREE_REVIEW_COPY = {
+  en: {
+    title: "One free page review",
+    lead: "Already found a page using your content? Submit the exact public URL and we will create a tracked human-review case. This does not send a takedown notice.",
+    url: "Public HTTPS page URL",
+    placeholder: "https://example.com/page",
+    accuracy: "I confirm this is the exact public page and my description is accurate.",
+    safe: "I have not included passwords, identity documents or private media.",
+    privacy: "I understand this is a human review request, not an automatic removal.",
+    submit: "Submit for human review",
+    submitting: "Submitting…",
+    success: "Review request created",
+    reference: "Reference",
+    error: "The review request could not be created.",
+  },
+  es: {
+    title: "Una revisión gratuita de página",
+    lead: "¿Ya encontraste una página que usa tu contenido? Envía la URL pública exacta y crearemos un caso de revisión humana. No se enviará ningún aviso de retirada.",
+    url: "URL pública HTTPS",
+    placeholder: "https://ejemplo.com/pagina",
+    accuracy: "Confirmo que esta es la página pública exacta y que mi descripción es correcta.",
+    safe: "No he incluido contraseñas, documentos de identidad ni contenido privado.",
+    privacy: "Entiendo que es una solicitud de revisión humana, no una retirada automática.",
+    submit: "Enviar para revisión humana",
+    submitting: "Enviando…",
+    success: "Solicitud de revisión creada",
+    reference: "Referencia",
+    error: "No se pudo crear la solicitud de revisión.",
+  },
+  ro: {
+    title: "O verificare gratuită a unei pagini",
+    lead: "Ai găsit deja o pagină care îți folosește conținutul? Trimite URL-ul public exact și vom crea un caz urmărit pentru verificare umană. Nu se trimite nicio notificare de eliminare.",
+    url: "URL public HTTPS",
+    placeholder: "https://exemplu.com/pagina",
+    accuracy: "Confirm că aceasta este pagina publică exactă și că descrierea mea este corectă.",
+    safe: "Nu am inclus parole, documente de identitate sau conținut privat.",
+    privacy: "Înțeleg că este o solicitare de verificare umană, nu o eliminare automată.",
+    submit: "Trimite pentru verificare umană",
+    submitting: "Se trimite…",
+    success: "Solicitarea de verificare a fost creată",
+    reference: "Referință",
+    error: "Solicitarea de verificare nu a putut fi creată.",
+  },
+};
+
+function FreeKnownUrlReview({ language }) {
+  const copy = { ...FREE_REVIEW_COPY.en, ...(FREE_REVIEW_COPY[language] || {}) };
+  const [url, setUrl] = useState("");
+  const [confirmations, setConfirmations] = useState({
+    accuracy: false,
+    safe: false,
+    privacy: false,
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [reference, setReference] = useState("");
+  const submit = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/support/cases", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            category: "safety",
+            subject: "Review suspected unauthorised content page",
+            statement: `Please review this public page for possible unauthorised use of my content: ${url}`,
+            desiredResolution: "Preserve the page evidence and advise whether a takedown case can be prepared.",
+            reportedUrl: url,
+            confirmAccuracy: confirmations.accuracy,
+            confirmNoSecretsOrMedia: confirmations.safe,
+            privacyAccepted: confirmations.privacy,
+          }),
+        }),
+        result = await response.json();
+      if (!response.ok) throw new Error(result.error || copy.error);
+      setReference(result.case?.reference || "");
+      setUrl("");
+      setConfirmations({ accuracy: false, safe: false, privacy: false });
+    } catch (nextError) {
+      setError(nextError.message || copy.error);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="free-known-url-review" onSubmit={submit}>
+      <div>
+        <b>{copy.title}</b>
+        <p>{copy.lead}</p>
+      </div>
+      <label>
+        {copy.url}
+        <input
+          type="url"
+          required
+          maxLength="2000"
+          placeholder={copy.placeholder}
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+        />
+      </label>
+      <div className="free-review-confirmations">
+        <label><input type="checkbox" checked={confirmations.accuracy} onChange={(event) => setConfirmations({ ...confirmations, accuracy: event.target.checked })} />{copy.accuracy}</label>
+        <label><input type="checkbox" checked={confirmations.safe} onChange={(event) => setConfirmations({ ...confirmations, safe: event.target.checked })} />{copy.safe}</label>
+        <label><input type="checkbox" checked={confirmations.privacy} onChange={(event) => setConfirmations({ ...confirmations, privacy: event.target.checked })} />{copy.privacy}</label>
+      </div>
+      {error && <div className="free-review-error">{error}</div>}
+      {reference && <div className="free-review-success"><b>{copy.success}</b><span>{copy.reference}: {reference}</span></div>}
+      <button className="btn btn-outline" type="submit" disabled={busy || !confirmations.accuracy || !confirmations.safe || !confirmations.privacy}>
+        {busy ? copy.submitting : copy.submit}
+        <ArrowRight size={15} />
+      </button>
+    </form>
+  );
+}
+
 const DASHBOARD_DETAIL = {
   en: { vaultTitle:"Private reference vault", vaultOwned:"Encrypted files owned by this account", vaultUsed:"used", vaultChoose:"choose a plan to add files", encrypted:"Encrypted", rightsReviewed:"Rights reviewed", rightsDeclared:"Rights declared", rightsMissing:"Rights declaration missing", replaceRights:"Replace rights declaration", addRights:"Add rights declaration", downloadOriginal:"Download original", deletePermanently:"Delete permanently", vaultEmpty:"No reference content yet. Choose “Add content” to test the secure vault.", casesTitle:"Takedown cases", casesLead:"Every action requires creator approval", caseOpened:"Case opened", disputeOpen:"Dispute received · follow-ups frozen for human review", reviewApprove:"Review & approve", casesEmpty:"No cases yet. Open Matches and select a result to preserve evidence.", recentMatches:"Recent matches", matchesLead:"Potential unauthorized uses detected by visual similarity", filters:["All matches","Action needed","Monitoring","Case review","Your approval","Delivery pending","Reported","Removed"], columns:["FOUND CONTENT","SOURCE","MATCH SCORE","STATUS"], matchesEmpty:"No verified public matches yet. Add a reference image and run a live scan after provider activation.", publicPage:"Public page", captureRequired:"Page capture required for a case", capturePreserved:"Capture preserved", billingLiveTitle:"Secure Stripe billing is active", billingTestTitle:"Stripe test billing is active", billingPendingTitle:"Billing activation is pending", billingLiveLead:"Subscriptions and payment details are handled by Stripe.", billingTestLead:"Only Stripe test cards are accepted; no live charge is made.", billingPendingLead:"Checkout is disabled until Stripe products, prices and webhook verification are configured.", recommended:"RECOMMENDED", creatorPlan:"CREATOR PLAN", monthly:"/mo", choosePlan:"Choose plan", testCheckout:"Test checkout", unavailable:"Unavailable", planDescriptions:["files · scan every 30 days","files · daily scan + cases","files · daily scan + priority"] },
   es: { vaultTitle:"Bóveda privada de referencias", vaultOwned:"Archivos cifrados de esta cuenta", vaultUsed:"usados", vaultChoose:"elige un plan para añadir archivos", encrypted:"Cifrado", rightsReviewed:"Derechos revisados", rightsDeclared:"Derechos declarados", rightsMissing:"Falta la declaración de derechos", replaceRights:"Sustituir declaración de derechos", addRights:"Añadir declaración de derechos", downloadOriginal:"Descargar original", deletePermanently:"Eliminar permanentemente", vaultEmpty:"Aún no hay contenido de referencia. Elige «Añadir contenido» para probar la bóveda segura.", casesTitle:"Casos de retirada", casesLead:"Cada acción requiere aprobación del creador", caseOpened:"Caso abierto", disputeOpen:"Disputa recibida · seguimiento congelado para revisión humana", reviewApprove:"Revisar y aprobar", casesEmpty:"Aún no hay casos. Abre Coincidencias y selecciona un resultado para conservar pruebas.", recentMatches:"Coincidencias recientes", matchesLead:"Posibles usos no autorizados detectados por similitud visual", filters:["Todas las coincidencias","Acción necesaria","Supervisión","Revisión del caso","Tu aprobación","Entrega pendiente","Reportado","Eliminado"], columns:["CONTENIDO ENCONTRADO","FUENTE","PUNTUACIÓN","ESTADO"], matchesEmpty:"Aún no hay coincidencias públicas verificadas. Añade una imagen de referencia y ejecuta un escaneo tras activar el proveedor.", publicPage:"Página pública", captureRequired:"Se requiere captura de página para un caso", capturePreserved:"Captura conservada", billingLiveTitle:"La facturación segura de Stripe está activa", billingTestTitle:"La facturación de prueba de Stripe está activa", billingPendingTitle:"La activación de facturación está pendiente", billingLiveLead:"Stripe gestiona las suscripciones y los datos de pago.", billingTestLead:"Solo se aceptan tarjetas de prueba de Stripe; no se realiza ningún cargo real.", billingPendingLead:"El pago está desactivado hasta que se configuren productos, precios y verificación de webhooks de Stripe.", recommended:"RECOMENDADO", creatorPlan:"PLAN PARA CREADORES", monthly:"/mes", choosePlan:"Elegir plan", testCheckout:"Probar pago", unavailable:"No disponible", planDescriptions:["archivos · escaneo cada 30 días","archivos · escaneo diario + casos","archivos · escaneo diario + prioridad"] },
@@ -2080,16 +2198,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   </div>
                   <p className="basic-search-unlock">{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).unlock}</p>
                   <small>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).honesty}</small>
-                  <div className="basic-search-manual">
-                    <div>
-                      <b>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualTitle}</b>
-                      <p>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualLead}</p>
-                    </div>
-                    <button className="btn btn-outline" onClick={() => setTab("Help & safety")}>
-                      {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).manualAction}
-                      <ArrowRight size={15} />
-                    </button>
-                  </div>
+                  <FreeKnownUrlReview language={language} />
                 </div>
               )}
             </>
