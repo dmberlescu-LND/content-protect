@@ -14,7 +14,7 @@ For the owner-by-owner request, evidence and acceptance-test sequence, use [`EXT
 | External monitoring         | completed for current release | The readiness endpoint reports a successful GitHub Actions heartbeat for release `0f820c778f3f` at `2026-11-21T23:42:07.807Z`; the monitoring gate is true. |
 | Retention execution         | deliberately disabled | A schema-bound preview completed without deleting data; executing lifecycle automation is not approved.                                                          |
 | Launch governance           | blocked               | No signed approval manifest exists.                                                                                                                              |
-| Luxandra sequential trial  | prepared, disabled    | Three 30-day evaluation phases are implemented behind a fail-closed invitation feature flag; no Stripe subscription or provider scan is created.                   |
+| Luxandra sequential trial  | guarded, invitation-only | Three 30-day evaluation phases are active only for the approved invitation-bound pilot account behind a fail-closed feature flag; no Stripe subscription or provider scan is created. |
 
 ## Commercial launch gates
 
