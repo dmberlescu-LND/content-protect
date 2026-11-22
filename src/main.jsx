@@ -4080,8 +4080,8 @@ function OperatorConsole() {
   const submitConsumerAccess = async () => {
     const item = accessRequest?.item,
       code = String(accessRequest?.code || "").replace(/\s/g, "");
-    if (!item || !/^\d{6}$/.test(code)) {
-      setError("A current six-digit authenticator code is required.");
+    if (!item) {
+      setError("Select a customer request to open.");
       return;
     }
     const response = await fetch(
@@ -4105,18 +4105,21 @@ function OperatorConsole() {
     setConsumerDetails({ ...consumerDetails, [item.id]: result.case });
   };
   const applyConsumerAction = async (item) => {
-    const form = consumerForms[item.id] || {};
+    const form = consumerForms[item.id] || {},
+      stripeRefund = form.action === "stripe-refund";
     if (
       !form.action ||
       String(form.note || "").trim().length < 10 ||
-      !/^\d{6}$/.test(String(form.mfaCode || "").replace(/\s/g, ""))
+      (stripeRefund &&
+        !/^\d{6}$/.test(String(form.mfaCode || "").replace(/\s/g, "")))
     ) {
       setError(
-        "Choose an action, add a meaningful note and enter a new authenticator code.",
+        stripeRefund
+          ? "Choose an action, add a meaningful note and enter a new authenticator code for the Stripe action."
+          : "Choose an action and add a meaningful note.",
       );
       return;
     }
-    const stripeRefund = form.action === "stripe-refund";
     if (
       stripeRefund &&
       (form.confirmRefundExecution !== true ||
@@ -4475,12 +4478,12 @@ function OperatorConsole() {
             <p>ENCRYPTED SUPPORT WORKFLOW</p>
             <h2 id="encrypted-request-title">Open encrypted request?</h2>
             <span>
-              Open this request only when necessary for the current review. A
-              new authenticator code is required and will be recorded as an
-              access event.
+              Open this request only when necessary for the current review.
+              Login MFA is reused for this internal review; a code is needed
+              only if the session has expired.
             </span>
             <label>
-              Current Authenticator code
+              Authenticator code (only if requested)
               <input
                 type="text"
                 inputMode="numeric"
