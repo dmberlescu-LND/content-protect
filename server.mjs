@@ -1532,7 +1532,7 @@ const appServer = http.createServer(async (req, res) => {
         return send(res, 503, {
           error: "Operator access is awaiting secure configuration.",
         });
-      if (!(await allowed(req, `operator-login:${ip}`, 5, 3600000)).allowed)
+      if (!(await allowed(req, `operator-login:v2:${ip}`, 5, 3600000)).allowed)
         return send(res, 429, {
           error: "Too many operator login attempts. Try again later.",
         });
