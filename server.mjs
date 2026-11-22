@@ -96,6 +96,7 @@ import {
 import { base32Encode, validTotp } from "./totp.mjs";
 import {
   operatorAccessConfiguration,
+  operatorPasswordValid,
   operatorActorSubject,
   operatorTotpValid,
 } from "./operator-access-policy.mjs";
@@ -1545,9 +1546,12 @@ const appServer = http.createServer(async (req, res) => {
       const passwordLogin = Boolean(b.email || b.password);
       const emailPasswordValid = Boolean(
         passwordLogin &&
-          account &&
           String(b.email || "").trim().toLowerCase() === operatorEmail &&
-          passwordMatches(account, b.password),
+          operatorPasswordValid(
+            OPERATOR_CONFIGURATION,
+            b.password,
+            (value, salt) => scryptSync(value, salt, 64),
+          ),
       );
       if (
         (!emailPasswordValid && !operatorTokenValid(b.token)) ||
