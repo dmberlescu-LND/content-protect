@@ -380,7 +380,9 @@ const BASIC_SEARCH_COPY = {
     stored: "Reference encrypted",
     consent: "Rights and processing consent recorded",
     provider: "External discovery provider not activated",
+    providerBlocked: "TinEye configured · privacy/DPA gate pending",
     unlock: "Actual results require TinEye commercial activation and the approved privacy/DPA gate.",
+    unlockBlocked: "Actual results are held until the approved privacy/DPA gate is recorded. No image is transmitted while this gate is pending.",
     honesty: "No simulated matches are shown.",
     manualTitle: "Already found a public page?",
     manualLead: "Submit its exact HTTPS URL for a free human-reviewed safety case. We will not upload your private reference image to a provider.",
@@ -392,7 +394,9 @@ const BASIC_SEARCH_COPY = {
     stored: "Referencia cifrada",
     consent: "Consentimiento de derechos y procesamiento registrado",
     provider: "Proveedor externo de descubrimiento no activado",
+    providerBlocked: "TinEye configurado · privacidad/DPA pendiente",
     unlock: "Los resultados reales requieren activar TinEye comercialmente y aprobar la privacidad/DPA.",
+    unlockBlocked: "Los resultados reales quedan retenidos hasta registrar la aprobación de privacidad/DPA. No se transmite ninguna imagen mientras esté pendiente.",
     honesty: "No se muestran coincidencias simuladas.",
     manualTitle: "¿Ya encontraste una página pública?",
     manualLead: "Envía su URL HTTPS exacta para una revisión humana gratuita. No subiremos tu referencia privada a un proveedor.",
@@ -404,7 +408,9 @@ const BASIC_SEARCH_COPY = {
     stored: "Referință criptată",
     consent: "Consimțământul pentru drepturi și procesare este înregistrat",
     provider: "Furnizorul extern de discovery nu este activat",
+    providerBlocked: "TinEye este configurat · aprobarea de confidențialitate/DPA este în așteptare",
     unlock: "Rezultatele reale necesită activarea comercială TinEye și aprobarea de confidențialitate/DPA.",
+    unlockBlocked: "Rezultatele reale rămân blocate până la înregistrarea aprobării de confidențialitate/DPA. Nicio imagine nu este transmisă cât timp aprobarea lipsește.",
     honesty: "Nu afișăm potriviri simulate.",
     manualTitle: "Ai găsit deja o pagină publică?",
     manualLead: "Trimite URL-ul HTTPS exact pentru o verificare umană gratuită. Nu încărcăm referința ta privată la un furnizor.",
@@ -1692,6 +1698,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
   const statusCopy = STATUS_COPY[language] || STATUS_COPY.en;
   const actionNoticeCopy = ACTION_NOTICE_COPY[language] || ACTION_NOTICE_COPY.en;
   const verificationCopy = VERIFICATION_COPY[language] || VERIFICATION_COPY.en;
+  const basicSearchCopy = BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en;
   const localizeStatus = (status) => statusCopy[status] || status;
   const dateLocale = language === "ro" ? "ro-RO" : language === "es" ? "es-ES" : "en-GB";
   const [tab, setTab] = useState("Overview");
@@ -2210,7 +2217,7 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
           )}
           <div className="dash-title">
             <div>
-              <p>Saturday, 18 July</p>
+              <p>{new Intl.DateTimeFormat(dateLocale, { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</p>
               <h1>
                 {tab === "Overview"
                   ? `${copy.greeting}, ${user?.name?.split(" ")[0] || "Creator"}.`
@@ -2325,18 +2332,18 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   <div className="basic-search-preview-head">
                     <div>
                       <span className="basic-search-eyebrow">BASIC</span>
-                      <h2>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).title}</h2>
-                      <p>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).lead}</p>
+                      <h2>{basicSearchCopy.title}</h2>
+                      <p>{basicSearchCopy.lead}</p>
                     </div>
                     <Search size={20} />
                   </div>
                   <div className="basic-search-checks">
-                    <span><Check size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).stored}</span>
-                    <span><Check size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).consent}</span>
-                    <span className="pending"><Clock3 size={14} /> {(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).provider}</span>
+                    <span><Check size={14} /> {basicSearchCopy.stored}</span>
+                    <span><Check size={14} /> {basicSearchCopy.consent}</span>
+                    <span className="pending"><Clock3 size={14} /> {data.scannerMode === "compliance-blocked" ? basicSearchCopy.providerBlocked : basicSearchCopy.provider}</span>
                   </div>
-                  <p className="basic-search-unlock">{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).unlock}</p>
-                  <small>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).honesty}</small>
+                  <p className="basic-search-unlock">{data.scannerMode === "compliance-blocked" ? basicSearchCopy.unlockBlocked : basicSearchCopy.unlock}</p>
+                  <small>{basicSearchCopy.honesty}</small>
                   <FreeKnownUrlReview language={language} />
                 </div>
               )}
