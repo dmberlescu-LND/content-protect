@@ -425,6 +425,9 @@ const FREE_REVIEW_COPY = {
     submitting: "Submitting…",
     success: "Review request created",
     reference: "Reference",
+    tracked: "Latest tracked safety request",
+    status: "Status",
+    responseDue: "Response target",
     error: "The review request could not be created.",
   },
   es: {
@@ -439,6 +442,9 @@ const FREE_REVIEW_COPY = {
     submitting: "Enviando…",
     success: "Solicitud de revisión creada",
     reference: "Referencia",
+    tracked: "Última solicitud de seguridad seguida",
+    status: "Estado",
+    responseDue: "Objetivo de respuesta",
     error: "No se pudo crear la solicitud de revisión.",
   },
   ro: {
@@ -453,6 +459,9 @@ const FREE_REVIEW_COPY = {
     submitting: "Se trimite…",
     success: "Solicitarea de verificare a fost creată",
     reference: "Referință",
+    tracked: "Cea mai recentă solicitare de siguranță urmărită",
+    status: "Status",
+    responseDue: "Termen de răspuns",
     error: "Solicitarea de verificare nu a putut fi creată.",
   },
 };
@@ -468,6 +477,19 @@ function FreeKnownUrlReview({ language }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [reference, setReference] = useState("");
+  const [trackedCase, setTrackedCase] = useState(null);
+  useEffect(() => {
+    fetch("/api/support/cases")
+      .then((response) => response.json())
+      .then((result) => {
+        const latest = (result.cases || []).find((item) => item.category === "safety");
+        if (latest) {
+          setTrackedCase(latest);
+          setReference(latest.reference || "");
+        }
+      })
+      .catch(() => {});
+  }, []);
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
@@ -490,6 +512,7 @@ function FreeKnownUrlReview({ language }) {
         result = await response.json();
       if (!response.ok) throw new Error(result.error || copy.error);
       setReference(result.case?.reference || "");
+      setTrackedCase(result.case || null);
       setUrl("");
       setConfirmations({ accuracy: false, safe: false, privacy: false });
     } catch (nextError) {
@@ -521,7 +544,7 @@ function FreeKnownUrlReview({ language }) {
         <label><input type="checkbox" checked={confirmations.privacy} onChange={(event) => setConfirmations({ ...confirmations, privacy: event.target.checked })} />{copy.privacy}</label>
       </div>
       {error && <div className="free-review-error">{error}</div>}
-      {reference && <div className="free-review-success"><b>{copy.success}</b><span>{copy.reference}: {reference}</span></div>}
+      {trackedCase && <div className="free-review-success"><b>{reference ? copy.tracked : copy.success}</b><span>{copy.reference}: {reference}</span><span>{copy.status}: {trackedCase.status}</span>{trackedCase.responseDueAt && <span>{copy.responseDue}: {new Date(trackedCase.responseDueAt).toLocaleDateString(language === "ro" ? "ro-RO" : language === "es" ? "es-ES" : "en-GB")}</span>}</div>}
       <button className="btn btn-outline" type="submit" disabled={busy || !confirmations.accuracy || !confirmations.safe || !confirmations.privacy}>
         {busy ? copy.submitting : copy.submit}
         <ArrowRight size={15} />
