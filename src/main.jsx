@@ -4768,6 +4768,9 @@ function OperatorConsole() {
                           >
                             <option value="">Choose…</option>
                             <option value="acknowledge">Acknowledge</option>
+                            <option value="evidence-reviewed">
+                              Record evidence review
+                            </option>
                             <option value="request-information">
                               Request information
                             </option>
@@ -4796,6 +4799,42 @@ function OperatorConsole() {
                             }
                           />
                         </label>
+                        {form.action === "evidence-reviewed" && (
+                          <>
+                            <label>
+                              Page-capture reference
+                              <input
+                                value={form.pageCaptureReference || ""}
+                                onChange={(event) =>
+                                  setForm({
+                                    pageCaptureReference: event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Rights reference
+                              <input
+                                value={form.rightsReference || ""}
+                                onChange={(event) =>
+                                  setForm({ rightsReference: event.target.value })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Creator approval reference
+                              <input
+                                value={form.creatorApprovalReference || ""}
+                                onChange={(event) =>
+                                  setForm({
+                                    creatorApprovalReference:
+                                      event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                          </>
+                        )}
                         {form.action === "refund-decision" && (
                           <>
                             <label>

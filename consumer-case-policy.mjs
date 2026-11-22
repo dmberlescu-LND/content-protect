@@ -248,6 +248,23 @@ export function applyConsumerCaseAction(
       );
     caseRecord.status = "acknowledged";
     type = "acknowledged";
+  } else if (action === "evidence-reviewed") {
+    if (!OPEN_STATUSES.has(caseRecord.status))
+      throw new ConsumerCasePolicyError("The case is not open.", 409);
+    restricted.pageCaptureReference = opaqueReference(
+      input.pageCaptureReference,
+      "Page-capture reference",
+    );
+    restricted.rightsReference = opaqueReference(
+      input.rightsReference,
+      "Rights reference",
+    );
+    restricted.creatorApprovalReference = opaqueReference(
+      input.creatorApprovalReference,
+      "Creator approval reference",
+    );
+    caseRecord.status = "in-review";
+    type = "evidence-reviewed";
   } else if (action === "request-information") {
     if (!OPEN_STATUSES.has(caseRecord.status))
       throw new ConsumerCasePolicyError("The case is not open.", 409);
