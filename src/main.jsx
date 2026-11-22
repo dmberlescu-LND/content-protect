@@ -482,7 +482,9 @@ function FreeKnownUrlReview({ language }) {
     fetch("/api/support/cases")
       .then((response) => response.json())
       .then((result) => {
-        const latest = (result.cases || []).find((item) => item.category === "safety");
+        const latest = (result.cases || [])
+          .filter((item) => item.category === "safety")
+          .sort((left, right) => String(right.createdAt || right.updatedAt || "").localeCompare(String(left.createdAt || left.updatedAt || "")))[0];
         if (latest) {
           setTrackedCase(latest);
           setReference(latest.reference || "");
