@@ -203,6 +203,11 @@ const YOTI_STATUS = YOTI_CONFIGURED
     : "unconfigured";
 const YOTI_SANDBOX_TEST_CONFIGURATION = yotiSandboxTestConfiguration();
 const OPERATOR_CONFIGURATION = operatorAccessConfiguration();
+const OPERATOR_MFA_REUSE_PURPOSES = new Set([
+  "consumer-case-access",
+  "consumer-case-action",
+]);
+const OPERATOR_MFA_REUSE_WINDOW_MS = 15 * 60 * 1000;
 const RESEND_EMAIL_CONFIGURED = Boolean(
   process.env.RESEND_API_KEY?.startsWith("re_") &&
   emailFromAddress(process.env.RESET_FROM_EMAIL) &&
@@ -904,10 +909,12 @@ function monitoringTokenValid(value) {
 }
 function operatorSession(req, d) {
   const sessionHash = tokenHash(cookie(req).cp_operator || "");
-  return (d.operatorSessions || []).some(
+  const session = (d.operatorSessions || []).find(
     (item) =>
       item.tokenHash === sessionHash && new Date(item.expiresAt) > new Date(),
   );
+  if (session) req.operatorSession = session;
+  return Boolean(session);
 }
 function operatorAuthorised(req, d) {
   return OPERATOR_CONFIGURATION.configured && operatorSession(req, d);
@@ -916,6 +923,13 @@ function currentOperatorSubject() {
   return operatorActorSubject(OPERATOR_CONFIGURATION);
 }
 async function operatorStepUp(req, value, purpose) {
+  const sessionMfaAt = Date.parse(req.operatorSession?.mfaVerifiedAt || "");
+  if (
+    OPERATOR_MFA_REUSE_PURPOSES.has(purpose) &&
+    Number.isFinite(sessionMfaAt) &&
+    Date.now() - sessionMfaAt <= OPERATOR_MFA_REUSE_WINDOW_MS
+  )
+    return;
   if (!operatorTotpValid(OPERATOR_CONFIGURATION, value))
     throw new IncidentPolicyError(
       "A current authenticator code is required.",
@@ -1582,6 +1596,7 @@ const appServer = http.createServer(async (req, res) => {
       d.operatorSessions.push({
         tokenHash: tokenHash(rawToken),
         expiresAt,
+        mfaVerifiedAt: now,
         createdAt: now,
       });
       audit(
