@@ -8,6 +8,7 @@ const checks = [
   "test-free-pilot-deployment.mjs",
   "test-pilot-admission-pack.mjs",
   "test-basic-search-preview.mjs",
+  "test-free-review-status.mjs",
   "test-audit-integrity.mjs",
   "test-audit-export-policy.mjs",
   "test-backup-restore-policy.mjs",
