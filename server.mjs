@@ -1536,8 +1536,21 @@ const appServer = http.createServer(async (req, res) => {
           error: "Too many operator login attempts. Try again later.",
         });
       const b = await parse(req);
+      const operatorEmail = String(process.env.TAKEDOWN_OPERATOR_EMAIL || "")
+        .trim()
+        .toLowerCase();
+      const account = operatorEmail
+        ? d.users.find((item) => String(item.email || "").toLowerCase() === operatorEmail)
+        : null;
+      const passwordLogin = Boolean(b.email || b.password);
+      const emailPasswordValid = Boolean(
+        passwordLogin &&
+          account &&
+          String(b.email || "").trim().toLowerCase() === operatorEmail &&
+          passwordMatches(account, b.password),
+      );
       if (
-        !operatorTokenValid(b.token) ||
+        (!emailPasswordValid && !operatorTokenValid(b.token)) ||
         !operatorTotpValid(OPERATOR_CONFIGURATION, b.mfaCode)
       )
         return send(res, 401, { error: "Invalid operator credentials." });

@@ -3986,6 +3986,8 @@ function OperatorConsole() {
   const [ready, setReady] = useState(false);
   const [operatorView, setOperatorView] = useState("cases");
   const [token, setToken] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [operatorId, setOperatorId] = useState("");
   const [error, setError] = useState("");
@@ -3996,6 +3998,7 @@ function OperatorConsole() {
   const [consumerCases, setConsumerCases] = useState([]);
   const [consumerDetails, setConsumerDetails] = useState({});
   const [consumerForms, setConsumerForms] = useState({});
+  const [accessRequest, setAccessRequest] = useState(null);
   const [overview, setOverview] = useState(null);
   const [qualityMatches, setQualityMatches] = useState([]);
   const [qualityForms, setQualityForms] = useState({});
@@ -4047,10 +4050,16 @@ function OperatorConsole() {
   const login = async (event) => {
     event.preventDefault();
     setError("");
+    const hasEmailPassword = Boolean(email.trim() && password);
+    const hasToken = Boolean(token.trim());
+    if (!hasEmailPassword && !hasToken) {
+      setError("Enter the operator email and password, or open the emergency token fallback.");
+      return;
+    }
     const response = await fetch("/api/operator/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, mfaCode }),
+      body: JSON.stringify({ email, password, token, mfaCode }),
     });
     const result = await response.json();
     if (!response.ok) {
@@ -4058,21 +4067,20 @@ function OperatorConsole() {
       return;
     }
     setToken("");
+    setEmail("");
+    setPassword("");
     setMfaCode("");
     setOperatorId(result.operatorId || "operator");
     await Promise.all([loadCases(), loadConsumerCases(), loadOverview(), loadQualityMatches()]);
   };
   const accessConsumerCase = async (item) => {
-    if (
-      !confirm(
-        "Open this encrypted customer request only if necessary for the current review?",
-      )
-    )
-      return;
-    const code = prompt(
-      "Enter a current authenticator code. Use a new code for any decision.",
-    );
-    if (!/^\d{6}$/.test(String(code || "").replace(/\s/g, ""))) {
+    setError("");
+    setAccessRequest({ item, code: "" });
+  };
+  const submitConsumerAccess = async () => {
+    const item = accessRequest?.item,
+      code = String(accessRequest?.code || "").replace(/\s/g, "");
+    if (!item || !/^\d{6}$/.test(code)) {
       setError("A current six-digit authenticator code is required.");
       return;
     }
@@ -4083,7 +4091,7 @@ function OperatorConsole() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             confirmNeedToReview: true,
-            mfaCode: String(code).replace(/\s/g, ""),
+            mfaCode: code,
           }),
         },
       ),
@@ -4093,6 +4101,7 @@ function OperatorConsole() {
       return;
     }
     setError("");
+    setAccessRequest(null);
     setConsumerDetails({ ...consumerDetails, [item.id]: result.case });
   };
   const applyConsumerAction = async (item) => {
@@ -4385,6 +4394,7 @@ function OperatorConsole() {
     setConsumerCases([]);
     setConsumerDetails({});
     setConsumerForms({});
+    setAccessRequest(null);
     setOverview(null);
     setQualityMatches([]);
     setQualityForms({});
@@ -4398,10 +4408,31 @@ function OperatorConsole() {
           <p>PRIVATE OPERATIONS</p>
           <h1>Operator access</h1>
           <span>
-            Enter the dedicated takedown token and the current authenticator
-            code. They are exchanged for a one-hour secure session; the token is
-            not stored in the browser.
+            Sign in with the operator email and password, then confirm with the
+            current authenticator code. A dedicated token remains supported as
+            an emergency fallback and is never stored in the browser.
           </span>
+          <label>
+            Operator email
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              minLength={10}
+            />
+          </label>
+          <details>
+            <summary>Emergency token fallback</summary>
           <label>
             Access token
             <input
@@ -4409,10 +4440,9 @@ function OperatorConsole() {
               value={token}
               onChange={(event) => setToken(event.target.value)}
               autoComplete="off"
-              required
-              minLength={32}
             />
           </label>
+          </details>
           <label>
             Authenticator code
             <input
@@ -4434,6 +4464,57 @@ function OperatorConsole() {
     );
   return (
     <main className="operator-console">
+      {accessRequest && (
+        <div className="operator-modal-backdrop" role="presentation">
+          <section
+            className="operator-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="encrypted-request-title"
+          >
+            <p>ENCRYPTED SUPPORT WORKFLOW</p>
+            <h2 id="encrypted-request-title">Open encrypted request?</h2>
+            <span>
+              Open this request only when necessary for the current review. A
+              new authenticator code is required and will be recorded as an
+              access event.
+            </span>
+            <label>
+              Current Authenticator code
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                autoFocus
+                value={accessRequest.code}
+                onChange={(event) =>
+                  setAccessRequest({
+                    ...accessRequest,
+                    code: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <div className="operator-modal-actions">
+              <button
+                className="btn btn-outline"
+                type="button"
+                onClick={() => setAccessRequest(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={submitConsumerAccess}
+              >
+                Open request
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       <header>
         <div>
           <Logo />
