@@ -917,8 +917,11 @@ function operatorSession(req, d) {
     // Sessions created before login-MFA reuse was introduced already passed
     // the same login MFA gate. Migrate them lazily so operators do not need
     // to sign in again just to review an internal case.
-    if (!session.mfaVerifiedAt && session.createdAt) {
-      session.mfaVerifiedAt = session.createdAt;
+    if (!session.mfaVerifiedAt) {
+      // Legacy operator sessions were issued only after a valid MFA check but
+      // did not persist a timestamp. Treat their still-valid session as the
+      // completed login-MFA event and migrate it in place.
+      session.mfaVerifiedAt = session.createdAt || new Date().toISOString();
     }
     req.operatorSession = session;
   }
