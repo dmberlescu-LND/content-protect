@@ -913,7 +913,15 @@ function operatorSession(req, d) {
     (item) =>
       item.tokenHash === sessionHash && new Date(item.expiresAt) > new Date(),
   );
-  if (session) req.operatorSession = session;
+  if (session) {
+    // Sessions created before login-MFA reuse was introduced already passed
+    // the same login MFA gate. Migrate them lazily so operators do not need
+    // to sign in again just to review an internal case.
+    if (!session.mfaVerifiedAt && session.createdAt) {
+      session.mfaVerifiedAt = session.createdAt;
+    }
+    req.operatorSession = session;
+  }
   return Boolean(session);
 }
 function operatorAuthorised(req, d) {
