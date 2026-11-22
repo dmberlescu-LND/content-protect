@@ -568,6 +568,7 @@ const FREE_SURFACE_COPY = {
     save: "Save and generate checks",
     saving: "Saving…",
     ready: "Search links ready",
+    variants: "Search variants",
     google: "Search Google",
     bing: "Search Bing",
     note: "These links open public search engines in a new tab. Review results yourself and submit a specific HTTPS page above for a tracked case.",
@@ -585,6 +586,7 @@ const FREE_SURFACE_COPY = {
     save: "Guardar y generar comprobaciones",
     saving: "Guardando…",
     ready: "Enlaces de búsqueda listos",
+    variants: "Variantes de búsqueda",
     google: "Buscar en Google",
     bing: "Buscar en Bing",
     note: "Estos enlaces abren buscadores públicos en una pestaña nueva. Revisa los resultados y envía arriba una página HTTPS concreta para crear un caso.",
@@ -602,6 +604,7 @@ const FREE_SURFACE_COPY = {
     save: "Salvează și generează verificări",
     saving: "Se salvează…",
     ready: "Linkurile de căutare sunt pregătite",
+    variants: "Variante de căutare",
     google: "Caută în Google",
     bing: "Caută în Bing",
     note: "Linkurile deschid motoare de căutare publice într-o filă nouă. Verifică rezultatele și trimite mai sus o pagină HTTPS concretă pentru un caz urmărit.",
@@ -639,7 +642,10 @@ function FreeSurfaceCheck({ language, user, onUserUpdate }) {
       setBusy(false);
     }
   };
-  const searchUrl = (engine) => `${engine}?q=${encodeURIComponent(`"${query}"`)}`;
+  const queryValues = [stageName.trim(), ...aliases.split(",").map((x) => x.trim()).filter(Boolean)]
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .slice(0, 5);
+  const searchUrl = (engine, value) => `${engine}?q=${encodeURIComponent(`"${value}"`)}`;
   return (
     <form className="free-surface-check" onSubmit={save}>
       <div className="free-surface-head">
@@ -656,7 +662,7 @@ function FreeSurfaceCheck({ language, user, onUserUpdate }) {
         <label>{copy.platforms}<input maxLength="2000" placeholder={copy.placeholderPlatforms} value={platforms} onChange={(event) => setPlatforms(event.target.value)} /></label>
       </div>
       {error && <div className="free-review-error">{error}</div>}
-      {query && <div className="free-surface-results"><b>{copy.ready}</b><div><a href={searchUrl("https://www.google.com/search")} target="_blank" rel="noreferrer">{copy.google}<ArrowUpRight size={14} /></a><a href={searchUrl("https://www.bing.com/search")} target="_blank" rel="noreferrer">{copy.bing}<ArrowUpRight size={14} /></a></div><small>{copy.note}</small></div>}
+      {query && <div className="free-surface-results"><b>{copy.ready}</b><small>{copy.variants}</small><div className="free-surface-query-list">{queryValues.map((value) => <div className="free-surface-query" key={value}><span>{value}</span><span><a href={searchUrl("https://www.google.com/search", value)} target="_blank" rel="noreferrer">{copy.google}<ArrowUpRight size={14} /></a><a href={searchUrl("https://www.bing.com/search", value)} target="_blank" rel="noreferrer">{copy.bing}<ArrowUpRight size={14} /></a></span></div>)}</div><small>{copy.note}</small></div>}
       <button className="btn btn-outline" type="submit" disabled={busy}>{busy ? copy.saving : copy.save}<ArrowRight size={15} /></button>
     </form>
   );
