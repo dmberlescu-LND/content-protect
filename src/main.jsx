@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowRight,
+  ArrowUpRight,
   Bell,
   Check,
   ChevronDown,
@@ -525,6 +526,113 @@ function FreeKnownUrlReview({ language }) {
         {busy ? copy.submitting : copy.submit}
         <ArrowRight size={15} />
       </button>
+    </form>
+  );
+}
+
+const FREE_SURFACE_COPY = {
+  en: {
+    eyebrow: "FREE PROTECTION CHECK",
+    title: "Check your public identity",
+    lead: "Save the names and public profiles that a creator may use. We generate transparent search links you can open yourself; no private image is uploaded and no coverage is claimed.",
+    stage: "Primary stage name",
+    aliases: "Other public aliases",
+    platforms: "Official public profile URLs",
+    placeholderAliases: "Alias one, Alias two",
+    placeholderPlatforms: "https://… , https://…",
+    save: "Save and generate checks",
+    saving: "Saving…",
+    ready: "Search links ready",
+    google: "Search Google",
+    bing: "Search Bing",
+    note: "These links open public search engines in a new tab. Review results yourself and submit a specific HTTPS page above for a tracked case.",
+    error: "The protection profile could not be saved.",
+  },
+  es: {
+    eyebrow: "COMPROBACIÓN GRATUITA",
+    title: "Comprueba tu identidad pública",
+    lead: "Guarda los nombres y perfiles públicos que puede usar un creador. Generamos enlaces de búsqueda transparentes que puedes abrir tú mismo; no se suben imágenes privadas ni se promete cobertura.",
+    stage: "Nombre artístico principal",
+    aliases: "Otros alias públicos",
+    platforms: "URLs oficiales de perfiles públicos",
+    placeholderAliases: "Alias uno, Alias dos",
+    placeholderPlatforms: "https://… , https://…",
+    save: "Guardar y generar comprobaciones",
+    saving: "Guardando…",
+    ready: "Enlaces de búsqueda listos",
+    google: "Buscar en Google",
+    bing: "Buscar en Bing",
+    note: "Estos enlaces abren buscadores públicos en una pestaña nueva. Revisa los resultados y envía arriba una página HTTPS concreta para crear un caso.",
+    error: "No se pudo guardar el perfil de protección.",
+  },
+  ro: {
+    eyebrow: "VERIFICARE GRATUITĂ",
+    title: "Verifică identitatea publică",
+    lead: "Salvează numele și profilurile publice pe care le poate folosi un creator. Generăm linkuri de căutare transparente pe care le deschizi tu; nu se încarcă imagini private și nu promitem acoperire completă.",
+    stage: "Nume de scenă principal",
+    aliases: "Alte aliasuri publice",
+    platforms: "URL-uri oficiale de profil public",
+    placeholderAliases: "Alias unu, Alias doi",
+    placeholderPlatforms: "https://… , https://…",
+    save: "Salvează și generează verificări",
+    saving: "Se salvează…",
+    ready: "Linkurile de căutare sunt pregătite",
+    google: "Caută în Google",
+    bing: "Caută în Bing",
+    note: "Linkurile deschid motoare de căutare publice într-o filă nouă. Verifică rezultatele și trimite mai sus o pagină HTTPS concretă pentru un caz urmărit.",
+    error: "Profilul de protecție nu a putut fi salvat.",
+  },
+};
+
+function FreeSurfaceCheck({ language, user, onUserUpdate }) {
+  const copy = { ...FREE_SURFACE_COPY.en, ...(FREE_SURFACE_COPY[language] || {}) };
+  const [stageName, setStageName] = useState(user?.stageName || "");
+  const [aliases, setAliases] = useState((user?.aliases || []).join(", "));
+  const [platforms, setPlatforms] = useState((user?.platforms || []).join(", "));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const save = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const aliasValues = aliases.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 10);
+    const platformValues = platforms.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 12);
+    try {
+      const response = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ stageName: stageName.trim(), aliases: aliasValues, platforms: platformValues, onboardingComplete: true }),
+        }),
+        result = await response.json();
+      if (!response.ok) throw new Error(result.error || copy.error);
+      onUserUpdate(result.user);
+      setQuery(stageName.trim() || aliasValues[0] || "");
+    } catch (nextError) {
+      setError(nextError.message || copy.error);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const searchUrl = (engine) => `${engine}?q=${encodeURIComponent(`"${query}"`)}`;
+  return (
+    <form className="free-surface-check" onSubmit={save}>
+      <div className="free-surface-head">
+        <div>
+          <span className="basic-search-eyebrow">{copy.eyebrow}</span>
+          <h2>{copy.title}</h2>
+          <p>{copy.lead}</p>
+        </div>
+        <Search size={20} />
+      </div>
+      <div className="free-surface-fields">
+        <label>{copy.stage}<input required maxLength="120" value={stageName} onChange={(event) => setStageName(event.target.value)} /></label>
+        <label>{copy.aliases}<input maxLength="500" placeholder={copy.placeholderAliases} value={aliases} onChange={(event) => setAliases(event.target.value)} /></label>
+        <label>{copy.platforms}<input maxLength="2000" placeholder={copy.placeholderPlatforms} value={platforms} onChange={(event) => setPlatforms(event.target.value)} /></label>
+      </div>
+      {error && <div className="free-review-error">{error}</div>}
+      {query && <div className="free-surface-results"><b>{copy.ready}</b><div><a href={searchUrl("https://www.google.com/search")} target="_blank" rel="noreferrer">{copy.google}<ArrowUpRight size={14} /></a><a href={searchUrl("https://www.bing.com/search")} target="_blank" rel="noreferrer">{copy.bing}<ArrowUpRight size={14} /></a></div><small>{copy.note}</small></div>}
+      <button className="btn btn-outline" type="submit" disabled={busy}>{busy ? copy.saving : copy.save}<ArrowRight size={15} /></button>
     </form>
   );
 }
@@ -2200,6 +2308,13 @@ function Dashboard({ onLogout, onUserUpdate, user, language, setLanguage }) {
                   <small>{(BASIC_SEARCH_COPY[language] || BASIC_SEARCH_COPY.en).honesty}</small>
                   <FreeKnownUrlReview language={language} />
                 </div>
+              )}
+              {data.pilotMode === "free" && (
+                <FreeSurfaceCheck
+                  language={language}
+                  user={user}
+                  onUserUpdate={onUserUpdate}
+                />
               )}
             </>
           )}
