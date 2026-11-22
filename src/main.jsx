@@ -4986,7 +4986,9 @@ function OperatorConsole() {
                           </>
                         )}
                         <label>
-                          New authenticator code
+                          {form.action === "stripe-refund"
+                            ? "New authenticator code"
+                            : "Authenticator code (only if requested)"}
                           <input
                             inputMode="numeric"
                             pattern="[0-9]{6}"
